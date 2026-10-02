@@ -1,0 +1,13 @@
+target-version = "py311"
+line-length = 100
+include = ["python/**/*.py", "tests/python/**/*.py", "colab/src/**/*.py", "scripts/**/*.py"]
+
+[lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "NPY", "RUF"]
+
+[lint.per-file-ignores]
+# Notebook sources import inside cells, after the parameters cell.
+"colab/src/*.py" = ["E402"]
+
+[lint.isort]
+known-first-party = ["treesvb"]

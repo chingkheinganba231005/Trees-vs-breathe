@@ -1,0 +1,23 @@
+[build-system]
+requires = ["hatchling==1.32.4"]
+build-backend = "hatchling.build"
+
+[project]
+name = "treesvb"
+version = "0.1.0"
+description = "Reference physics, dataset and surrogate pipeline for Trees vs Breath."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = ["numpy==2.4.6"]
+
+[project.optional-dependencies]
+test = ["pytest==9.1.1", "ruff==0.16.10"]
+notebooks = [
+  "ipykernel==7.4.0",
+  "jupytext==1.19.5",
+  "nbclient==0.11.0",
+  "nbformat==5.11.1",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["treesvb"]
