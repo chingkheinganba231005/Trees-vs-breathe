@@ -49,6 +49,10 @@ def run_to_steady(solver, check_every: int, tol: float, max_steps: int) -> tuple
     return solver.time, False
 
 
+def _r(a, digits: int = 5) -> list[float]:
+    return [round(float(v), digits) for v in np.asarray(a).reshape(-1)]
+
+
 def poiseuille(quick: bool) -> dict:
     heights = (16, 32) if quick else (16, 32, 64)
     rows = []
@@ -110,6 +114,9 @@ def cavity(reynolds: int, n: int, quick: bool) -> dict:
         "wall_time_s": round(time.time() - t0, 1),
         "u_vertical_centreline": cu,
         "v_horizontal_centreline": cv,
+        # Full simulated profiles for the chart, wall values included.
+        "profile_u": {"y": _r(yu[0]), "u": _r(yu[1])},
+        "profile_v": {"x": _r(xv[0]), "v": _r(xv[1])},
         "max_abs_error": worst,
         "passed": bool(ok and worst < threshold),
     }

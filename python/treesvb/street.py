@@ -157,6 +157,10 @@ def _regime_row(aspect: float, height: int, spin_up: int, average: int) -> dict:
     vortices.sort(key=lambda v: v["z"])
     stacked = _stacked(vortices)
     floor = analysis.floor_reattachment(mean_u, x0, x1, rows=2)
+    # Averaged stream function inside the street, normalised by its peak, for the evidence chart.
+    u = mean_u[: g.height, x0:x1]
+    psi = np.cumsum(u, axis=0) - 0.5 * u
+    psi = psi / np.abs(psi).max()
     return {
         "aspect": aspect,
         "height_cells": height,
@@ -166,6 +170,12 @@ def _regime_row(aspect: float, height: int, spin_up: int, average: int) -> dict:
         "vortices": vortices,
         "stacked_primary_vortices": stacked,
         "floor_fraction_with_wind": floor,
+        "psi": {
+            "rows": int(psi.shape[0]),
+            "cols": int(psi.shape[1]),
+            "note": "row 0 is the street floor; positive is anticlockwise",
+            "values": [round(float(v), 3) for v in psi.reshape(-1)],
+        },
     }
 
 
