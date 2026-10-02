@@ -54,8 +54,14 @@ def golden_cases() -> list[GoldenCase]:
         GoldenCase(
             "couette_smag", couette, 200, _couette_start(couette), "Smagorinsky in uniform shear"
         ),
-        GoldenCase("canyon", canyon, 300, None, "Inlet, outflow, free-slip top, buildings"),
-        GoldenCase("canyon_deep", deep, 300, None, "Deep street, H/W = 2"),
+        GoldenCase(
+            "canyon",
+            canyon,
+            300,
+            cases.uniform_start(canyon)[1:],
+            "Inlet, pressure outlet, free-slip top, buildings, absorbing layers",
+        ),
+        GoldenCase("canyon_deep", deep, 300, cases.uniform_start(deep)[1:], "Deep street, H/W = 2"),
     ]
 
 
@@ -99,6 +105,7 @@ def render(g: GoldenCase) -> dict:
             "gx": params.gravity[0],
             "gy": params.gravity[1],
             "inletU": None if params.inlet_u is None else _num(params.inlet_u),
+            "sponge": [float(params.sponge[0]), *map(int, params.sponge[1:])],
         },
         "initial": None
         if g.initial is None

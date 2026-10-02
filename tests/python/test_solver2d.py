@@ -82,13 +82,41 @@ def test_free_slip_top_reflects_specularly() -> None:
     assert np.array_equal(out[8, top], np.roll(f[5, top], 1))
 
 
-def test_outlet_copies_its_own_column() -> None:
-    d = Domain(nx=4, ny=3, left="inlet", right="outlet", bottom="wall", top="freeslip")
-    f = np.random.default_rng(0).random((Q, 3, 4))
+def test_inlet_and_outlet_columns_are_held_for_extrapolation() -> None:
+    d = Domain(nx=5, ny=3, left="inlet", right="outlet", bottom="wall", top="freeslip")
+    f = np.random.default_rng(0).random((Q, 3, 5))
     out = gather(d, f)
-    # Direction 3 (-x) at the outlet node reads the outlet node itself (zero gradient).
-    assert np.array_equal(out[3, :, -1], f[3, :, -1])
-    assert np.array_equal(out[6, 1, -1], f[6, 0, -1])
+    assert np.array_equal(out[:, :, 0], f[:, :, 0])
+    assert np.array_equal(out[:, :, -1], f[:, :, -1])
+    # The node next to the outlet pulls direction 3 (-x) from the outlet column.
+    assert np.array_equal(out[3, :, -2], f[3, :, -1])
+
+
+def test_outlet_holds_unit_density_and_neighbour_velocity() -> None:
+    c = cases.canyon(cases.canyon_geometry(6, 1.0))
+    s = NumpySolver(c.domain, c.params)
+    s.set_state(*cases.uniform_start(c))
+    s.step(50)
+    before = s.f_post.copy()
+    s.step(1)
+    rho_nb = before[:, :, -2].sum(0)
+    ux_nb = (CX[:, None] * before[:, :, -2]).sum(0) / rho_nb
+    rho_out = s.f_post[:, :, -1].sum(0)
+    ux_out = (CX[:, None] * s.f_post[:, :, -1]).sum(0) / rho_out
+    assert np.allclose(rho_out, 1.0)
+    assert np.allclose(ux_out, ux_nb)
+
+
+def test_sponge_only_acts_in_its_layers() -> None:
+    c = cases.canyon(cases.canyon_geometry(8, 1.0))
+    sigma = core.sponge_field(c.domain, c.params.sponge)
+    g = cases.canyon_geometry(8, 1.0)
+    assert (
+        sigma[:, g.height + 1 : c.domain.nx - 2 * g.height - 1][: c.domain.ny - g.height - 1].max()
+        == 0
+    )
+    assert np.isclose(sigma.max(), cases.SPONGE_SIGMA)
+    assert (sigma[c.domain.solid] == 0).all()
 
 
 def test_solid_nodes_and_neighbours() -> None:

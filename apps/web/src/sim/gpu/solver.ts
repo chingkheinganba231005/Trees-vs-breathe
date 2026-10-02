@@ -5,7 +5,11 @@ import { Q } from '../lattice';
 import { SIDE, stepShader } from './shaders';
 
 const WORKGROUP: [number, number] = [8, 8];
-const PARAM_BYTES = 48;
+const PARAM_BYTES = 64;
+
+// Chrome can lose a device whose adapter has been garbage-collected, so adapters are kept here
+// for as long as their devices live.
+const liveAdapters = new Map<GPUDevice, GPUAdapter>();
 
 /** Ask the browser for a WebGPU device; null when there is none (the caller falls back to CPU). */
 export async function requestDevice(): Promise<GPUDevice | null> {
@@ -13,7 +17,10 @@ export async function requestDevice(): Promise<GPUDevice | null> {
   try {
     const adapter = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });
     if (!adapter) return null;
-    return await adapter.requestDevice();
+    const device = await adapter.requestDevice();
+    liveAdapters.set(device, adapter);
+    void device.lost.then(() => liveAdapters.delete(device));
+    return device;
   } catch {
     return null;
   }
@@ -36,6 +43,8 @@ export class GpuSolver {
   readonly meanBuffer: GPUBuffer;
   readonly solidBuffer: GPUBuffer;
   private readonly paramBuffer: GPUBuffer;
+  private readonly checkpointBuffer: GPUBuffer;
+  private checkpointTime = 0;
   private readonly inletBuffer: GPUBuffer;
   private readonly pipeline: GPUComputePipeline;
   private readonly bindGroups: [GPUBindGroup, GPUBindGroup];
@@ -61,6 +70,7 @@ export class GpuSolver {
       usage,
       label: 'inletU',
     });
+    this.checkpointBuffer = device.createBuffer({ size: fBytes, usage, label: 'checkpoint' });
     this.paramBuffer = device.createBuffer({
       size: PARAM_BYTES,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
@@ -104,6 +114,31 @@ export class GpuSolver {
       for (let y = 0; y < domain.ny; y++) ux[y * domain.nx] = params.inletU[y]!;
     }
     this.setState(rho, ux, new Float64Array(this.n));
+    this.saveCheckpoint();
+  }
+
+  /** Change the flow parameters; takes effect on the next step. */
+  setParams(params: SolverParams): void {
+    this.params = params;
+    const inlet = new Float32Array(Math.max(4, this.domain.ny));
+    if (params.inletU) inlet.set(Array.from(params.inletU));
+    this.device.queue.writeBuffer(this.inletBuffer, 0, inlet);
+    this.writeParams();
+  }
+
+  /** Copy the current state aside on the GPU; used after a health check passes. */
+  saveCheckpoint(): void {
+    const enc = this.device.createCommandEncoder();
+    enc.copyBufferToBuffer(this.currentPopulations, 0, this.checkpointBuffer, 0, Q * this.n * 4);
+    this.device.queue.submit([enc.finish()]);
+    this.checkpointTime = this.time;
+  }
+
+  restoreCheckpoint(): void {
+    const enc = this.device.createCommandEncoder();
+    enc.copyBufferToBuffer(this.checkpointBuffer, 0, this.currentPopulations, 0, Q * this.n * 4);
+    this.device.queue.submit([enc.finish()]);
+    this.time = this.checkpointTime;
   }
 
   writeParams(): void {
@@ -125,6 +160,10 @@ export class GpuSolver {
     f32[9] = p.gy;
     f32[10] = d.lidVelocity;
     f32[11] = this.emaAlpha;
+    f32[12] = p.sponge?.sigma ?? 0;
+    f32[13] = p.sponge?.inlet ?? 0;
+    f32[14] = p.sponge?.outlet ?? 0;
+    f32[15] = p.sponge?.top ?? 0;
     this.device.queue.writeBuffer(this.paramBuffer, 0, buf);
   }
 
@@ -196,6 +235,7 @@ export class GpuSolver {
       ...this.fBuffers,
       this.fieldsBuffer,
       this.meanBuffer,
+      this.checkpointBuffer,
       this.solidBuffer,
       this.paramBuffer,
       this.inletBuffer,

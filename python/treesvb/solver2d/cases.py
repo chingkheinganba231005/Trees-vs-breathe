@@ -9,6 +9,9 @@ import numpy as np
 from .domain import Domain
 from .numpy_solver import Params
 
+#: Absorbing-layer strength chosen in results/street/sponge.json.
+SPONGE_SIGMA = 0.05
+
 
 @dataclass(frozen=True)
 class Case:
@@ -144,5 +147,20 @@ def canyon(
         solid=g.solid(),
     )
     inlet = np.full(g.top, u_ref)
-    params = Params(tau0=3.0 * nu + 0.5, smagorinsky=smagorinsky, inlet_u=inlet)
+    # Absorbing layers one building height deep at the inlet and the top, two at the outlet,
+    # where the wake is still turbulent (strength from results/street/sponge.json).
+    sponge = (SPONGE_SIGMA, g.height, 2 * g.height, g.height)
+    params = Params(tau0=3.0 * nu + 0.5, smagorinsky=smagorinsky, inlet_u=inlet, sponge=sponge)
     return Case(f"canyon_h{g.height}_ar{g.aspect:.2f}", d, params, u_ref, g.height)
+
+
+def uniform_start(case: Case) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Unit density and the inflow speed everywhere outside buildings.
+
+    Starting the inflow from rest sends a pressure pulse of about u / c_s through the domain;
+    starting from uniform flow avoids it.
+    """
+    d = case.domain
+    open_ = ~d.solid
+    ux = np.where(open_, case.u_ref, 0.0)
+    return np.ones((d.ny, d.nx)), ux, np.zeros((d.ny, d.nx))

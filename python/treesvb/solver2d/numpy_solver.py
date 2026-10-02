@@ -9,8 +9,11 @@ One step, identical in every implementation (docs/solver.md):
    where P is the non-equilibrium momentum flux corrected for the force.
 4. BGK collision with the Guo forcing term:
    f_post = f - (f - feq) / tau + (1 - 1 / (2 tau)) w_i [3 (c_i - u) + 9 (c_i . u) c_i] . F
-5. Non-fluid nodes keep their value; a left inlet column is set to the equilibrium at the inlet
-   velocity and the previous density of its right-hand neighbour.
+5. Absorbing layers relax the density towards 1 near open boundaries:
+   f_post += sigma (1 - rho) / rho f_eq(rho, u)   (Xu and Sagaut 2013).
+6. Non-fluid nodes keep their value; the inlet column is set to the equilibrium at the inlet
+   velocity and its neighbour's previous density, the outlet column to the equilibrium at density
+   1 and its neighbour's previous velocity.
 """
 
 from __future__ import annotations
@@ -33,6 +36,8 @@ class Params:
     gravity: tuple[float, float] = (0.0, 0.0)
     #: Inlet x-velocity profile, shape (ny,), for a domain with a left inlet.
     inlet_u: np.ndarray | None = None
+    #: Absorbing layers (sigma_max, inlet, outlet, top lengths in cells); see core.sponge_field.
+    sponge: tuple[float, int, int, int] = (0.0, 0, 0, 0)
 
     @property
     def nu0(self) -> float:

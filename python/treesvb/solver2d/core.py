@@ -51,10 +51,13 @@ def make_config(domain: Domain, params, xp=np, dtype=np.float64) -> dict[str, An
     fluid = domain.fluid
     gx, gy = params.gravity
     inlet = np.zeros((ny, nx), bool)
+    outlet = np.zeros((ny, nx), bool)
     inlet_u = np.zeros((ny, nx))
     if domain.left == "inlet":
         inlet[:, 0] = True
         inlet_u[:, 0] = np.asarray(params.inlet_u)
+    if domain.right == "outlet":
+        outlet[:, -1] = True
     as_f = lambda a: xp.asarray(np.asarray(a, dtype=np.float64), dtype=dtype)  # noqa: E731
     return {
         "bounce": xp.asarray(parts["bounce"]),
@@ -64,12 +67,33 @@ def make_config(domain: Domain, params, xp=np, dtype=np.float64) -> dict[str, An
         "add": as_f(add),
         "fluid": xp.asarray(fluid),
         "inlet": xp.asarray(inlet),
+        "outlet": xp.asarray(outlet),
         "inlet_u": as_f(inlet_u),
         "gx": as_f(np.where(fluid, gx, 0.0)),
         "gy": as_f(np.where(fluid, gy, 0.0)),
         "tau0": as_f(params.tau0),
         "cs": as_f(params.smagorinsky),
+        "sigma": as_f(sponge_field(domain, params.sponge)),
     }
+
+
+def sponge_field(domain: Domain, sponge: tuple[float, int, int, int]) -> np.ndarray:
+    """Absorbing-layer strength per node: sigma_max times a quadratic ramp into each layer.
+
+    Sound radiated by vortex shedding would otherwise reflect between the inlet, the ground and
+    the top and fill the street with pressure noise (results/street/sponge.json).
+    """
+    sigma_max, l_in, l_out, l_top = sponge
+    ny, nx = domain.ny, domain.nx
+    y, x = np.mgrid[0:ny, 0:nx].astype(np.float64)
+    ramp = np.zeros((ny, nx))
+    if l_in:
+        ramp = np.maximum(ramp, np.clip((l_in - x) / l_in, 0.0, 1.0) ** 2)
+    if l_out:
+        ramp = np.maximum(ramp, np.clip((x - (nx - 1 - l_out)) / l_out, 0.0, 1.0) ** 2)
+    if l_top:
+        ramp = np.maximum(ramp, np.clip((y - (ny - 1 - l_top)) / l_top, 0.0, 1.0) ** 2)
+    return np.where(domain.fluid, sigma_max * ramp, 0.0)
 
 
 def _lin(a: int, x, b: int, y):
@@ -167,18 +191,34 @@ def step(xp, f_post, cfg):
     feq = equilibrium(xp, rho, ux, uy)
     tau = relaxation_time(xp, f, feq, rho, ux, uy, fx, fy, cfg)
     post = f - (f - feq) / tau + guo_source(xp, tau, ux, uy, fx, fy)
+    # Absorbing layers: f_eq(1, u) - f_eq(rho, u) = (1 - rho) / rho f_eq(rho, u).
+    post = post + (cfg["sigma"] * (1.0 - rho) / rho) * feq
     post = xp.where(cfg["fluid"], post, f)
-    # Inlet column: equilibrium at the inlet velocity and the previous density of column 1.
-    rho_in = f_post[:, :, 1].sum(0)
-    u_in = cfg["inlet_u"][:, 0]
-    col = xp.where(
-        cfg["inlet"][:, 0], equilibrium(xp, rho_in, u_in, xp.zeros_like(u_in)), post[:, :, 0]
-    )
-    if xp is np:
-        post[:, :, 0] = col
-    else:
-        post = post.at[:, :, 0].set(col)
+    # Boundary columns: the equilibrium part of the non-equilibrium extrapolation of Guo, Zheng
+    # and Shi (2002), from the previous state of the neighbouring column (reading only the old
+    # buffer keeps the GPU kernel free of races). The non-equilibrium part is left out: with tau
+    # near 1/2 it changes sign every step, and copying it one step late made the outlet unstable
+    # (docs/solver.md). The inlet fixes the velocity, the outlet fixes the density.
+    rho_in, _, _ = _column_state(xp, f_post[:, :, 1])
+    inlet = equilibrium(xp, rho_in, cfg["inlet_u"][:, 0], xp.zeros_like(rho_in))
+    post = _set_column(xp, post, 0, xp.where(cfg["inlet"][:, 0], inlet, post[:, :, 0]))
+    _, ux_out, uy_out = _column_state(xp, f_post[:, :, -2])
+    outlet = equilibrium(xp, xp.ones_like(ux_out), ux_out, uy_out)
+    post = _set_column(xp, post, -1, xp.where(cfg["outlet"][:, -1], outlet, post[:, :, -1]))
     return post, tau
+
+
+def _column_state(xp, f):
+    """Density and velocity of one column of post-collision populations."""
+    rho = _moment(f, [1] * Q)
+    return rho, _moment(f, CX) / rho, _moment(f, CY) / rho
+
+
+def _set_column(xp, post, x: int, col):
+    if xp is np:
+        post[:, :, x] = col
+        return post
+    return post.at[:, :, x].set(col)
 
 
 def initial_state(xp, cfg, dtype):

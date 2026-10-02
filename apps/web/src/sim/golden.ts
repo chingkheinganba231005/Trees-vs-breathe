@@ -16,7 +16,14 @@ export interface GoldenCase {
     lidVelocity: number;
     solid: string[];
   };
-  params: { tau0: number; smagorinsky: number; gx: number; gy: number; inletU: number[] | null };
+  params: {
+    tau0: number;
+    smagorinsky: number;
+    gx: number;
+    gy: number;
+    inletU: number[] | null;
+    sponge: [number, number, number, number];
+  };
   initial: { ux: number[]; uy: number[] } | null;
   steps: number;
   uRef: number;
@@ -42,6 +49,12 @@ export function goldenParams(g: GoldenCase): SolverParams {
     gx: g.params.gx,
     gy: g.params.gy,
     inletU: g.params.inletU ?? undefined,
+    sponge: {
+      sigma: g.params.sponge[0],
+      inlet: g.params.sponge[1],
+      outlet: g.params.sponge[2],
+      top: g.params.sponge[3],
+    },
   };
 }
 

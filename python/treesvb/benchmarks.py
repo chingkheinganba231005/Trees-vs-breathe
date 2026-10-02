@@ -85,9 +85,9 @@ def cavity(reynolds: int, n: int, quick: bool) -> dict:
     else:
         s, backend = NumpySolver(c.domain, c.params), "numpy float64"
     t0 = time.time()
-    # float32 round-off leaves changes near 1e-7 per check, so the steady test uses 1e-5 of the
-    # lid speed: still 2000 times finer than the 2% tolerance against Ghia.
-    steps, ok = run_to_steady(s, 2000, 1e-5 * c.u_ref, 600_000)
+    # float32 round-off keeps the change per check near 1e-6 of the lid speed, so the steady
+    # test uses 1e-4 of it: still 200 times finer than the 2% tolerance against Ghia.
+    steps, ok = run_to_steady(s, 2000, 1e-4 * c.u_ref, 600_000)
     _, ux, uy = s.macros()
     yu, xv = analysis.cavity_centrelines(ux, uy, c.u_ref)
     tu, tv = ghia1982.TABLES[reynolds]

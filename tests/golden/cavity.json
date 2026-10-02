@@ -29,7 +29,14 @@
       "0000000000000000"
     ]
   },
-  "params": { "tau0": 0.548, "smagorinsky": 0.0, "gx": 0.0, "gy": 0.0, "inletU": null },
+  "params": {
+    "tau0": 0.548,
+    "smagorinsky": 0.0,
+    "gx": 0.0,
+    "gy": 0.0,
+    "inletU": null,
+    "sponge": [0.0, 0, 0, 0]
+  },
   "initial": null,
   "steps": 400,
   "uRef": 0.1,

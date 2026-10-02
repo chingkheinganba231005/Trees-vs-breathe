@@ -4,6 +4,12 @@ import { CpuSolver } from '../../apps/web/src/sim/cpu/solver';
 import { buildStreamMap } from '../../apps/web/src/sim/domain';
 import { goldenDomain, goldenParams, velocityError } from '../../apps/web/src/sim/golden';
 import type { GoldenCase } from '../../apps/web/src/sim/golden';
+import {
+  canyonDomain,
+  canyonGeometry,
+  canyonParams,
+  roundHalfEven,
+} from '../../apps/web/src/sim/street';
 
 const dir = new URL('../golden/', import.meta.url);
 const goldens: GoldenCase[] = readdirSync(dir)
@@ -55,5 +61,33 @@ describe('CPU solver', () => {
     const s = new CpuSolver(goldenDomain(g), goldenParams(g));
     s.step(50);
     expect(s.healthy()).toBe(true);
+  });
+});
+
+describe('street canyon builder', () => {
+  it('rounds halves like Python', () => {
+    expect([0.5, 1.5, 2.5, 3.5, -2.5, 2.4, 2.6].map(roundHalfEven)).toEqual([0, 2, 2, 4, -2, 2, 3]);
+  });
+
+  it.each([
+    ['canyon', 1.0, 20000],
+    ['canyon_deep', 2.0, 5000],
+  ] as const)('%s: TS builder gives the same grid and parameters as Python', (name, aspect, re) => {
+    const g = goldens.find((x) => x.name === name)!;
+    const geom = canyonGeometry(6, aspect);
+    const d = canyonDomain(geom);
+    const ref = goldenDomain(g);
+    expect([d.nx, d.ny, d.left, d.right, d.bottom, d.top]).toEqual([
+      ref.nx,
+      ref.ny,
+      ref.left,
+      ref.right,
+      ref.bottom,
+      ref.top,
+    ]);
+    expect(Array.from(d.solid)).toEqual(Array.from(ref.solid));
+    const p = canyonParams(geom, { uRef: g.uRef, reynolds: re, smagorinsky: g.params.smagorinsky });
+    expect(p.tau0).toBeCloseTo(g.params.tau0, 12);
+    expect(p.inletU).toEqual(g.params.inletU);
   });
 });

@@ -12,6 +12,38 @@ export interface SolverParams {
   gy: number;
   /** Inlet x-velocity per row, for a domain with a left inlet. */
   inletU?: ArrayLike<number>;
+  /** Absorbing layers; see spongeField. */
+  sponge?: Sponge;
+}
+
+export interface Sponge {
+  sigma: number;
+  inlet: number;
+  outlet: number;
+  top: number;
+}
+
+/**
+ * Absorbing-layer strength per node, as core.sponge_field in Python: sigma times a quadratic
+ * ramp into the inlet, outlet and top layers, on fluid nodes only.
+ */
+export function spongeField(d: Domain, sponge: Sponge | undefined): Float64Array {
+  const out = new Float64Array(d.nx * d.ny);
+  if (!sponge || sponge.sigma === 0) return out;
+  const fluid = fluidMask(d);
+  const ramp = (v: number) => Math.min(Math.max(v, 0), 1) ** 2;
+  for (let y = 0; y < d.ny; y++) {
+    for (let x = 0; x < d.nx; x++) {
+      const k = y * d.nx + x;
+      if (!fluid[k]) continue;
+      let r = 0;
+      if (sponge.inlet) r = Math.max(r, ramp((sponge.inlet - x) / sponge.inlet));
+      if (sponge.outlet) r = Math.max(r, ramp((x - (d.nx - 1 - sponge.outlet)) / sponge.outlet));
+      if (sponge.top) r = Math.max(r, ramp((y - (d.ny - 1 - sponge.top)) / sponge.top));
+      out[k] = sponge.sigma * r;
+    }
+  }
+  return out;
 }
 
 export interface Fields {
@@ -39,7 +71,8 @@ export class CpuSolver {
   private readonly src: Int32Array;
   private readonly add: Float32Array;
   private readonly fluid: Uint8Array;
-  private readonly inletU: Float64Array;
+  private inletU: Float64Array;
+  private readonly sigma: Float64Array;
 
   constructor(domain: Domain, params: SolverParams) {
     if (domain.left === 'inlet' && (!params.inletU || params.inletU.length !== domain.ny)) {
@@ -53,6 +86,7 @@ export class CpuSolver {
     this.add = Float32Array.from(map.add);
     this.fluid = fluidMask(domain);
     this.inletU = Float64Array.from(params.inletU ?? new Array<number>(domain.ny).fill(0));
+    this.sigma = spongeField(domain, params.sponge);
     this.fPost = new Float32Array(Q * this.n);
     this.fNext = new Float32Array(Q * this.n);
     const rho = new Float64Array(this.n).fill(1);
@@ -61,6 +95,12 @@ export class CpuSolver {
       for (let y = 0; y < domain.ny; y++) ux[y * domain.nx] = this.inletU[y]!;
     }
     this.setState(rho, ux, new Float64Array(this.n));
+  }
+
+  /** Change the flow parameters; the inlet profile takes effect on the next step. */
+  setParams(params: SolverParams): void {
+    this.params = params;
+    if (params.inletU) this.inletU = Float64Array.from(params.inletU);
   }
 
   /** Replace the state with the equilibrium of the given fields. */
@@ -78,7 +118,7 @@ export class CpuSolver {
   }
 
   private stepOnce(): void {
-    const { n, src, add, fluid, fPost, fNext } = this;
+    const { n, src, add, fluid, fPost, fNext, sigma } = this;
     const { tau0, smagorinsky: cs, gx, gy } = this.params;
     const smag = SQRT2_18 * cs * cs;
     const n2 = 2 * n;
@@ -174,15 +214,17 @@ export class CpuSolver {
         s8 = pre * W5 * ((3 * (1 - ux) - 9 * b) * fx + (3 * (-1 - uy) + 9 * b) * fy);
       }
 
-      fNext[k] = f0 - omega * (f0 - e0) + s0;
-      fNext[n + k] = f1 - omega * (f1 - e1) + s1;
-      fNext[n2 + k] = f2 - omega * (f2 - e2) + s2;
-      fNext[n3 + k] = f3 - omega * (f3 - e3) + s3;
-      fNext[n4 + k] = f4 - omega * (f4 - e4) + s4;
-      fNext[n5 + k] = f5 - omega * (f5 - e5) + s5;
-      fNext[n6 + k] = f6 - omega * (f6 - e6) + s6;
-      fNext[n7 + k] = f7 - omega * (f7 - e7) + s7;
-      fNext[n8 + k] = f8 - omega * (f8 - e8) + s8;
+      // Absorbing layers: f_eq(1, u) - f_eq(rho, u) = (1 - rho) / rho f_eq(rho, u).
+      const sp = (sigma[k]! * (1 - rho)) / rho;
+      fNext[k] = f0 - omega * (f0 - e0) + s0 + sp * e0;
+      fNext[n + k] = f1 - omega * (f1 - e1) + s1 + sp * e1;
+      fNext[n2 + k] = f2 - omega * (f2 - e2) + s2 + sp * e2;
+      fNext[n3 + k] = f3 - omega * (f3 - e3) + s3 + sp * e3;
+      fNext[n4 + k] = f4 - omega * (f4 - e4) + s4 + sp * e4;
+      fNext[n5 + k] = f5 - omega * (f5 - e5) + s5 + sp * e5;
+      fNext[n6 + k] = f6 - omega * (f6 - e6) + s6 + sp * e6;
+      fNext[n7 + k] = f7 - omega * (f7 - e7) + s7 + sp * e7;
+      fNext[n8 + k] = f8 - omega * (f8 - e8) + s8 + sp * e8;
     }
 
     if (this.domain.left === 'inlet') {
@@ -194,6 +236,26 @@ export class CpuSolver {
         for (let i = 0; i < Q; i++) rhoIn += fPost[i * n + k1]!;
         equilibrium(rhoIn, this.inletU[y]!, 0, feq);
         for (let i = 0; i < Q; i++) fNext[i * n + y * nx] = feq[i]!;
+      }
+    }
+
+    if (this.domain.right === 'outlet') {
+      // Density 1 and the neighbour's previous velocity (see core.py).
+      const { nx, ny } = this.domain;
+      const feq = new Float64Array(Q);
+      for (let y = 0; y < ny; y++) {
+        const k2 = y * nx + nx - 2;
+        let rho = 0;
+        let jx = 0;
+        let jy = 0;
+        for (let i = 0; i < Q; i++) {
+          const f = fPost[i * n + k2]!;
+          rho += f;
+          jx += f * CXS[i]!;
+          jy += f * CYS[i]!;
+        }
+        equilibrium(1, jx / rho, jy / rho, feq);
+        for (let i = 0; i < Q; i++) fNext[i * n + y * nx + nx - 1] = feq[i]!;
       }
     }
 

@@ -9,15 +9,16 @@ from (and, for the moving lid, adds a constant), so the whole step reduces to on
 Rules, applied in this order for the source (sx, sy) = (x - cx, y - cy):
 
 1. sx outside [0, nx): left/right `periodic` wraps; `wall` is half-way bounce-back
-   (read f_post[opp(i)] at the node itself); `outlet` reads the node's own column
-   (zero-gradient outflow), keeping sy.
+   (read f_post[opp(i)] at the node itself).
 2. sy outside [0, ny): `periodic` wraps; `wall` is bounce-back; `moving` is bounce-back plus
    2 w_i rho0 (c_i . u_w) / cs^2 with rho0 = 1; `freeslip` reads f_post[mirror_y(i)] at
    (sx, ny - 1), a specular reflection.
 3. A solid source node is bounce-back.
 
-Solid nodes and the inlet column read themselves; the solver overwrites the inlet column after
-collision with the equilibrium at the inlet velocity (see numpy_solver.py).
+Solid nodes and the inlet and outlet columns read themselves; after collision the solver sets
+the inlet and outlet columns by non-equilibrium extrapolation (Guo, Zheng and Shi 2002, Chinese
+Physics 11, 366): equilibrium at the boundary value plus the non-equilibrium part of the
+neighbouring column. The inlet fixes the velocity, the outlet fixes the density (pressure).
 
 The TypeScript builder (apps/web/src/sim/streamMap.ts) and the WGSL kernel implement the same
 rules; tests compare them against this one.
@@ -66,13 +67,19 @@ class Domain:
         object.__setattr__(self, "solid", np.ascontiguousarray(solid, dtype=bool))
 
     @property
-    def fluid(self) -> np.ndarray:
-        """Nodes whose state the solver evolves (excludes solids and the inlet column)."""
-        f = ~self.solid
+    def boundary_columns(self) -> np.ndarray:
+        """Inlet and outlet columns, set by extrapolation rather than streaming and collision."""
+        b = np.zeros((self.ny, self.nx), bool)
         if self.left == "inlet":
-            f = f.copy()
-            f[:, 0] = False
-        return f
+            b[:, 0] = True
+        if self.right == "outlet":
+            b[:, -1] = True
+        return b
+
+    @property
+    def fluid(self) -> np.ndarray:
+        """Nodes whose state the solver evolves (excludes solids and boundary columns)."""
+        return ~self.solid & ~self.boundary_columns
 
 
 def build_stream_map(d: Domain) -> tuple[np.ndarray, np.ndarray]:
@@ -105,9 +112,7 @@ def build_stream_map(d: Domain) -> tuple[np.ndarray, np.ndarray]:
             if d.right == "wall":
                 out = np.where(hi & ~done, bounce, out)
                 done |= hi
-            elif d.right == "outlet":
-                sx = np.where(hi, x, sx)
-            # A left inlet only affects column 0, which is overwritten after collision.
+            # Inlet and outlet columns are overwritten after collision, so their pulls never matter.
             sx = sx.clip(0, nx - 1)
 
         # 2. y boundaries
@@ -133,10 +138,8 @@ def build_stream_map(d: Domain) -> tuple[np.ndarray, np.ndarray]:
         done |= solid_src
         out = np.where(done, out, flat(np.full_like(x, i), sy, sx))
 
-        # Solid nodes and the inlet column keep their own value.
-        keep = d.solid.copy()
-        if d.left == "inlet":
-            keep[:, 0] = True
+        # Solid nodes and the boundary columns keep their own value.
+        keep = d.solid | d.boundary_columns
         out = np.where(keep, flat(np.full_like(x, i), y, x), out)
         add[i] = np.where(keep, 0.0, add[i])
         src[i] = out

@@ -38,13 +38,18 @@ export function makeDomain(d: Partial<Domain> & Pick<Domain, 'nx' | 'ny'>): Doma
   return domain;
 }
 
-/** Nodes the solver evolves: not solid, not the inlet column. */
+/** Inlet and outlet columns are set by extrapolation, not by streaming and collision. */
+export function isBoundaryColumn(d: Domain, x: number): boolean {
+  return (d.left === 'inlet' && x === 0) || (d.right === 'outlet' && x === d.nx - 1);
+}
+
+/** Nodes the solver evolves: not solid, not a boundary column. */
 export function fluidMask(d: Domain): Uint8Array {
   const m = new Uint8Array(d.nx * d.ny);
   for (let y = 0; y < d.ny; y++) {
     for (let x = 0; x < d.nx; x++) {
       const k = y * d.nx + x;
-      m[k] = d.solid[k] || (d.left === 'inlet' && x === 0) ? 0 : 1;
+      m[k] = d.solid[k] || isBoundaryColumn(d, x) ? 0 : 1;
     }
   }
   return m;
@@ -59,8 +64,7 @@ export function buildStreamMap(d: Domain): { src: Int32Array; add: Float64Array 
   const n = nx * ny;
   const src = new Int32Array(Q * n);
   const add = new Float64Array(Q * n);
-  const keep = (x: number, y: number) =>
-    d.solid[y * nx + x] === 1 || (d.left === 'inlet' && x === 0);
+  const keep = (x: number, y: number) => d.solid[y * nx + x] === 1 || isBoundaryColumn(d, x);
 
   for (let i = 0; i < Q; i++) {
     for (let y = 0; y < ny; y++) {
@@ -85,12 +89,9 @@ export function buildStreamMap(d: Domain): { src: Int32Array; add: Float64Array 
             src[out] = bounce;
             continue;
           }
-          if (sx >= nx) {
-            if (d.right === 'wall') {
-              src[out] = bounce;
-              continue;
-            }
-            if (d.right === 'outlet') sx = x;
+          if (sx >= nx && d.right === 'wall') {
+            src[out] = bounce;
+            continue;
           }
           sx = Math.min(Math.max(sx, 0), nx - 1);
         }

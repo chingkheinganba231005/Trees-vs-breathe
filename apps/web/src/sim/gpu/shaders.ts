@@ -15,6 +15,7 @@ struct Params {
   nx: i32, ny: i32, left: u32, right: u32,
   bottom: u32, top: u32, tau0: f32, cs: f32,
   gx: f32, gy: f32, lid: f32, emaAlpha: f32,
+  spongeSigma: f32, spongeIn: f32, spongeOut: f32, spongeTop: f32,
 };
 
 @group(0) @binding(0) var<uniform> P: Params;
@@ -40,6 +41,22 @@ fn feq(i: i32, rho: f32, ux: f32, uy: f32) -> f32 {
   return w[i] * rho * (1.0 + 3.0 * cu + 4.5 * cu * cu - 1.5 * (ux * ux + uy * uy));
 }
 
+fn ramp(v: f32) -> f32 { let c = clamp(v, 0.0, 1.0); return c * c; }
+
+// Absorbing-layer strength, as core.sponge_field in Python.
+fn sponge(x: i32, y: i32) -> f32 {
+  if (P.spongeSigma == 0.0) { return 0.0; }
+  var r = 0.0;
+  if (P.spongeIn > 0.0) { r = max(r, ramp((P.spongeIn - f32(x)) / P.spongeIn)); }
+  if (P.spongeOut > 0.0) {
+    r = max(r, ramp((f32(x) - (f32(P.nx) - 1.0 - P.spongeOut)) / P.spongeOut));
+  }
+  if (P.spongeTop > 0.0) {
+    r = max(r, ramp((f32(y) - (f32(P.ny) - 1.0 - P.spongeTop)) / P.spongeTop));
+  }
+  return P.spongeSigma * r;
+}
+
 fn write(k: i32, f: array<f32, 9>) {
   let n = N();
   for (var i = 0; i < 9; i++) { fOut[i * n + k] = f[i]; }
@@ -61,6 +78,26 @@ fn step(@builtin(global_invocation_id) gid: vec3<u32>) {
     for (var i = 0; i < 9; i++) { f[i] = feq(i, rhoIn, u, 0.0); }
     write(k, f);
     fields[k] = vec4<f32>(rhoIn, u, 0.0, P.tau0);
+    return;
+  }
+
+  if (P.right == ${SIDE.outlet}u && x == P.nx - 1) {
+    // Density 1 and the neighbour's previous velocity (see core.py).
+    var rho = 0.0;
+    var jx = 0.0;
+    var jy = 0.0;
+    let cxs = array<f32, 9>(${CX.map((c) => `${c}.0`).join(', ')});
+    let cys = array<f32, 9>(${CY.map((c) => `${c}.0`).join(', ')});
+    for (var i = 0; i < 9; i++) {
+      let f = at(i, k - 1);
+      rho += f;
+      jx += f * cxs[i];
+      jy += f * cys[i];
+    }
+    var f: array<f32, 9>;
+    for (var i = 0; i < 9; i++) { f[i] = feq(i, 1.0, jx / rho, jy / rho); }
+    write(k, f);
+    fields[k] = vec4<f32>(1.0, jx / rho, jy / rho, P.tau0);
     return;
   }
 
@@ -115,16 +152,18 @@ ${loads}
   let s7 = pre * w5 * ((3.0 * (-1.0 - ux) + 9.0 * a) * fx + (3.0 * (-1.0 - uy) + 9.0 * a) * fy);
   let s8 = pre * w5 * ((3.0 * (1.0 - ux) - 9.0 * b) * fx + (3.0 * (-1.0 - uy) + 9.0 * b) * fy);
 
+  // Absorbing layers: f_eq(1, u) - f_eq(rho, u) = (1 - rho) / rho f_eq(rho, u).
+  let sp = sponge(x, y) * (1.0 - rho) / rho;
   var out: array<f32, 9>;
-  out[0] = f0 - om * (f0 - e0) + s0;
-  out[1] = f1 - om * (f1 - e1) + s1;
-  out[2] = f2 - om * (f2 - e2) + s2;
-  out[3] = f3 - om * (f3 - e3) + s3;
-  out[4] = f4 - om * (f4 - e4) + s4;
-  out[5] = f5 - om * (f5 - e5) + s5;
-  out[6] = f6 - om * (f6 - e6) + s6;
-  out[7] = f7 - om * (f7 - e7) + s7;
-  out[8] = f8 - om * (f8 - e8) + s8;
+  out[0] = f0 - om * (f0 - e0) + s0 + sp * e0;
+  out[1] = f1 - om * (f1 - e1) + s1 + sp * e1;
+  out[2] = f2 - om * (f2 - e2) + s2 + sp * e2;
+  out[3] = f3 - om * (f3 - e3) + s3 + sp * e3;
+  out[4] = f4 - om * (f4 - e4) + s4 + sp * e4;
+  out[5] = f5 - om * (f5 - e5) + s5 + sp * e5;
+  out[6] = f6 - om * (f6 - e6) + s6 + sp * e6;
+  out[7] = f7 - om * (f7 - e7) + s7 + sp * e7;
+  out[8] = f8 - om * (f8 - e8) + s8 + sp * e8;
   write(k, out);
   fields[k] = vec4<f32>(rho, ux, uy, tau);
   if (P.emaAlpha > 0.0) {
@@ -150,10 +189,7 @@ function pullFunction(i: number): string {
     sx = (sx + P.nx) % P.nx;
   } else {
     if (sx < 0 && P.left == ${SIDE.wall}u) { return at(${opp}, k); }
-    if (sx >= P.nx) {
-      if (P.right == ${SIDE.wall}u) { return at(${opp}, k); }
-      if (P.right == ${SIDE.outlet}u) { sx = x; }
-    }
+    if (sx >= P.nx && P.right == ${SIDE.wall}u) { return at(${opp}, k); }
     sx = clamp(sx, 0, P.nx - 1);
   }
   if (P.bottom == ${SIDE.periodic}u) {

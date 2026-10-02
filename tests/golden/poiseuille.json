@@ -30,7 +30,8 @@
     "smagorinsky": 0.0,
     "gx": 0.00027777777777777783,
     "gy": 0.0,
-    "inletU": null
+    "inletU": null,
+    "sponge": [0.0, 0, 0, 0]
   },
   "initial": null,
   "steps": 600,
