@@ -23,6 +23,8 @@ export interface GoldenCase {
     gy: number;
     inletU: number[] | null;
     sponge: [number, number, number, number];
+    drag?: number[];
+    tracer?: { source: number[]; diffusivity: number; schmidt: number };
   };
   initial: { ux: number[]; uy: number[] } | null;
   steps: number;
@@ -31,6 +33,8 @@ export interface GoldenCase {
   rho: number[];
   ux: number[];
   uy: number[];
+  /** Tracer concentration, for cases with a tracer. */
+  c?: number[];
 }
 
 export function goldenDomain(g: GoldenCase): Domain {
@@ -55,7 +59,21 @@ export function goldenParams(g: GoldenCase): SolverParams {
       outlet: g.params.sponge[2],
       top: g.params.sponge[3],
     },
+    drag: g.params.drag,
+    tracer: g.params.tracer,
   };
+}
+
+/** Largest concentration difference as a fraction of the largest reference concentration. */
+export function concentrationError(g: GoldenCase, c: ArrayLike<number>): number {
+  if (!g.c) return 0;
+  let worst = 0;
+  let peak = 0;
+  for (let k = 0; k < g.c.length; k++) {
+    worst = Math.max(worst, Math.abs(c[k]! - g.c[k]!));
+    peak = Math.max(peak, Math.abs(g.c[k]!));
+  }
+  return worst / peak;
 }
 
 /** Largest velocity difference as a fraction of the case's reference speed. */

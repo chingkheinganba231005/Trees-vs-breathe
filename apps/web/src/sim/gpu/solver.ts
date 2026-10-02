@@ -5,7 +5,9 @@ import { Q } from '../lattice';
 import { SIDE, stepShader } from './shaders';
 
 const WORKGROUP: [number, number] = [8, 8];
-const PARAM_BYTES = 64;
+const PARAM_BYTES = 80;
+/** Populations per node: nine flow directions, then five for the tracer (unused without one). */
+const SLOTS = Q + 5;
 
 // Chrome can lose a device whose adapter has been garbage-collected, so adapters are kept here
 // for as long as their devices live.
@@ -42,6 +44,7 @@ export class GpuSolver {
   readonly fieldsBuffer: GPUBuffer;
   readonly meanBuffer: GPUBuffer;
   readonly solidBuffer: GPUBuffer;
+  private readonly auxBuffer: GPUBuffer;
   private readonly paramBuffer: GPUBuffer;
   private readonly checkpointBuffer: GPUBuffer;
   private checkpointTime = 0;
@@ -56,7 +59,7 @@ export class GpuSolver {
     this.domain = domain;
     this.params = params;
     this.n = domain.nx * domain.ny;
-    const fBytes = Q * this.n * 4;
+    const fBytes = SLOTS * this.n * 4;
     const usage = GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST;
     this.fBuffers = [
       device.createBuffer({ size: fBytes, usage, label: 'fA' }),
@@ -65,6 +68,7 @@ export class GpuSolver {
     this.fieldsBuffer = device.createBuffer({ size: this.n * 16, usage, label: 'fields' });
     this.meanBuffer = device.createBuffer({ size: this.n * 16, usage, label: 'mean' });
     this.solidBuffer = device.createBuffer({ size: this.n * 4, usage, label: 'solid' });
+    this.auxBuffer = device.createBuffer({ size: this.n * 8, usage, label: 'drag and source' });
     this.inletBuffer = device.createBuffer({
       size: Math.max(16, domain.ny * 4),
       usage,
@@ -95,6 +99,7 @@ export class GpuSolver {
           { binding: 4, resource: { buffer: this.inletBuffer } },
           { binding: 5, resource: { buffer: this.fieldsBuffer } },
           { binding: 6, resource: { buffer: this.meanBuffer } },
+          { binding: 7, resource: { buffer: this.auxBuffer } },
         ],
       });
     this.bindGroups = [
@@ -103,6 +108,12 @@ export class GpuSolver {
     ];
 
     device.queue.writeBuffer(this.solidBuffer, 0, Uint32Array.from(domain.solid));
+    const aux = new Float32Array(2 * this.n);
+    for (let k = 0; k < this.n; k++) {
+      aux[2 * k] = params.drag?.[k] ?? 0;
+      aux[2 * k + 1] = params.tracer?.source[k] ?? 0;
+    }
+    device.queue.writeBuffer(this.auxBuffer, 0, aux);
     const inlet = new Float32Array(Math.max(4, domain.ny));
     if (params.inletU) inlet.set(Array.from(params.inletU));
     device.queue.writeBuffer(this.inletBuffer, 0, inlet);
@@ -129,14 +140,26 @@ export class GpuSolver {
   /** Copy the current state aside on the GPU; used after a health check passes. */
   saveCheckpoint(): void {
     const enc = this.device.createCommandEncoder();
-    enc.copyBufferToBuffer(this.currentPopulations, 0, this.checkpointBuffer, 0, Q * this.n * 4);
+    enc.copyBufferToBuffer(
+      this.currentPopulations,
+      0,
+      this.checkpointBuffer,
+      0,
+      SLOTS * this.n * 4,
+    );
     this.device.queue.submit([enc.finish()]);
     this.checkpointTime = this.time;
   }
 
   restoreCheckpoint(): void {
     const enc = this.device.createCommandEncoder();
-    enc.copyBufferToBuffer(this.checkpointBuffer, 0, this.currentPopulations, 0, Q * this.n * 4);
+    enc.copyBufferToBuffer(
+      this.checkpointBuffer,
+      0,
+      this.currentPopulations,
+      0,
+      SLOTS * this.n * 4,
+    );
     this.device.queue.submit([enc.finish()]);
     this.time = this.checkpointTime;
   }
@@ -164,6 +187,9 @@ export class GpuSolver {
     f32[13] = p.sponge?.inlet ?? 0;
     f32[14] = p.sponge?.outlet ?? 0;
     f32[15] = p.sponge?.top ?? 0;
+    u32[16] = p.tracer ? 1 : 0;
+    f32[17] = p.tracer?.diffusivity ?? 0;
+    f32[18] = p.tracer?.schmidt ?? 1;
     this.device.queue.writeBuffer(this.paramBuffer, 0, buf);
   }
 
@@ -177,6 +203,7 @@ export class GpuSolver {
     this.uploadPopulations(f);
   }
 
+  /** Write flow populations (Q per node); with a longer array, tracer populations follow. */
   uploadPopulations(f: Float32Array): void {
     this.device.queue.writeBuffer(this.fBuffers[this.current], 0, f);
   }
@@ -217,8 +244,9 @@ export class GpuSolver {
     return out;
   }
 
+  /** Flow populations (Q blocks of n), then the tracer's (5 blocks of n). */
   readPopulations(): Promise<Float32Array> {
-    return this.read(this.currentPopulations, Q * this.n * 4);
+    return this.read(this.currentPopulations, SLOTS * this.n * 4);
   }
 
   /** rho, ux, uy, tau per node of the last step, interleaved. */
@@ -237,6 +265,7 @@ export class GpuSolver {
       this.meanBuffer,
       this.checkpointBuffer,
       this.solidBuffer,
+      this.auxBuffer,
       this.paramBuffer,
       this.inletBuffer,
     ]) {

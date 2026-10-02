@@ -2,7 +2,12 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { CpuSolver } from '../../apps/web/src/sim/cpu/solver';
 import { buildStreamMap } from '../../apps/web/src/sim/domain';
-import { goldenDomain, goldenParams, velocityError } from '../../apps/web/src/sim/golden';
+import {
+  concentrationError,
+  goldenDomain,
+  goldenParams,
+  velocityError,
+} from '../../apps/web/src/sim/golden';
 import type { GoldenCase } from '../../apps/web/src/sim/golden';
 import {
   canyonDomain,
@@ -18,7 +23,8 @@ const goldens: GoldenCase[] = readdirSync(dir)
 
 describe('golden cases from the Python reference', () => {
   it('exist', () => {
-    expect(goldens.length).toBeGreaterThanOrEqual(6);
+    expect(goldens.length).toBeGreaterThanOrEqual(7);
+    expect(goldens.some((g) => g.c && g.params.drag)).toBe(true);
   });
 
   for (const g of goldens) {
@@ -42,6 +48,7 @@ describe('golden cases from the Python reference', () => {
         expect(err).toBeLessThan(0.005);
         // float32 storage against float64: a real bug shows up far above this.
         expect(err).toBeLessThan(1e-3);
+        if (g.c) expect(concentrationError(g, s.concentration())).toBeLessThan(1e-3);
       });
     });
   }
@@ -54,6 +61,20 @@ describe('CPU solver', () => {
     const m0 = s.totalMass();
     s.step(200);
     expect(Math.abs(s.totalMass() - m0) / m0).toBeLessThan(1e-5);
+  });
+
+  it('conserves the tracer in a closed box with a source', () => {
+    const g = goldens.find((x) => x.name === 'cavity')!;
+    const d = goldenDomain(g);
+    const source = new Float64Array(d.nx * d.ny);
+    source[5 * d.nx + 7] = 1e-3;
+    const s = new CpuSolver(d, {
+      ...goldenParams(g),
+      smagorinsky: 0.17,
+      tracer: { source, diffusivity: 1e-4, schmidt: 0.7 },
+    });
+    s.step(300);
+    expect(Math.abs(s.totalTracer() - 0.3) / 0.3).toBeLessThan(1e-5);
   });
 
   it('reports a healthy state for a calm flow', () => {

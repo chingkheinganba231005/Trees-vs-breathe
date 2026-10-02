@@ -14,6 +14,19 @@ export interface SolverParams {
   inletU?: ArrayLike<number>;
   /** Absorbing layers; see spongeField. */
   sponge?: Sponge;
+  /** Pressure-loss coefficient lambda per node in 1/cell (crowns, hedges). */
+  drag?: ArrayLike<number>;
+  /** Passive tracer (traffic fumes) on D2Q5; see core.tracer_step in Python. */
+  tracer?: TracerParams;
+}
+
+export interface TracerParams {
+  /** Amount added per step per node: the line sources at road level. */
+  source: ArrayLike<number>;
+  /** Molecular diffusivity, lattice units. */
+  diffusivity: number;
+  /** Turbulent Schmidt number: eddy diffusivity is nu_t / schmidt. */
+  schmidt: number;
 }
 
 export interface Sponge {
@@ -56,6 +69,9 @@ const SQRT2_18 = 18 * Math.SQRT2;
 const W0 = 4 / 9;
 const W1 = 1 / 9;
 const W5 = 1 / 36;
+// D2Q5 weights for the tracer: directions 0-4 of the D2Q9 order.
+const T0 = 1 / 3;
+const T1 = 1 / 6;
 
 /**
  * The D2Q9 step of python/treesvb/solver2d/core.py in TypeScript, for the CPU worker and tests.
@@ -73,6 +89,11 @@ export class CpuSolver {
   private readonly fluid: Uint8Array;
   private inletU: Float64Array;
   private readonly sigma: Float64Array;
+  private readonly drag: Float64Array | null;
+  /** Tracer populations (5 per node), or null when the case has no tracer. */
+  gPost: Float32Array | null = null;
+  private gNext: Float32Array | null = null;
+  private readonly source: Float64Array | null = null;
 
   constructor(domain: Domain, params: SolverParams) {
     if (domain.left === 'inlet' && (!params.inletU || params.inletU.length !== domain.ny)) {
@@ -87,6 +108,12 @@ export class CpuSolver {
     this.fluid = fluidMask(domain);
     this.inletU = Float64Array.from(params.inletU ?? new Array<number>(domain.ny).fill(0));
     this.sigma = spongeField(domain, params.sponge);
+    this.drag = params.drag ? Float64Array.from(params.drag) : null;
+    if (params.tracer) {
+      this.gPost = new Float32Array(5 * this.n);
+      this.gNext = new Float32Array(5 * this.n);
+      this.source = Float64Array.from(params.tracer.source);
+    }
     this.fPost = new Float32Array(Q * this.n);
     this.fNext = new Float32Array(Q * this.n);
     const rho = new Float64Array(this.n).fill(1);
@@ -118,8 +145,10 @@ export class CpuSolver {
   }
 
   private stepOnce(): void {
-    const { n, src, add, fluid, fPost, fNext, sigma } = this;
+    const { n, src, add, fluid, fPost, fNext, sigma, drag, gPost, gNext, source } = this;
     const { tau0, smagorinsky: cs, gx, gy } = this.params;
+    const d0 = this.params.tracer?.diffusivity ?? 0;
+    const sct = this.params.tracer?.schmidt ?? 1;
     const smag = SQRT2_18 * cs * cs;
     const n2 = 2 * n;
     const n3 = 3 * n;
@@ -140,6 +169,11 @@ export class CpuSolver {
       const f7 = fPost[src[n7 + k]!]! + add[n7 + k]!;
       const f8 = fPost[src[n8 + k]!]! + add[n8 + k]!;
 
+      if (gPost && gNext) {
+        // Tracer streaming uses the same map: directions 0-4 only reference each other.
+        for (let i = 0; i < 5; i++) gNext[i * n + k] = gPost[src[i * n + k]!]!;
+      }
+
       if (!fluid[k]) {
         fNext[k] = f0;
         fNext[n + k] = f1;
@@ -154,10 +188,20 @@ export class CpuSolver {
       }
 
       const rho = f0 + f1 + f2 + f3 + f4 + f5 + f6 + f7 + f8;
-      const ux = (f1 - f3 + f5 - f6 - f7 + f8) / rho + 0.5 * gx;
-      const uy = (f2 - f4 + f5 + f6 - f7 - f8) / rho + 0.5 * gy;
-      const fx = rho * gx;
-      const fy = rho * gy;
+      let ux = (f1 - f3 + f5 - f6 - f7 + f8) / rho + 0.5 * gx;
+      let uy = (f2 - f4 + f5 + f6 - f7 - f8) / rho + 0.5 * gy;
+      let fx = rho * gx;
+      let fy = rho * gy;
+      const lam = drag ? drag[k]! : 0;
+      if (lam > 0) {
+        // Porous drag -(lambda/2) rho |u| u, with u solved implicitly (core.macros).
+        const kk = 2 / (1 + Math.sqrt(1 + lam * Math.hypot(ux, uy)));
+        ux *= kk;
+        uy *= kk;
+        const dr = 0.5 * lam * Math.hypot(ux, uy);
+        fx -= rho * dr * ux;
+        fy -= rho * dr * uy;
+      }
       const usq = 1.5 * (ux * ux + uy * uy);
 
       const e0 = W0 * rho * (1 - usq);
@@ -225,6 +269,23 @@ export class CpuSolver {
       fNext[n6 + k] = f6 - omega * (f6 - e6) + s6 + sp * e6;
       fNext[n7 + k] = f7 - omega * (f7 - e7) + s7 + sp * e7;
       fNext[n8 + k] = f8 - omega * (f8 - e8) + s8 + sp * e8;
+
+      if (gNext && source) {
+        const g0 = gNext[k]!;
+        const g1 = gNext[n + k]!;
+        const g2 = gNext[n2 + k]!;
+        const g3 = gNext[n3 + k]!;
+        const g4 = gNext[n4 + k]!;
+        const c = g0 + g1 + g2 + g3 + g4;
+        const tauC = 0.5 + 3 * (d0 + (tau - tau0) / 3 / sct);
+        const om = 1 / tauC;
+        const q = source[k]!;
+        gNext[k] = g0 - om * (g0 - T0 * c) + T0 * q;
+        gNext[n + k] = g1 - om * (g1 - T1 * c * (1 + 3 * ux)) + T1 * q;
+        gNext[n2 + k] = g2 - om * (g2 - T1 * c * (1 + 3 * uy)) + T1 * q;
+        gNext[n3 + k] = g3 - om * (g3 - T1 * c * (1 - 3 * ux)) + T1 * q;
+        gNext[n4 + k] = g4 - om * (g4 - T1 * c * (1 - 3 * uy)) + T1 * q;
+      }
     }
 
     if (this.domain.left === 'inlet') {
@@ -236,6 +297,8 @@ export class CpuSolver {
         for (let i = 0; i < Q; i++) rhoIn += fPost[i * n + k1]!;
         equilibrium(rhoIn, this.inletU[y]!, 0, feq);
         for (let i = 0; i < Q; i++) fNext[i * n + y * nx] = feq[i]!;
+        // Clean air comes in.
+        if (gNext) for (let i = 0; i < 5; i++) gNext[i * n + y * nx] = 0;
       }
     }
 
@@ -256,12 +319,52 @@ export class CpuSolver {
         }
         equilibrium(1, jx / rho, jy / rho, feq);
         for (let i = 0; i < Q; i++) fNext[i * n + y * nx + nx - 1] = feq[i]!;
+        if (gPost && gNext) {
+          // Tracer: equilibrium at the neighbour's previous concentration and velocity.
+          let c = 0;
+          for (let i = 0; i < 5; i++) c += gPost[i * n + k2]!;
+          const ox = jx / rho;
+          const oy = jy / rho;
+          const ko = y * nx + nx - 1;
+          gNext[ko] = T0 * c;
+          gNext[n + ko] = T1 * c * (1 + 3 * ox);
+          gNext[2 * n + ko] = T1 * c * (1 + 3 * oy);
+          gNext[3 * n + ko] = T1 * c * (1 - 3 * ox);
+          gNext[4 * n + ko] = T1 * c * (1 - 3 * oy);
+        }
       }
     }
 
     this.fNext = fPost;
     this.fPost = fNext;
+    if (gPost && gNext) {
+      this.gNext = gPost;
+      this.gPost = gNext;
+    }
     this.time += 1;
+  }
+
+  /** Tracer concentration that the next collision will see; zeros without a tracer. */
+  concentration(out?: Float32Array): Float32Array {
+    const { n, src, gPost } = this;
+    const res = out ?? new Float32Array(n);
+    if (!gPost) return res.fill(0);
+    for (let k = 0; k < n; k++) {
+      let c = 0;
+      for (let i = 0; i < 5; i++) c += gPost[src[i * n + k]!]!;
+      res[k] = c;
+    }
+    return res;
+  }
+
+  totalTracer(): number {
+    let m = 0;
+    if (!this.gPost) return 0;
+    for (let k = 0; k < this.n; k++) {
+      if (!this.fluid[k]) continue;
+      for (let i = 0; i < 5; i++) m += this.gPost[i * this.n + k]!;
+    }
+    return m;
   }
 
   /** Density and velocity that the next collision will see. */
@@ -284,9 +387,17 @@ export class CpuSolver {
         jy += f * CYS[i]!;
       }
       const g = this.fluid[k] ? 1 : 0;
+      let ux = jx / rho + 0.5 * gx * g;
+      let uy = jy / rho + 0.5 * gy * g;
+      const lam = this.drag ? this.drag[k]! : 0;
+      if (lam > 0) {
+        const kk = 2 / (1 + Math.sqrt(1 + lam * Math.hypot(ux, uy)));
+        ux *= kk;
+        uy *= kk;
+      }
       res.rho[k] = rho;
-      res.ux[k] = jx / rho + 0.5 * gx * g;
-      res.uy[k] = jy / rho + 0.5 * gy * g;
+      res.ux[k] = ux;
+      res.uy[k] = uy;
     }
     return res;
   }

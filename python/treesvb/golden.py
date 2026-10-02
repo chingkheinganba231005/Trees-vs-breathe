@@ -47,6 +47,18 @@ def golden_cases() -> list[GoldenCase]:
     )
     canyon = cases.canyon(cases.canyon_geometry(6, 1.0))
     deep = cases.canyon(cases.canyon_geometry(6, 2.0), reynolds=5000.0)
+    g = cases.canyon_geometry(6, 1.0)
+    trees = cases.canyon(
+        g,
+        u_ref=0.05,
+        reynolds=2000.0,
+        smagorinsky=0.17,
+        exponent=0.3,
+        # The dense CODASC crown at W/H 1: lambda 200 1/m times H 0.12 m (docs/codasc.md).
+        crowns=(cases.Crown(0.25, 0.75, 1 / 3, 1.0, 24.0),),
+        sources=cases.line_sources(g, (-0.267, -0.15, 0.15, 0.267), 1e-3),
+        schmidt=0.7,
+    )
     return [
         GoldenCase("cavity", cases.cavity(16, 100), 400, None, "Moving lid, bounce-back walls"),
         GoldenCase("poiseuille", p, 600, None, "Body force with Guo forcing"),
@@ -62,6 +74,13 @@ def golden_cases() -> list[GoldenCase]:
             "Inlet, pressure outlet, free-slip top, buildings, absorbing layers",
         ),
         GoldenCase("canyon_deep", deep, 300, cases.uniform_start(deep)[1:], "Deep street, H/W = 2"),
+        GoldenCase(
+            "street_trees",
+            trees,
+            300,
+            cases.uniform_start(trees)[1:],
+            "Power-law inflow, a porous crown, line sources and the D2Q5 tracer",
+        ),
     ]
 
 
@@ -94,6 +113,16 @@ def render(g: GoldenCase) -> dict:
     rho, ux, uy = s.macros()
     src, add = build_stream_map(c.domain)
     params = c.params
+    extra: dict = {}
+    if params.drag is not None:
+        extra["drag"] = _num(params.drag)
+    if params.tracer is not None:
+        extra["tracer"] = {
+            "source": _num(params.tracer.source),
+            "diffusivity": float(params.tracer.diffusivity),
+            "schmidt": float(params.tracer.schmidt),
+        }
+    result = {"c": _num(s.concentration())} if params.tracer is not None else {}
     return {
         "name": g.name,
         "description": g.description,
@@ -106,6 +135,7 @@ def render(g: GoldenCase) -> dict:
             "gy": params.gravity[1],
             "inletU": None if params.inlet_u is None else _num(params.inlet_u),
             "sponge": [float(params.sponge[0]), *map(int, params.sponge[1:])],
+            **extra,
         },
         "initial": None
         if g.initial is None
@@ -116,6 +146,7 @@ def render(g: GoldenCase) -> dict:
         "rho": _num(rho),
         "ux": _num(ux),
         "uy": _num(uy),
+        **result,
     }
 
 

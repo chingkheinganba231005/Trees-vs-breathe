@@ -45,7 +45,7 @@ async function main() {
     .join('');
   root.innerHTML = `
     <h1 class="text-2xl font-bold">Solver self-test</h1>
-    <p class="mt-2 text-ink-muted">Each case runs on this device and is compared with the Python reference (NumPy, float64). Error: largest velocity difference as a fraction of the reference speed. Pass below ${result.threshold * 100}%.</p>
+    <p class="mt-2 text-ink-muted">Each case runs on this device and is compared with the Python reference (NumPy, float64). Error: largest velocity difference as a fraction of the reference speed; in cases with fumes also the largest concentration difference as a fraction of the peak concentration. Pass below ${result.threshold * 100}%.</p>
     <p class="mt-4 text-xl font-bold">${result.passed ? 'Passed' : 'Failed'}: worst ${fmt(result.worst)}</p>
     <p class="mt-1 font-mono text-sm text-ink-muted">GPU: ${label}</p>
     <table class="mt-6 w-full text-left text-sm"><thead><tr><th class="pr-3">Case</th><th class="pr-3">CPU</th><th>GPU</th></tr></thead><tbody>${rows}</tbody></table>`;

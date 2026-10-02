@@ -10,12 +10,14 @@ export const SIDE = { periodic: 0, wall: 1, inlet: 2, outlet: 3, moving: 4, free
 export function stepShader(workgroup: [number, number]): string {
   const pulls = Array.from({ length: Q }, (_, i) => pullFunction(i)).join('\n');
   const loads = Array.from({ length: Q }, (_, i) => `  let f${i} = pull${i}(x, y, k);`).join('\n');
+  const tracerPulls = Array.from({ length: 5 }, (_, i) => pullFunction(i, Q)).join('\n');
   return /* wgsl */ `
 struct Params {
   nx: i32, ny: i32, left: u32, right: u32,
   bottom: u32, top: u32, tau0: f32, cs: f32,
   gx: f32, gy: f32, lid: f32, emaAlpha: f32,
   spongeSigma: f32, spongeIn: f32, spongeOut: f32, spongeTop: f32,
+  tracer: u32, d0: f32, sct: f32, pad: f32,
 };
 
 @group(0) @binding(0) var<uniform> P: Params;
@@ -25,13 +27,28 @@ struct Params {
 @group(0) @binding(4) var<storage, read> inletU: array<f32>;
 // rho, ux, uy, tau of the state this step collided.
 @group(0) @binding(5) var<storage, read_write> fields: array<vec4<f32>>;
-// Exponential moving average of ux, uy, |u| (the fourth component is unused).
+// Exponential moving average of ux, uy, |u| and the tracer concentration.
 @group(0) @binding(6) var<storage, read_write> mean: array<vec4<f32>>;
+// Per node: pressure-loss coefficient lambda (1/cell) and tracer source per step.
+@group(0) @binding(7) var<storage, read> aux: array<vec2<f32>>;
 
+// Populations: nine flow directions, then five tracer directions (D2Q5), each a block of N.
 fn N() -> i32 { return P.nx * P.ny; }
 fn at(i: i32, k: i32) -> f32 { return fIn[i * N() + k]; }
 
 ${pulls}
+${tracerPulls}
+
+// Tracer equilibrium w_i C (1 + 3 c_i . u), D2Q5 weights 1/3 and 1/6.
+fn geq(c: f32, ux: f32, uy: f32) -> array<f32, 5> {
+  let a = c / 6.0;
+  return array<f32, 5>(c / 3.0, a * (1.0 + 3.0 * ux), a * (1.0 + 3.0 * uy), a * (1.0 - 3.0 * ux), a * (1.0 - 3.0 * uy));
+}
+
+fn writeTracer(k: i32, g: array<f32, 5>) {
+  let n = N();
+  for (var i = 0; i < 5; i++) { fOut[(${Q} + i) * n + k] = g[i]; }
+}
 
 fn feq(i: i32, rho: f32, ux: f32, uy: f32) -> f32 {
   let w = array<f32, 9>(${W.map((w) => w.toFixed(9)).join(', ')});
@@ -77,6 +94,8 @@ fn step(@builtin(global_invocation_id) gid: vec3<u32>) {
     var f: array<f32, 9>;
     for (var i = 0; i < 9; i++) { f[i] = feq(i, rhoIn, u, 0.0); }
     write(k, f);
+    // Clean air comes in.
+    if (P.tracer != 0u) { writeTracer(k, array<f32, 5>(0.0, 0.0, 0.0, 0.0, 0.0)); }
     fields[k] = vec4<f32>(rhoIn, u, 0.0, P.tau0);
     return;
   }
@@ -97,6 +116,12 @@ fn step(@builtin(global_invocation_id) gid: vec3<u32>) {
     var f: array<f32, 9>;
     for (var i = 0; i < 9; i++) { f[i] = feq(i, 1.0, jx / rho, jy / rho); }
     write(k, f);
+    if (P.tracer != 0u) {
+      // Equilibrium at the neighbour's previous concentration and velocity.
+      var c = 0.0;
+      for (var i = 0; i < 5; i++) { c += at(${Q} + i, k - 1); }
+      writeTracer(k, geq(c, jx / rho, jy / rho));
+    }
     fields[k] = vec4<f32>(1.0, jx / rho, jy / rho, P.tau0);
     return;
   }
@@ -105,16 +130,31 @@ fn step(@builtin(global_invocation_id) gid: vec3<u32>) {
     var f: array<f32, 9>;
     for (var i = 0; i < 9; i++) { f[i] = at(i, k); }
     write(k, f);
+    if (P.tracer != 0u) {
+      var g: array<f32, 5>;
+      for (var i = 0; i < 5; i++) { g[i] = at(${Q} + i, k); }
+      writeTracer(k, g);
+    }
     fields[k] = vec4<f32>(1.0, 0.0, 0.0, 0.0);
     return;
   }
 
 ${loads}
   let rho = f0 + f1 + f2 + f3 + f4 + f5 + f6 + f7 + f8;
-  let ux = (f1 - f3 + f5 - f6 - f7 + f8) / rho + 0.5 * P.gx;
-  let uy = (f2 - f4 + f5 + f6 - f7 - f8) / rho + 0.5 * P.gy;
-  let fx = rho * P.gx;
-  let fy = rho * P.gy;
+  var ux = (f1 - f3 + f5 - f6 - f7 + f8) / rho + 0.5 * P.gx;
+  var uy = (f2 - f4 + f5 + f6 - f7 - f8) / rho + 0.5 * P.gy;
+  var fx = rho * P.gx;
+  var fy = rho * P.gy;
+  let lam = aux[k].x;
+  if (lam > 0.0) {
+    // Porous drag -(lambda/2) rho |u| u, with u solved implicitly (core.macros).
+    let kk = 2.0 / (1.0 + sqrt(1.0 + lam * length(vec2<f32>(ux, uy))));
+    ux *= kk;
+    uy *= kk;
+    let dr = 0.5 * lam * length(vec2<f32>(ux, uy));
+    fx -= rho * dr * ux;
+    fy -= rho * dr * uy;
+  }
   let usq = 1.5 * (ux * ux + uy * uy);
   let a = ux + uy;
   let b = -ux + uy;
@@ -166,23 +206,52 @@ ${loads}
   out[8] = f8 - om * (f8 - e8) + s8 + sp * e8;
   write(k, out);
   fields[k] = vec4<f32>(rho, ux, uy, tau);
+
+  var conc = 0.0;
+  if (P.tracer != 0u) {
+    let g0 = pullT0(x, y, k);
+    let g1 = pullT1(x, y, k);
+    let g2 = pullT2(x, y, k);
+    let g3 = pullT3(x, y, k);
+    let g4 = pullT4(x, y, k);
+    conc = g0 + g1 + g2 + g3 + g4;
+    // Eddy diffusivity nu_t / Sc_t from this step's Smagorinsky relaxation time.
+    let tauC = 0.5 + 3.0 * (P.d0 + (tau - P.tau0) / 3.0 / P.sct);
+    let oc = 1.0 / tauC;
+    let e = geq(conc, ux, uy);
+    let q = aux[k].y;
+    writeTracer(k, array<f32, 5>(
+      g0 - oc * (g0 - e[0]) + q / 3.0,
+      g1 - oc * (g1 - e[1]) + q / 6.0,
+      g2 - oc * (g2 - e[2]) + q / 6.0,
+      g3 - oc * (g3 - e[3]) + q / 6.0,
+      g4 - oc * (g4 - e[4]) + q / 6.0,
+    ));
+  }
+
   if (P.emaAlpha > 0.0) {
     let m = mean[k];
-    let cur = vec4<f32>(ux, uy, sqrt(ux * ux + uy * uy), 0.0);
+    let cur = vec4<f32>(ux, uy, sqrt(ux * ux + uy * uy), conc);
     mean[k] = m + P.emaAlpha * (cur - m);
   }
 }
 `;
 }
 
-/** WGSL for the population pulled into direction i, per the rules of build_stream_map. */
-function pullFunction(i: number): string {
+/**
+ * WGSL for the population pulled into direction i, per the rules of build_stream_map. With an
+ * offset the same rules read the tracer block (directions 0-4 only reference each other), and
+ * the moving-lid term is dropped, as the tracer does not support a moving lid.
+ */
+function pullFunction(i: number, offset = 0): string {
   const cx = CX[i]!;
   const cy = CY[i]!;
-  const opp = OPP[i]!;
-  const mirror = MIRROR_Y[i]!;
-  const lidTerm = ((2 * W[i]! * cx) / CS2).toFixed(9);
-  return `fn pull${i}(x: i32, y: i32, k: i32) -> f32 {
+  const opp = OPP[i]! + offset;
+  const mirror = MIRROR_Y[i]! + offset;
+  const self = i + offset;
+  const lidTerm = offset ? '0.0' : ((2 * W[i]! * cx) / CS2).toFixed(9);
+  const name = offset ? `pullT${i}` : `pull${i}`;
+  return `fn ${name}(x: i32, y: i32, k: i32) -> f32 {
   var sx = x - (${cx});
   var sy = y - (${cy});
   if (P.left == ${SIDE.periodic}u) {
@@ -204,6 +273,6 @@ function pullFunction(i: number): string {
   }
   let s = sy * P.nx + sx;
   if (solid[s] != 0u) { return at(${opp}, k); }
-  return at(${i}, s);
+  return at(${self}, s);
 }`;
 }

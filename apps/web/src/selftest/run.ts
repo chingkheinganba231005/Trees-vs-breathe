@@ -1,5 +1,6 @@
 import { CpuSolver } from '../sim/cpu/solver';
-import { goldenDomain, goldenParams, velocityError } from '../sim/golden';
+import { concentrationError, goldenDomain, goldenParams, velocityError } from '../sim/golden';
+import { Q } from '../sim/lattice';
 import type { GoldenCase } from '../sim/golden';
 import { GpuSolver } from '../sim/gpu/solver';
 
@@ -18,7 +19,10 @@ export interface SelfTestResult {
   adapter: string;
   userAgent: string;
   rows: SelfTestRow[];
-  /** Largest error across CPU and GPU, as a fraction of each case's reference speed. */
+  /**
+   * Largest error across CPU and GPU: velocity as a fraction of each case's reference speed and,
+   * for cases with a tracer, concentration as a fraction of the peak reference concentration.
+   */
   worst: number;
   threshold: number;
   passed: boolean;
@@ -49,7 +53,10 @@ export async function runSelfTest(
     cpu.step(g.steps);
     const cpuMs = performance.now() - t;
     const cf = cpu.fields();
-    const cpuError = velocityError(g, cf.ux, cf.uy);
+    const cpuError = Math.max(
+      velocityError(g, cf.ux, cf.uy),
+      concentrationError(g, cpu.concentration()),
+    );
 
     let gpuError: number | null = null;
     let gpuMs: number | null = null;
@@ -62,9 +69,14 @@ export async function runSelfTest(
       gpuMs = performance.now() - t;
       // Evaluate the GPU state with the CPU's streaming, exactly as the reference does.
       const probe = new CpuSolver(domain, params);
-      probe.fPost.set(f);
+      const n = domain.nx * domain.ny;
+      probe.fPost.set(f.subarray(0, Q * n));
+      probe.gPost?.set(f.subarray(Q * n, (Q + 5) * n));
       const gf = probe.fields();
-      gpuError = velocityError(g, gf.ux, gf.uy);
+      gpuError = Math.max(
+        velocityError(g, gf.ux, gf.uy),
+        concentrationError(g, probe.concentration()),
+      );
       gpu.destroy();
     }
     rows.push({

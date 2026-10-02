@@ -45,7 +45,8 @@ test('WGSL and CPU solvers reproduce the Python reference', async ({ page, brows
         name: 'Browser solvers (CPU worker and WGSL) against the Python reference',
         method:
           'Golden cases from python -m treesvb.golden run in headless Chromium; the GPU kernel runs on a SwiftShader WebGPU adapter. Fields compared after the stated number of steps.',
-        metric: 'largest velocity difference as a fraction of the reference speed',
+        metric:
+          'largest velocity difference as a fraction of the reference speed; for tracer cases also the largest concentration difference as a fraction of the peak concentration',
         threshold: { max_abs_diff_over_uref_below: result.threshold },
         adapter: result.adapter,
         rows: result.rows,
