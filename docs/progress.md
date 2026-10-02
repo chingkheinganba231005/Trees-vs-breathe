@@ -14,7 +14,7 @@ Phases follow `BRIEF.md` section 12. Each phase starts with a checklist here; it
 - [x] CI workflow: web job (lint, format, typecheck, unit, build, Playwright) and Python job (ruff, pytest, notebook sync check, notebook smoke run)
 - [x] GitHub Pages workflow
 - [x] CI green on GitHub (run 1 on commit `15e81b4`: web and Python jobs, every step passed)
-- [x] Deployed to GitHub Pages: run 37026963028 (commit `710a2dc`), build and deploy jobs both succeeded. The container's network blocks `*.github.io`, so the live URL was not fetched from here; instead the Playwright smoke test now serves the production build under the same `/Trees-vs-breathe/` subpath as Pages (28 of 28 pass). Confirmed on a real phone: pending (please open the URL once)
+- [x] Deployed to GitHub Pages: run 37026963028 (commit `710a2dc`), build and deploy jobs both succeeded. The container's network blocks `*.github.io`, so the live URL was not fetched from here; instead the Playwright smoke test now serves the production build under the same `/Trees-vs-breathe/` subpath as Pages (28 of 28 pass). Confirmed on a real phone by the user on 2026-10-02
 
 ### Decisions
 
@@ -34,9 +34,9 @@ Phases follow `BRIEF.md` section 12. Each phase starts with a checklist here; it
 
 ### Open questions
 
-- **Q-001 (blocks the P0 exit).** GitHub Pages has to be switched on once: repository Settings → Pages → Build and deployment → Source: GitHub Actions. The workflow's token cannot do this itself.
-- **Q-002.** The repository had no commits, so the first push made `claude/relaxed-lamport-aefen3` the default branch (confirmed on GitHub). Keep it, or create `main` from it?
-- **Q-003.** No licence chosen for the code yet. MIT is common for hackathon entries. Your call.
+- **Q-001 (resolved 2026-10-02).** GitHub Pages switched on by the user (Source: GitHub Actions).
+- **Q-002 (resolved 2026-10-02).** The user asked for a `main` branch; it was created from the P0 head.
+- **Q-003 (resolved 2026-10-02).** MIT licence, at the user's request.
 - **Q-004 (needed by P3).** Three real Hong Kong streets for the presets: narrow (H/W ≈ 3), medium (≈ 1.5), wide (≈ 0.5).
 
 ## P1 — Live solver core (plan)

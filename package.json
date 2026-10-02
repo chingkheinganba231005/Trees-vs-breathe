@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "description": "Test a street's trees before anyone plants them.",
+  "license": "MIT",
   "engines": {
     "node": ">=22.12.0"
   },

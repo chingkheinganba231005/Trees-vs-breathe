@@ -46,3 +46,7 @@ python -m treesvb.notebooks smoke   # run the Colab notebooks on CPU
 ```
 
 Every model output in the app is simulated and labelled as such. What the model leaves out is listed on the "How we know" screen and in [`docs/validation.md`](docs/validation.md); assumptions and their sources are in [`docs/assumptions.md`](docs/assumptions.md) and [`docs/sources.md`](docs/sources.md).
+
+## Licence
+
+MIT. See [`LICENSE`](LICENSE). Fonts are under the SIL Open Font License 1.1; third-party licences are listed in [`docs/sources.md`](docs/sources.md).
