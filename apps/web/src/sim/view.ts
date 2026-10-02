@@ -1,5 +1,5 @@
 import type { CanyonGeometry } from './street';
-import { canyonNx } from './street';
+import { canyonNx, streetColumns } from './street';
 
 /** The part of the domain drawn on screen, in lattice cells. */
 export interface ViewWindow {
@@ -9,13 +9,14 @@ export interface ViewWindow {
 }
 
 /**
- * Frame the street: half a building depth beyond each building, and up to twice the building
- * height so the shear layer over the roofs is visible.
+ * Frame the studied street: its two buildings plus half a building depth beyond each, and up to
+ * twice the building height so the shear layer over the roofs is visible.
  */
 export function streetView(g: CanyonGeometry): ViewWindow {
   const margin = Math.round(0.5 * g.building);
-  const x0 = Math.max(0, g.upstream - margin);
-  const x1 = Math.min(canyonNx(g), g.upstream + 2 * g.building + g.width + margin);
+  const [s0, s1] = streetColumns(g);
+  const x0 = Math.max(0, s0 - g.building - margin);
+  const x1 = Math.min(canyonNx(g), s1 + g.building + margin);
   return { x0, width: x1 - x0, height: Math.min(g.top, 2 * g.height) };
 }
 

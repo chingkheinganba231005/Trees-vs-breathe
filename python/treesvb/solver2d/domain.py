@@ -16,11 +16,12 @@ Rules, applied in this order for the source (sx, sy) = (x - cx, y - cy):
 3. A solid source node is bounce-back.
 
 Solid nodes and the inlet and outlet columns read themselves; after collision the solver sets
-the inlet and outlet columns by non-equilibrium extrapolation (Guo, Zheng and Shi 2002, Chinese
-Physics 11, 366): equilibrium at the boundary value plus the non-equilibrium part of the
-neighbouring column. The inlet fixes the velocity, the outlet fixes the density (pressure).
+the inlet and outlet columns to the equilibrium part of the non-equilibrium extrapolation of
+Guo, Zheng and Shi (2002, Chinese Physics 11, 366), from the neighbouring column's previous
+state (core.step explains why the non-equilibrium part is left out). The inlet fixes the
+velocity, the outlet fixes the density (pressure).
 
-The TypeScript builder (apps/web/src/sim/streamMap.ts) and the WGSL kernel implement the same
+The TypeScript builder (apps/web/src/sim/domain.ts) and the WGSL kernel implement the same
 rules; tests compare them against this one.
 """
 

@@ -3,9 +3,11 @@ import type { Domain } from './domain';
 import type { SolverParams } from './cpu/solver';
 
 /**
- * An isolated street canyon, mirroring canyon_geometry and canyon in
- * python/treesvb/solver2d/cases.py. Lengths other than the street width are multiples of the
- * building height H (docs/assumptions.md A-002).
+ * A street canyon in a row of equal blocks, mirroring canyon_geometry and canyon in
+ * python/treesvb/solver2d/cases.py. The studied street is the last of `streets`: in 2D the vortex
+ * shed from the first block's upwind edge sits over the first street and turns its mean vortex
+ * the wrong way (results/street/upwind.json). Lengths other than the street width are multiples
+ * of the building height H (docs/assumptions.md A-002).
  */
 export interface CanyonGeometry {
   height: number;
@@ -14,6 +16,7 @@ export interface CanyonGeometry {
   upstream: number;
   downstream: number;
   top: number;
+  streets: number;
 }
 
 export interface CanyonOptions {
@@ -21,6 +24,7 @@ export interface CanyonOptions {
   upstream?: number;
   downstream?: number;
   top?: number;
+  streets?: number;
 }
 
 /** Python's round(): halves go to the even neighbour, so both sides build identical grids. */
@@ -41,28 +45,27 @@ export function canyonGeometry(
     upstream: roundHalfEven((o.upstream ?? 3) * height),
     downstream: roundHalfEven((o.downstream ?? 6) * height),
     top: roundHalfEven((o.top ?? 5) * height),
+    streets: o.streets ?? 2,
   };
 }
 
 export function canyonNx(g: CanyonGeometry): number {
-  return g.upstream + 2 * g.building + g.width + g.downstream;
+  return g.upstream + (g.streets + 1) * g.building + g.streets * g.width + g.downstream;
 }
 
-/** Column range [x0, x1) of the street between the buildings. */
+/** Column range [x0, x1) of the studied street, the last in the row. */
 export function streetColumns(g: CanyonGeometry): [number, number] {
-  const x0 = g.upstream + g.building;
+  const x0 = g.upstream + g.streets * g.building + (g.streets - 1) * g.width;
   return [x0, x0 + g.width];
 }
 
 export function canyonDomain(g: CanyonGeometry): Domain {
   const nx = canyonNx(g);
   const solid = new Uint8Array(nx * g.top);
-  const a = g.upstream;
-  const b = a + g.building + g.width;
-  for (let y = 0; y < g.height; y++) {
-    for (let x = 0; x < g.building; x++) {
-      solid[y * nx + a + x] = 1;
-      solid[y * nx + b + x] = 1;
+  for (let k = 0; k <= g.streets; k++) {
+    const a = g.upstream + k * (g.building + g.width);
+    for (let y = 0; y < g.height; y++) {
+      for (let x = 0; x < g.building; x++) solid[y * nx + a + x] = 1;
     }
   }
   return makeDomain({

@@ -11,3 +11,5 @@ __pycache__/
 .DS_Store
 # Colab datasets stay on Drive (BRIEF.md section 10).
 /runs/
+# CODASC terms allow use, not redistribution in modified form; fetched by python -m treesvb.codasc.
+/data/codasc/raw/

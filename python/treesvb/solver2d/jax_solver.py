@@ -26,6 +26,21 @@ def run(f_post, cfg, n: int):
     return jax.lax.fori_loop(0, n, body, f_post)
 
 
+@partial(jax.jit, static_argnums=2)
+def run_coupled(state, cfg, n: int):
+    """Advance flow and tracer n steps; state is (f_post, g_post)."""
+
+    def body(_, s):
+        return core.coupled_step(jnp, s, cfg)[0]
+
+    return jax.lax.fori_loop(0, n, body, state)
+
+
+@jax.jit
+def _concentration(g_post, cfg):
+    return core.concentration(jnp, g_post, cfg)
+
+
 @jax.jit
 def _macros(f_post, cfg):
     return core.macros(jnp, core.stream(jnp, f_post, cfg), cfg)
@@ -51,6 +66,9 @@ class JaxSolver:
         self.cfg = core.make_config(domain, params, jnp, dtype)
         self.fluid = domain.fluid
         self.f_post = core.initial_state(jnp, self.cfg, dtype)
+        self.g_post = None
+        if getattr(params, "tracer", None) is not None:
+            self.g_post = jnp.zeros((core.Q5, domain.ny, domain.nx), dtype)
         self.time = 0
 
     def set_state(self, rho, ux, uy) -> None:
@@ -58,8 +76,17 @@ class JaxSolver:
         self.f_post = core.equilibrium(jnp, *(jnp.asarray(a, self.dtype) for a in (rho, ux, uy)))
 
     def step(self, n: int = 1) -> None:
-        self.f_post = run(self.f_post, self.cfg, n)
+        if self.g_post is None:
+            self.f_post = run(self.f_post, self.cfg, n)
+        else:
+            self.f_post, self.g_post = run_coupled((self.f_post, self.g_post), self.cfg, n)
         self.time += n
+
+    def concentration(self) -> np.ndarray:
+        return np.asarray(_concentration(self.g_post, self.cfg))
+
+    def total_tracer(self) -> float:
+        return float(np.asarray(self.g_post)[:, self.fluid].sum())
 
     def macros(self):
         rho, ux, uy = _macros(self.f_post, self.cfg)

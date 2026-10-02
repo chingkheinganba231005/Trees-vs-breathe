@@ -15,8 +15,12 @@ from .lattice import CX, CY, OPP, Q, W
 
 SQRT2_18 = 18.0 * np.sqrt(2.0)
 
+# D2Q5 for the tracer: directions 0-4 of the D2Q9 order, rest weight 1/3, c_s^2 = 1/3.
+Q5 = 5
+W5 = np.array([1 / 3] + [1 / 6] * 4)
 
-def split_stream_map(src: np.ndarray, ny: int, nx: int) -> dict[str, np.ndarray]:
+
+def split_stream_map(src: np.ndarray, ny: int, nx: int, q: int = Q) -> dict[str, np.ndarray]:
     """Decompose the flat gather map into cheap pieces with identical results.
 
     Most entries are periodic shifts (np.roll), bounce-back (opposite direction at the node) or a
@@ -25,12 +29,12 @@ def split_stream_map(src: np.ndarray, ny: int, nx: int) -> dict[str, np.ndarray]
     in domain.py stays the single definition of the boundary rules.
     """
     n = nx * ny
-    src = src.reshape(Q, ny, nx)
+    src = src.reshape(q, ny, nx)
     y, x = np.mgrid[0:ny, 0:nx]
-    roll = np.zeros((Q, ny, nx), bool)
-    bounce = np.zeros((Q, ny, nx), bool)
-    hold = np.zeros((Q, ny, nx), bool)
-    for i in range(Q):
+    roll = np.zeros((q, ny, nx), bool)
+    bounce = np.zeros((q, ny, nx), bool)
+    hold = np.zeros((q, ny, nx), bool)
+    for i in range(q):
         rolled = i * n + ((y - CY[i]) % ny) * nx + ((x - CX[i]) % nx)
         roll[i] = src[i] == rolled
         bounce[i] = (src[i] == OPP[i] * n + y * nx + x) & ~roll[i]
@@ -69,11 +73,37 @@ def make_config(domain: Domain, params, xp=np, dtype=np.float64) -> dict[str, An
         "inlet": xp.asarray(inlet),
         "outlet": xp.asarray(outlet),
         "inlet_u": as_f(inlet_u),
+        "inlet_v": as_f(np.zeros((ny, nx))),
         "gx": as_f(np.where(fluid, gx, 0.0)),
         "gy": as_f(np.where(fluid, gy, 0.0)),
         "tau0": as_f(params.tau0),
         "cs": as_f(params.smagorinsky),
         "sigma": as_f(sponge_field(domain, params.sponge)),
+        "drag": as_f(
+            np.zeros((ny, nx)) if params.drag is None else np.where(fluid, params.drag, 0)
+        ),
+        **_tracer_config(domain, params, src, add, xp, as_f),
+    }
+
+
+def _tracer_config(domain: Domain, params, src, add, xp, as_f) -> dict[str, Any]:
+    """D2Q5 pieces: the D2Q9 map restricted to directions 0-4, which only reference each other."""
+    tracer = getattr(params, "tracer", None)
+    if tracer is None:
+        return {}
+    ny, nx = domain.ny, domain.nx
+    src5 = src.reshape(Q, ny * nx)[:Q5].reshape(-1)
+    if np.any(add.reshape(Q, -1)[:Q5] != 0) or src5.max() >= Q5 * ny * nx:
+        raise ValueError("the tracer supports walls, free-slip, inlet and outlet, not a moving lid")
+    parts = split_stream_map(src5, ny, nx, Q5)
+    return {
+        "t_bounce": xp.asarray(parts["bounce"]),
+        "t_hold": xp.asarray(parts["hold"]),
+        "t_other_dst": xp.asarray(parts["other_dst"]),
+        "t_other_src": xp.asarray(parts["other_src"]),
+        "t_source": as_f(np.where(domain.fluid, tracer.source, 0.0)),
+        "t_d0": as_f(tracer.diffusivity),
+        "t_sct": as_f(tracer.schmidt),
     }
 
 
@@ -150,10 +180,24 @@ def stream(xp, f_post, cfg):
 
 
 def macros(xp, f, cfg):
+    """Density and velocity, rho u = sum f c + F / 2, with the porous drag solved implicitly.
+
+    The drag of crowns and hedges, F = -(lambda / 2) rho |u| u, depends on the velocity it
+    corrects. Writing u0 for the velocity with the gravity half-force only, u = u0 - (lambda / 4)
+    |u| u has the closed-form solution u = k u0 with k = 2 / (1 + sqrt(1 + lambda |u0|)), which
+    stays bounded however dense the crown (Guo and Zhao 2002 use the same device for porous media).
+    """
     rho = _moment(f, [1] * Q)
     ux = _moment(f, CX) / rho + 0.5 * cfg["gx"]
     uy = _moment(f, CY) / rho + 0.5 * cfg["gy"]
-    return rho, ux, uy
+    k = 2.0 / (1.0 + xp.sqrt(1.0 + cfg["drag"] * xp.sqrt(ux * ux + uy * uy)))
+    return rho, k * ux, k * uy
+
+
+def body_force(xp, rho, ux, uy, cfg):
+    """Gravity plus porous drag (lambda / 2) rho |u| u, the pressure-loss law of CODASC."""
+    drag = 0.5 * cfg["drag"] * xp.sqrt(ux * ux + uy * uy)
+    return rho * (cfg["gx"] - drag * ux), rho * (cfg["gy"] - drag * uy)
 
 
 def relaxation_time(xp, f, feq, rho, ux, uy, fx, fy, cfg):
@@ -184,10 +228,15 @@ def guo_source(xp, tau, ux, uy, fx, fy):
 
 def step(xp, f_post, cfg):
     """One time step; returns (new post-collision state, relaxation time field)."""
+    post, tau, _, _ = flow_step(xp, f_post, cfg)
+    return post, tau
+
+
+def flow_step(xp, f_post, cfg):
+    """One flow step; also returns the velocity the collision used, which the tracer needs."""
     f = stream(xp, f_post, cfg)
     rho, ux, uy = macros(xp, f, cfg)
-    fx = rho * cfg["gx"]
-    fy = rho * cfg["gy"]
+    fx, fy = body_force(xp, rho, ux, uy, cfg)
     feq = equilibrium(xp, rho, ux, uy)
     tau = relaxation_time(xp, f, feq, rho, ux, uy, fx, fy, cfg)
     post = f - (f - feq) / tau + guo_source(xp, tau, ux, uy, fx, fy)
@@ -200,12 +249,73 @@ def step(xp, f_post, cfg):
     # near 1/2 it changes sign every step, and copying it one step late made the outlet unstable
     # (docs/solver.md). The inlet fixes the velocity, the outlet fixes the density.
     rho_in, _, _ = _column_state(xp, f_post[:, :, 1])
-    inlet = equilibrium(xp, rho_in, cfg["inlet_u"][:, 0], xp.zeros_like(rho_in))
+    inlet = equilibrium(xp, rho_in, cfg["inlet_u"][:, 0], cfg["inlet_v"][:, 0])
     post = _set_column(xp, post, 0, xp.where(cfg["inlet"][:, 0], inlet, post[:, :, 0]))
     _, ux_out, uy_out = _column_state(xp, f_post[:, :, -2])
     outlet = equilibrium(xp, xp.ones_like(ux_out), ux_out, uy_out)
     post = _set_column(xp, post, -1, xp.where(cfg["outlet"][:, -1], outlet, post[:, :, -1]))
-    return post, tau
+    return post, tau, ux, uy
+
+
+def coupled_step(xp, state, cfg):
+    """Flow and tracer together; state is (f_post, g_post)."""
+    f_post, g_post = state
+    post, tau, ux, uy = flow_step(xp, f_post, cfg)
+    _, ux_nb, uy_nb = _column_state(xp, f_post[:, :, -2])
+    return (post, tracer_step(xp, g_post, ux, uy, tau, cfg, (ux_nb, uy_nb))), tau
+
+
+def tracer_equilibrium(xp, c, ux, uy):
+    """D2Q5 equilibrium w_i C (1 + 3 c_i . u), shape (5, *c.shape)."""
+    out = []
+    for i in range(Q5):
+        cu = _lin(int(CX[i]), ux, int(CY[i]), uy)
+        w = float(W5[i])
+        out.append(w * c if cu is None else w * c * (1.0 + 3.0 * cu))
+    return xp.stack(out)
+
+
+def tracer_stream(xp, g_post, cfg):
+    rolled = xp.stack(
+        [xp.roll(g_post[i], (int(CY[i]), int(CX[i])), axis=(0, 1)) for i in range(Q5)]
+    )
+    g = xp.where(cfg["t_bounce"], g_post[OPP[:Q5]], rolled)
+    g = xp.where(cfg["t_hold"], g_post, g)
+    vals = xp.take(g_post.reshape(-1), cfg["t_other_src"])
+    if xp is np:
+        g = g.reshape(-1)
+        g[cfg["t_other_dst"]] = vals
+    else:
+        g = g.reshape(-1).at[cfg["t_other_dst"]].set(vals)
+    return g.reshape(g_post.shape)
+
+
+def tracer_step(xp, g_post, ux, uy, tau, cfg, u_outlet):
+    """Advection-diffusion of a passive tracer (traffic fumes) on D2Q5 with BGK collision.
+
+    Diffusivity D = D0 + nu_t / Sc_t, with the Smagorinsky eddy viscosity nu_t = (tau - tau0) / 3
+    of the same step, so tau_c = 1/2 + 3 D. Walls and buildings reflect the tracer (zero flux);
+    the inlet brings clean air. The outlet column is the equilibrium at its neighbour's previous
+    concentration and velocity (`u_outlet`, the same velocity the flow outlet uses), a
+    zero-gradient outflow that reads only the old buffer. Copying the neighbour's populations
+    instead fed their non-equilibrium part back into the domain and blew up with tau_c near 1/2.
+    """
+    g = tracer_stream(xp, g_post, cfg)
+    c = _moment(g, [1] * Q5)
+    nu_t = (tau - cfg["tau0"]) / 3.0
+    tau_c = 0.5 + 3.0 * (cfg["t_d0"] + nu_t / cfg["t_sct"])
+    post = g - (g - tracer_equilibrium(xp, c, ux, uy)) / tau_c
+    post = post + xp.stack([float(W5[i]) * cfg["t_source"] for i in range(Q5)])
+    post = xp.where(cfg["fluid"], post, g)
+    post = xp.where(cfg["inlet"], 0.0, post)
+    c_nb = _moment(g_post[:, :, -2], [1] * Q5)
+    outlet = tracer_equilibrium(xp, c_nb, *u_outlet)
+    return _set_column(xp, post, -1, xp.where(cfg["outlet"][:, -1], outlet, post[:, :, -1]))
+
+
+def concentration(xp, g_post, cfg):
+    """Tracer concentration the next collision will see."""
+    return _moment(tracer_stream(xp, g_post, cfg), [1] * Q5)
 
 
 def _column_state(xp, f):

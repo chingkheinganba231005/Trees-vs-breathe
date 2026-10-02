@@ -14,6 +14,10 @@ One step, identical in every implementation (docs/solver.md):
 6. Non-fluid nodes keep their value; the inlet column is set to the equilibrium at the inlet
    velocity and its neighbour's previous density, the outlet column to the equilibrium at density
    1 and its neighbour's previous velocity.
+
+Crowns and hedges add the drag F = -(lambda / 2) rho |u| u to the force in steps 2-4, with the
+velocity of step 2 solved implicitly (core.macros). An optional tracer (traffic fumes) is carried
+on a D2Q5 lattice with the velocity and eddy viscosity of the same step (core.tracer_step).
 """
 
 from __future__ import annotations
@@ -24,6 +28,16 @@ import numpy as np
 
 from . import core
 from .domain import Domain
+
+
+@dataclass(frozen=True)
+class Tracer:
+    #: Amount added per step per node, shape (ny, nx); the line sources of the street.
+    source: np.ndarray
+    #: Molecular diffusivity in lattice units.
+    diffusivity: float
+    #: Turbulent Schmidt number: the eddy diffusivity is nu_t / schmidt.
+    schmidt: float
 
 
 @dataclass(frozen=True)
@@ -38,6 +52,10 @@ class Params:
     inlet_u: np.ndarray | None = None
     #: Absorbing layers (sigma_max, inlet, outlet, top lengths in cells); see core.sponge_field.
     sponge: tuple[float, int, int, int] = (0.0, 0, 0, 0)
+    #: Pressure-loss coefficient lambda per node in 1/cell (crowns, hedges); None for no drag.
+    drag: np.ndarray | None = None
+    #: Passive tracer carried with the flow; None for flow only.
+    tracer: Tracer | None = None
 
     @property
     def nu0(self) -> float:
@@ -55,6 +73,9 @@ class NumpySolver:
         self.fluid = domain.fluid
         self.f_post = core.initial_state(np, self.cfg, self.dtype)
         self.tau = np.full((domain.ny, domain.nx), params.tau0, self.dtype)
+        self.g_post = None
+        if params.tracer is not None:
+            self.g_post = np.zeros((core.Q5, domain.ny, domain.nx), self.dtype)
         self.time = 0
 
     def set_state(self, rho, ux, uy) -> None:
@@ -63,9 +84,20 @@ class NumpySolver:
 
     def step(self, n: int = 1) -> None:
         for _ in range(n):
-            self.f_post, tau = core.step(np, self.f_post, self.cfg)
+            if self.g_post is None:
+                self.f_post, tau = core.step(np, self.f_post, self.cfg)
+            else:
+                (self.f_post, self.g_post), tau = core.coupled_step(
+                    np, (self.f_post, self.g_post), self.cfg
+                )
             self.time += 1
         self.tau = np.broadcast_to(tau, self.tau.shape)
+
+    def concentration(self) -> np.ndarray:
+        return core.concentration(np, self.g_post, self.cfg)
+
+    def total_tracer(self) -> float:
+        return float(self.g_post[:, self.fluid].sum())
 
     def pre_collision(self) -> np.ndarray:
         return core.stream(np, self.f_post, self.cfg)

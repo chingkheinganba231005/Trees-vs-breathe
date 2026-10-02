@@ -22,6 +22,8 @@ import numpy as np
 from . import results
 from .reference import ghia1982
 from .solver2d import NumpySolver, analysis, cases, core
+from .solver2d.domain import Domain
+from .solver2d.numpy_solver import Params, Tracer
 
 GENERATED_BY = "python -m treesvb.benchmarks"
 
@@ -229,6 +231,145 @@ def agreement(quick: bool) -> dict:
     }
 
 
+def porous_lambda(quick: bool) -> dict:
+    """A porous block across a channel must give back its pressure-loss coefficient.
+
+    CODASC defines lambda = Delta p / (p_dyn d) for a sample that fills a duct (docs/codasc.md),
+    so this is the test the crown model must pass before it is compared with CODASC. The block
+    spans the channel; walls are periodic so there is no wall friction. Two numbers per run:
+    the momentum balance (p + rho u^2 upstream minus downstream against the summed drag), which
+    checks that the drag is applied as specified, and lambda by CODASC's definition, which also
+    contains the weakly compressible error of the lattice (density falls across the block, so the
+    speed inside rises); that error should shrink as u^2.
+    """
+    nx, ny, x0, depth = 240, 3, 100, 12
+    specs = [(4.8, 0.05), (12.0, 0.05), (12.0, 0.025)]
+    rows = []
+    for lam_d, u in specs:
+        lam = lam_d / depth
+        drag = np.zeros((ny, nx))
+        drag[:, x0 : x0 + depth] = lam
+        d = Domain(nx, ny, left="inlet", right="outlet", bottom="periodic", top="periodic")
+        s = NumpySolver(d, Params(tau0=0.6, inlet_u=np.full(ny, u), drag=drag))
+        s.set_state(np.ones((ny, nx)), np.full((ny, nx), u), np.zeros((ny, nx)))
+        a, b = x0 - 30, x0 + depth + 30
+        history: list[float] = []
+        # Sound bounces between the inlet and the outlet and decays slowly; step until both
+        # measures stop moving.
+        while s.time < 80_000:
+            s.step(1000)
+            rho, ux, _ = s.macros()
+            ra, rb, ua, ub = rho[:, a].mean(), rho[:, b].mean(), ux[:, a].mean(), ux[:, b].mean()
+            dp = (ra - rb) / 3.0
+            force = float((0.5 * lam * rho * np.abs(ux) * ux)[:, x0 : x0 + depth].sum() / ny)
+            balance = float((dp + ra * ua**2 - rb * ub**2) / force)
+            history.append(balance)
+            if len(history) > 3 and max(abs(h - balance) for h in history[-4:]) < 2e-4:
+                break
+        rows.append(
+            {
+                "lambda_times_depth": lam_d,
+                "inflow_speed": u,
+                "steps": s.time,
+                "momentum_balance": balance,
+                "lambda_ratio": float(dp / (0.5 * ra * ua**2 * depth) / lam),
+            }
+        )
+    bal, err = 2e-3, 0.05
+    by_u = {
+        r["inflow_speed"]: abs(r["lambda_ratio"] - 1)
+        for r in rows
+        if r["lambda_times_depth"] == 12.0
+    }
+    scaling = by_u[0.05] / by_u[0.025] if 0.025 in by_u else None
+    return {
+        "name": "Porous block: drag and pressure-loss coefficient",
+        "method": (
+            f"Channel {nx} x {ny} (periodic across), porous block {depth} cells deep, tau 0.6, "
+            "stepped until the momentum balance changes by less than 2e-4 over 3000 steps, "
+            "float64; lambda d = 4.8 and 12 match the CODASC crowns (80 and 200 1/m over "
+            "0.5 H = 0.06 m)"
+        ),
+        "metric": "momentum balance over drag, and measured over set lambda",
+        "threshold": {
+            "momentum_balance_within": bal,
+            "lambda_ratio_within": err,
+            "error_ratio_halving_u_between": [3.0, 5.0],
+        },
+        "rows": rows,
+        "error_ratio_halving_u": scaling,
+        "passed": all(abs(r["momentum_balance"] - 1) < bal for r in rows)
+        and all(abs(r["lambda_ratio"] - 1) < err for r in rows)
+        and (scaling is None or 3.0 < scaling < 5.0),
+    }
+
+
+def tracer_conservation(quick: bool) -> dict:
+    """With walls all round and sources inside, the tracer total must equal what was injected."""
+    nx, ny = (48, 24) if quick else (96, 48)
+    d = Domain(nx, ny, left="periodic", right="periodic", bottom="wall", top="wall")
+    src = np.zeros((ny, nx))
+    src[2, nx // 5] = 1e-3
+    src[ny // 2, nx // 2] = 2e-3
+    tracer = Tracer(src, 1e-4, 0.7)
+    s = NumpySolver(d, Params(tau0=0.51, smagorinsky=0.17, gravity=(1e-5, 0), tracer=tracer))
+    steps = 2000
+    s.step(steps)
+    injected = float(src.sum() * steps)
+    err = abs(s.total_tracer() - injected) / injected
+    threshold = 1e-10
+    return {
+        "name": "Tracer conservation with sources and walls",
+        "method": (
+            f"{nx} x {ny} channel, periodic along, walls across, force-driven with the "
+            f"Smagorinsky model on, two point sources, {steps} steps, float64"
+        ),
+        "metric": "relative difference between tracer in the domain and tracer injected",
+        "threshold": {"rel_error_below": threshold},
+        "rel_error": err,
+        "passed": err < threshold,
+    }
+
+
+def tracer_pulse(quick: bool) -> dict:
+    """A Gaussian pulse in uniform flow must drift and spread like the exact solution."""
+    n = 64 if quick else 128
+    rows = []
+    for diff, (ux0, uy0) in ((0.02, (0.0, 0.0)), (0.02, (0.05, 0.02)), (0.005, (0.05, 0.02))):
+        d = Domain(n, n, left="periodic", right="periodic", bottom="periodic", top="periodic")
+        s = NumpySolver(d, Params(tau0=0.8, tracer=Tracer(np.zeros((n, n)), diff, 1.0)))
+        s.set_state(np.ones((n, n)), np.full((n, n), ux0), np.full((n, n), uy0))
+        y, x = np.mgrid[0:n, 0:n].astype(float)
+        s0, x0 = 4.0, n * 5 / 16
+        c0 = np.exp(-((x - x0) ** 2 + (y - x0) ** 2) / (2 * s0**2))
+        s.g_post = core.tracer_equilibrium(np, c0, np.full((n, n), ux0), np.full((n, n), uy0))
+        steps = n * 4
+        s.step(steps)
+        # concentration() streams once more, so the pulse has moved steps + 1 times.
+        var = s0**2 + 2 * diff * (steps + 1)
+        xc, yc = x0 + ux0 * (steps + 1), x0 + uy0 * (steps + 1)
+        exact = s0**2 / var * np.exp(-((x - xc) ** 2 + (y - yc) ** 2) / (2 * var))
+        c = s.concentration()
+        rows.append(
+            {
+                "diffusivity": diff,
+                "velocity": [ux0, uy0],
+                "steps": steps,
+                "rel_l2": float(np.sqrt(((c - exact) ** 2).sum() / (exact**2).sum())),
+                "mass_change": float(abs(c.sum() / c0.sum() - 1)),
+            }
+        )
+    threshold = 0.03
+    return {
+        "name": "Tracer pulse against the exact advection-diffusion solution",
+        "method": f"{n} x {n} periodic box, uniform flow, Gaussian pulse, D2Q5 BGK, float64",
+        "metric": "relative L2 error of the concentration field",
+        "threshold": {"rel_l2_below": threshold},
+        "rows": rows,
+        "passed": all(r["rel_l2"] < threshold and r["mass_change"] < 1e-12 for r in rows),
+    }
+
+
 BENCHMARKS: dict[str, Callable[[bool], dict]] = {
     "poiseuille": poiseuille,
     "cavity_re100": lambda q: cavity(100, 64 if q else 128, q),
@@ -237,6 +378,9 @@ BENCHMARKS: dict[str, Callable[[bool], dict]] = {
     "smagorinsky_shear": smagorinsky_shear,
     "force_stress": force_stress,
     "numpy_jax_agreement": agreement,
+    "porous_lambda": porous_lambda,
+    "tracer_conservation": tracer_conservation,
+    "tracer_pulse": tracer_pulse,
 }
 QUICK_SKIP = {"cavity_re1000"}
 
