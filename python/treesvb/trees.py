@@ -2,10 +2,14 @@
 
     python -m treesvb.trees calibrate   # turbulent Schmidt number on the tree-free CODASC case
     python -m treesvb.trees codasc      # the ten cross-wind CODASC cases against the wind tunnel
+    python -m treesvb.trees directions  # trees raise, hedges lower pavement exposure?
+    python -m treesvb.trees reynolds    # does pavement exposure move when Re doubles?
+    python -m treesvb.trees resolution  # the same cases on a grid twice as fine
     python -m treesvb.trees all
 
-Each writes results/trees/<name>.json. `--height` sets the grid (cells per building height);
-`--quick` runs a short, coarse version for CI and writes to a temporary folder.
+Each writes results/trees/<name>.json under `--out` (default results/). `--height` sets the grid
+(cells per building height); `--quick` runs a short, coarse version and writes to a temporary
+folder. The Colab notebook colab/01_reference_2d.ipynb runs the full set on an A100.
 
 The comparison follows docs/codasc.md: concentrations at y = 0 on walls A and B, 0.042 H in
 front of each wall, at z / H = 1/6 ... 5/6; c+ = C u_H H / Q_l with Q_l the total of the four line
@@ -55,6 +59,17 @@ SOURCE_TOTAL = 1e-3  # tracer per step per unit length; c+ does not depend on it
 #: Range from the RANS studies of this street (0.2-0.6, Gromke and Ruck 2012, p. 43) up to the
 #: 1.0 used in Gromke (2008, p. 87).
 SCHMIDT_CANDIDATES = (0.2, 0.3, 0.5, 0.7, 1.0)
+
+#: Full-scale building height of the CODASC street: 0.12 m at scale 1:150 (Gromke and Ruck 2012,
+#: p. 44), used to put full-scale hedge sizes into units of H.
+FULL_SCALE_HEIGHT_M = 18.0
+#: Hedge of Gromke et al. (2016), as tabulated by Abhijith et al. (2017, Table 3): 2.5 m high,
+#: 1.5 m wide, pressure-loss coefficient 3.34 1/m; the single hedge in the middle of the street
+#: reduced concentrations most.
+HEDGE = {"height_m": 2.5, "width_m": 1.5, "lambda_per_m": 3.34}
+#: Pavement breathing zone (docs/assumptions.md A-010), units of H from each wall and the ground.
+PAVEMENT_WIDTH = 0.15
+BREATHING = (0.05, 0.15)
 
 
 @dataclass(frozen=True)
@@ -110,8 +125,18 @@ def crowns_for(case: codasc.Case) -> list[cases.Crown]:
     ]
 
 
-def build(case: codasc.Case, height: int, schmidt: float, reynolds: float = REYNOLDS):
-    g = cases.canyon_geometry(height, 1.0 / case.aspect)
+def central_hedge(aspect: int) -> list[cases.Crown]:
+    """The hedge of HEDGE on the street axis, between the inner traffic lanes."""
+    h = HEDGE["height_m"] / FULL_SCALE_HEIGHT_M
+    half = 0.5 * HEDGE["width_m"] / FULL_SCALE_HEIGHT_M
+    lam_h = HEDGE["lambda_per_m"] * FULL_SCALE_HEIGHT_M
+    mid = 0.5 * aspect
+    return [cases.Crown(mid - half, mid + half, 0.0, h, lam_h)]
+
+
+def build(aspect: int, crowns, height: int, schmidt: float, reynolds: float = REYNOLDS):
+    """A street of width `aspect` H with the CODASC sources, inflow and the given crowns."""
+    g = cases.canyon_geometry(height, 1.0 / aspect)
     src = cases.line_sources(g, SOURCE_OFFSETS, SOURCE_TOTAL)
     c = cases.canyon(
         g,
@@ -119,11 +144,26 @@ def build(case: codasc.Case, height: int, schmidt: float, reynolds: float = REYN
         reynolds=reynolds,
         smagorinsky=SMAGORINSKY,
         exponent=PROFILE_EXPONENT,
-        crowns=crowns_for(case),
+        crowns=crowns,
         sources=src,
         schmidt=schmidt,
     )
     return g, c
+
+
+def pavement_exposure(g: cases.CanyonGeometry, cplus: np.ndarray) -> dict[str, float]:
+    """Mean c+ in the breathing zone over each pavement: A is the leeward side."""
+    x0, x1 = g.street
+    xc = np.arange(g.nx) + 0.5
+    zc = np.arange(g.top) + 0.5
+    rows = (zc >= BREATHING[0] * g.height) & (zc <= BREATHING[1] * g.height)
+    width = PAVEMENT_WIDTH * g.height
+    a = (xc >= x0) & (xc <= x0 + width)
+    b = (xc <= x1) & (xc >= x1 - width)
+    return {
+        "A": float(cplus[np.ix_(rows, a)].mean()),
+        "B": float(cplus[np.ix_(rows, b)].mean()),
+    }
 
 
 def _interp_column(field: np.ndarray, xpos: float) -> np.ndarray:
@@ -145,10 +185,17 @@ def wall_profiles(g: cases.CanyonGeometry, cplus: np.ndarray) -> dict[str, np.nd
 
 
 def simulate(case: codasc.Case, height: int, schmidt: float, run: Run, reynolds=REYNOLDS) -> dict:
-    """Spin up, then average the concentration; returns c+ at the taps and in the street."""
+    """A CODASC configuration; see simulate_street."""
+    return simulate_street(case.aspect, crowns_for(case), height, schmidt, run, reynolds)
+
+
+def simulate_street(
+    aspect: int, crowns, height: int, schmidt: float, run: Run, reynolds=REYNOLDS
+) -> dict:
+    """Spin up, then average the concentration; c+ at the taps, on the pavements, in the street."""
     from .solver2d.jax_solver import JaxSolver
 
-    g, c = build(case, height, schmidt, reynolds)
+    g, c = build(aspect, crowns, height, schmidt, reynolds)
     s = JaxSolver(c.domain, c.params, np.float32)
     s.set_state(*cases.uniform_start(c))
     t0 = time.time()
@@ -176,6 +223,7 @@ def simulate(case: codasc.Case, height: int, schmidt: float, run: Run, reynolds=
         "steps": s.time,
         "wall_time_s": round(time.time() - t0, 1),
         "model": {k: [round(float(v), 4) for v in walls[k]] for k in "AB"},
+        "pavement": {k: round(v, 4) for k, v in pavement_exposure(g, cplus).items()},
         # The tracer in the domain should level off once the average starts.
         "tracer_total_drift": float(
             (tracer_totals[-1] - tracer_totals[0]) / tracer_totals[-1]
@@ -276,34 +324,166 @@ def compare(height: int, run: Run, schmidt: float) -> dict:
     }
 
 
+def directions(height: int, run: Run, schmidt: float) -> dict:
+    """The direction of the effect, against Abhijith et al. (2017) and the cited studies.
+
+    Trees: the CODASC crown (W/H 1, lambda 200 1/m, dense) should raise exposure on the leeward
+    pavement, as CODASC itself shows. Hedge: one central hedge in a broad street (W/H 2) should
+    lower it, as Gromke et al. (2016) measured (largest area-averaged reduction 61%, via
+    Abhijith et al. 2017, Table 3).
+    """
+    pairs = [
+        ("trees", 1, crowns_for(codasc.Case(1, 90, 1.0, 200)), "up"),
+        ("hedge", 2, central_hedge(2), "down"),
+    ]
+    rows = []
+    for name, aspect, crowns, expected in pairs:
+        base = simulate_street(aspect, [], height, schmidt, run)
+        green = simulate_street(aspect, crowns, height, schmidt, run)
+        if not (base["healthy"] and green["healthy"]):
+            rows.append({"case": name, "healthy": False, "passed": False})
+            continue
+        ratio = {k: green["pavement"][k] / base["pavement"][k] for k in "AB"}
+        leeward = ratio["A"]
+        ok = leeward > 1.0 if expected == "up" else leeward < 1.0
+        rows.append(
+            {
+                "case": name,
+                "aspect_w_over_h": aspect,
+                "expected_leeward": expected,
+                "pavement_without": base["pavement"],
+                "pavement_with": green["pavement"],
+                "ratio": {k: round(v, 4) for k, v in ratio.items()},
+                "passed": ok,
+            }
+        )
+        print(f"  {name}: {rows[-1]}", flush=True)
+    return {
+        "name": "Direction of the effect: trees and a hedge on the pavements",
+        "method": (
+            f"2D street, H = {height} cells, Re {REYNOLDS:g}, Sc_t {schmidt}; trees: CODASC "
+            "crown at W/H 1 (lambda 200 1/m, dense); hedge: 2.5 m high, 1.5 m wide, lambda "
+            "3.34 1/m in the middle of a W/H 2 street (Gromke et al. 2016 via Abhijith et al. "
+            f"2017, Table 3), full-scale H = {FULL_SCALE_HEIGHT_M:g} m; exposure: mean c+ within "
+            f"{PAVEMENT_WIDTH} H of each wall, {BREATHING[0]}-{BREATHING[1]} H above the ground"
+        ),
+        "metric": "pavement exposure with the trees or hedge over exposure without",
+        "sources": [
+            "Abhijith et al. (2017), Atmos. Environ. 162, 71-86, pp. 4, 8, 15 and Table 3",
+            "Gromke et al. (2016), Atmos. Environ. 139, 75-86, as summarised in Table 3 above",
+        ],
+        "rows": rows,
+        "passed": all(r["passed"] for r in rows),
+    }
+
+
+def reynolds(height: int, run: Run, schmidt: float) -> dict:
+    """Pavement exposure at Re 20 000 and 40 000 (assumption A-004)."""
+    threshold = 0.10
+    rows = []
+    for case in (codasc.Case(1, 90, 0.0, 0), codasc.Case(1, 90, 1.0, 200)):
+        sims = {
+            re: simulate(case, height, schmidt, run, reynolds=re) for re in (REYNOLDS, 2 * REYNOLDS)
+        }
+        if not all(s["healthy"] for s in sims.values()):
+            rows.append({"case": case.stem, "healthy": False, "passed": False})
+            continue
+        lo, hi = sims[REYNOLDS]["pavement"], sims[2 * REYNOLDS]["pavement"]
+        change = {k: abs(hi[k] / lo[k] - 1.0) for k in "AB"}
+        rows.append(
+            {
+                "case": case.stem,
+                "pavement": {f"{REYNOLDS:g}": lo, f"{2 * REYNOLDS:g}": hi},
+                "relative_change": {k: round(v, 4) for k, v in change.items()},
+                "passed": max(change.values()) < threshold,
+            }
+        )
+        print(f"  {case.stem}: {rows[-1]}", flush=True)
+    return {
+        "name": "Reynolds-number sensitivity of pavement exposure",
+        "method": (
+            f"CODASC W/H 1 without trees and with the dense crown (lambda 200 1/m), H = {height} "
+            f"cells, Sc_t {schmidt}, Re {REYNOLDS:g} and {2 * REYNOLDS:g}"
+        ),
+        "metric": "relative change of pavement exposure when Re doubles",
+        "threshold": {"relative_change_below": threshold},
+        "rows": rows,
+        "passed": all(r["passed"] for r in rows),
+    }
+
+
+def resolution(height: int, run: Run, schmidt: float) -> dict:
+    """The comparison at twice the grid resolution, for two cases (informational)."""
+    rows = []
+    for case in (codasc.Case(1, 90, 0.0, 0), codasc.Case(1, 90, 1.0, 200)):
+        obs = measured(case)
+        o = np.concatenate([obs["A"], obs["B"]])
+        row = {"case": case.stem, "measured": obs}
+        for h in (height, 2 * height):
+            sim = simulate(case, h, schmidt, run)
+            if sim["healthy"]:
+                p = np.concatenate([sim["model"]["A"], sim["model"]["B"]])
+                row[f"h{h}"] = {"model": sim["model"], "metrics": metrics(o, p)}
+            else:
+                row[f"h{h}"] = {"healthy": False}
+        rows.append(row)
+        print(f"  {case.stem}: done", flush=True)
+    return {
+        "name": "Grid resolution of the CODASC comparison",
+        "method": f"Two CODASC cases at H = {height} and {2 * height} cells, Sc_t {schmidt}",
+        "metric": "FB, NMSE and FAC2 at each resolution",
+        "rows": rows,
+        "passed": all(all("model" in r[k] for k in r if k.startswith("h")) for r in rows),
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="python -m treesvb.trees")
-    p.add_argument("study", choices=["calibrate", "codasc", "all"])
+    p.add_argument("study", choices=[*STUDIES, "all"])
     p.add_argument("--height", type=int, default=24, help="cells per building height")
     p.add_argument("--quick", action="store_true", help="short coarse run, temporary output")
+    p.add_argument("--out", type=Path, help="results root (default: results/)")
+    p.add_argument(
+        "--schmidt", type=float, help="use this Sc_t instead of results/trees/calibration.json"
+    )
     args = p.parse_args(argv)
     run = QUICK if args.quick else FULL
     height = 12 if args.quick else args.height
-    root = Path(tempfile.mkdtemp(prefix="tvb-trees-")) if args.quick else None
+    root = args.out or (Path(tempfile.mkdtemp(prefix="tvb-trees-")) if args.quick else None)
     kw = {"root": root} if root else {}
     failed = False
-    studies = ["calibrate", "codasc"] if args.study == "all" else [args.study]
-    schmidt = None
-    for name in studies:
+    names = list(STUDIES) if args.study == "all" else [args.study]
+    schmidt = args.schmidt
+    for name in names:
         t0 = time.time()
         if name == "calibrate":
             payload = calibrate(height, run)
             schmidt = payload["schmidt"]
-            path = results.write("trees/calibration.json", payload, GENERATED_BY, **kw)
         else:
             if schmidt is None:
                 schmidt = results.read("trees/calibration.json", **kw)["schmidt"]
-            payload = compare(height, run, schmidt)
-            path = results.write("trees/codasc.json", payload, GENERATED_BY, **kw)
+            payload = STUDIES[name](height, run, schmidt)
+        path = results.write(f"trees/{OUTPUT[name]}.json", payload, GENERATED_BY, **kw)
         verdict = "pass" if payload["passed"] else "FAIL"
         print(f"{name:10s} {verdict}  {time.time() - t0:5.0f}s  {path}", flush=True)
         failed |= not payload["passed"]
     return 1 if failed else 0
+
+
+STUDIES = {
+    "calibrate": calibrate,
+    "codasc": compare,
+    "directions": directions,
+    "reynolds": reynolds,
+    "resolution": resolution,
+}
+OUTPUT = {
+    "calibrate": "calibration",
+    "codasc": "codasc",
+    "directions": "directions",
+    "reynolds": "reynolds",
+    "resolution": "resolution",
+}
 
 
 if __name__ == "__main__":

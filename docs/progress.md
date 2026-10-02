@@ -105,39 +105,54 @@ Goal: one D2Q9 lattice Boltzmann solver in four implementations (NumPy, JAX, Typ
 - Performance on real phones (the brief's 30 fps target) can only be measured on a device; please open the Design screen and `selftest.html` on your phone when convenient.
 - Time-averaged fields and breathing-zone probes in the browser are built in P2 together with the fumes.
 
-## P2 — Trees, hedges and fumes (plan)
+## P2 — Trees, hedges and fumes
 
 Goal: porous trees and hedges in the street, traffic fumes as a passive tracer, pedestrian exposure on both pavements, and the first comparison with the CODASC wind-tunnel measurements.
 
 ### Sources to verify first
 
-- [ ] CODASC (Gromke and Ruck, KIT): geometry, approach-flow profile (tabulated on the site), line-source layout, measuring positions, c⁺ and λ definitions, file format; terms already read (non-commercial scientific use with attribution, no modification)
-- [ ] Gromke (2011), vegetation modelling concept: how λ scales between wind tunnel and full scale
-- [ ] Tominaga and Stathopoulos (2007): turbulent Schmidt number
-- [ ] Chang and Hanna (2004) and Hanna and Chang (2012): FAC2, FB, NMSE and the urban acceptance criteria
-- [ ] Abhijith et al. (2017): direction of the effect of trees and hedges in street canyons
+- [x] CODASC (Gromke and Ruck, KIT): geometry, approach flow, line sources, taps, c⁺ and λ, file format, terms. Read in Gromke (2008, dissertation, open access at KIT) and Gromke and Ruck (2012, submitted version); details with page numbers in `docs/codasc.md`
+- [x] How λ scales between wind tunnel and full scale: λ_full / λ_model equals the model scale (Gromke 2008, Eqs. 5.3–5.5); Gromke (2011) itself not needed
+- [x] Turbulent Schmidt number: the CODASC literature reports 0.2–0.6 as best for RANS of this street (Gromke and Ruck 2012, p. 43); calibrated on one case instead of taken from Tominaga and Stathopoulos (2007), which stays unread
+- [x] Hanna and Chang (2012): urban criteria FB, NMSE, FAC2 (secondary, OSTI 1639930; definitions from the BOOT paper)
+- [x] Abhijith et al. (2017): trees can worsen, hedges improve pavement air in street canyons; its Table 3 gives the hedge of Gromke et al. (2016)
 - [ ] Hong Kong guidance on clearance of tree crowns over carriageways (bus headroom)
 
 ### Physics
 
-- [ ] Porous drag f = −(λ/2)|u|u in crowns and hedges through the Guo forcing, with the velocity solved implicitly so dense crowns stay stable; check: a porous block across a channel must give back λ = Δp / (½ρu² d), CODASC's own definition
-- [ ] D2Q5 advection-diffusion lattice for the tracer, diffusivity ν_t/Sc_t + D_mol; checks against an analytic diffusing pulse and tracer conservation (imbalance below 0.5%)
-- [ ] Line sources at road level following CODASC's layout; c⁺ = c u_H H / (Q/l)
-- [ ] CODASC approach-flow profile at the inlet, replacing the uniform inflow (assumption A-003)
-- [ ] Time-averaged fields (moving average and a fixed window) with a convergence measure; breathing-zone probes on both pavements
-- [ ] All four implementations, golden cases extended to trees and tracer
+- [x] Porous drag F = −(λ/2) ρ|u|u with the velocity solved implicitly; `results/benchmarks/porous_lambda.json`: the momentum balance closes within 0.05%, and λ by CODASC's definition comes back within 3.2% at u = 0.05, the error shrinking as u² (compressibility)
+- [x] D2Q5 tracer with diffusivity ν₀ + ν_t/Sc_t; conservation to round-off and a Gaussian pulse within 1.1% of the exact solution (`tracer_conservation.json`, `tracer_pulse.json`)
+- [x] Line sources at road level in CODASC's layout; c⁺ = C u_H H / Q_l
+- [x] CODASC power-law approach flow (exponent 0.30) in the Python studies; the live street keeps uniform inflow until its stability is rerun with the profile
+- [x] Time-averaged concentration and pavement exposure in Python; on the GPU the running mean of the concentration is kept next to the velocity means
+- [x] All four implementations carry drag and tracer; the golden case `street_trees` checks velocity and concentration (`browser_agreement.json`)
 
 ### Evidence
 
-- [ ] CODASC loader (`python -m treesvb.codasc fetch` with checksums) and the 2D comparison at the centre plane: empty street at W/H 1 and 2, tree avenues at both crown densities and stand densities; FAC2, FB, NMSE against the Hanna and Chang criteria; at most one parameter calibrated on one case
-- [ ] Direction checks: in a narrow street with cross-wind, trees raise and low hedges lower pedestrian exposure
-- [ ] Reynolds sensitivity: pavement exposure changes by less than 10% when Re doubles
-- [ ] Colab job `01_reference_2d.ipynb` for the high-resolution runs, handed over when the Python reference passes
+- [x] CODASC loader (`python -m treesvb.codasc fetch` with checksums) and the comparison study (`python -m treesvb.trees`)
+- [ ] CODASC comparison results (Colab job `01_reference_2d`)
+- [ ] Direction checks: trees raise and a central hedge lowers leeward pavement exposure (Colab job; code and smoke run ready)
+- [ ] Reynolds sensitivity: pavement exposure changes by less than 10% when Re doubles (Colab job)
+- [x] Colab notebook `01_reference_2d.ipynb`, smoke-tested on CPU
 
 ### App
 
 - [ ] Design screen: add, drag and resize trees and hedges; crown density; constraint badges (pavement width, bus headroom, buildings)
 - [ ] Fumes layer (violet-grey ramp) and per-pavement exposure as a percentage of the same street without trees, shown as a range and tagged "Simulated"
+
+### Found and fixed along the way
+
+- Copying the neighbour's populations into the tracer outlet fed their non-equilibrium part back and blew up with τ near ½; the outlet now takes the equilibrium at the neighbour's previous concentration and velocity.
+- A trial CODASC run with a single street put fumes on the windward wall: the vortex turned the wrong way (see P1, D-019). Behind an upwind street the leeward wall came out close to the wind tunnel in trial runs; the committed numbers will come from the Colab job.
+- In the same trials the lowest taps on wall B read several times the measured value: a corner eddy at the foot of the windward wall holds fumes from the nearest lane, and a 2D model mixes it out too slowly. To be reported with the results, not tuned away.
+
+### Decisions
+
+| ID    | Decision                                                                  | Why                                                                              |
+| ----- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| D-020 | The CODASC street is modelled behind one upwind street, like the live app | The single 2D street turns the wrong way; the comparison tests the choice        |
+| D-021 | One calibrated parameter: Sc_t, on the tree-free W/H 1 case only          | The brief allows one; the other nine cases are predictions                       |
+| D-022 | The comparison runs on Colab at H = 24 and 48                             | About 30 runs of 120 000 steps: hours on this CPU, about half an hour on an A100 |
 
 ### Exit
 
