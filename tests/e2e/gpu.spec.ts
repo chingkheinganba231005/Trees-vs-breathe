@@ -15,7 +15,7 @@ interface Row {
   gpuError: number | null;
 }
 
-test('WGSL and CPU solvers reproduce the Python reference', async ({ page }) => {
+test('WGSL and CPU solvers reproduce the Python reference', async ({ page, browser }) => {
   test.setTimeout(240_000);
   await page.goto('./selftest.html');
   await page.waitForFunction(() => window.__selftest !== undefined, null, { timeout: 200_000 });
@@ -53,6 +53,7 @@ test('WGSL and CPU solvers reproduce the Python reference', async ({ page }) => 
         passed: result.passed,
       },
       'npx playwright test --project=webgpu (RECORD_RESULTS=1)',
+      browser.version(),
     );
   }
 });
