@@ -14,7 +14,7 @@ Phases follow `BRIEF.md` section 12. Each phase starts with a checklist here; it
 - [x] CI workflow: web job (lint, format, typecheck, unit, build, Playwright) and Python job (ruff, pytest, notebook sync check, notebook smoke run)
 - [x] GitHub Pages workflow
 - [x] CI green on GitHub (run 1 on commit `15e81b4`: web and Python jobs, every step passed)
-- [ ] Deployed page loads at the GitHub Pages URL. The Pages build step passes; the deploy stops at `configure-pages` with "Get Pages site failed ... Not Found" because Pages is not switched on yet (Q-001)
+- [x] Deployed to GitHub Pages: run 37026963028 (commit `710a2dc`), build and deploy jobs both succeeded. The container's network blocks `*.github.io`, so the live URL was not fetched from here; instead the Playwright smoke test now serves the production build under the same `/Trees-vs-breathe/` subpath as Pages (28 of 28 pass). Confirmed on a real phone: pending (please open the URL once)
 
 ### Decisions
 
@@ -30,6 +30,7 @@ Phases follow `BRIEF.md` section 12. Each phase starts with a checklist here; it
 | D-008 | Pages deploys from whichever branch is the repository default                                                                 | Works before and after a `main` branch exists                                                                           |
 | D-009 | Colour values live in `src/theme/tokens.ts`; `index.css` mirrors them; a test enforces both agreement and contrast            | Tailwind needs CSS variables, tests need numbers                                                                        |
 | D-010 | Python 3.12 in CI                                                                                                             | Closest to the Colab runtime                                                                                            |
+| D-011 | Playwright serves the build under `/Trees-vs-breathe/`, the Pages subpath                                                     | A wrong asset base path fails the smoke test instead of the live site                                                   |
 
 ### Open questions
 
