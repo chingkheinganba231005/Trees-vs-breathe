@@ -13,8 +13,8 @@ Phases follow `BRIEF.md` section 12. Each phase starts with a checklist here; it
 - [x] `colab/00_setup_check.ipynb`, runnable in CPU smoke mode
 - [x] CI workflow: web job (lint, format, typecheck, unit, build, Playwright) and Python job (ruff, pytest, notebook sync check, notebook smoke run)
 - [x] GitHub Pages workflow
-- [ ] CI green on GitHub
-- [ ] Deployed page loads at the GitHub Pages URL
+- [x] CI green on GitHub (run 1 on commit `15e81b4`: web and Python jobs, every step passed)
+- [ ] Deployed page loads at the GitHub Pages URL. The Pages build step passes; the deploy stops at `configure-pages` with "Get Pages site failed ... Not Found" because Pages is not switched on yet (Q-001)
 
 ### Decisions
 
@@ -34,7 +34,7 @@ Phases follow `BRIEF.md` section 12. Each phase starts with a checklist here; it
 ### Open questions
 
 - **Q-001 (blocks the P0 exit).** GitHub Pages has to be switched on once: repository Settings → Pages → Build and deployment → Source: GitHub Actions. The workflow's token cannot do this itself.
-- **Q-002.** The repository had no commits, so the first push made `claude/relaxed-lamport-aefen3` the default branch. Keep it, or create `main` from it?
+- **Q-002.** The repository had no commits, so the first push made `claude/relaxed-lamport-aefen3` the default branch (confirmed on GitHub). Keep it, or create `main` from it?
 - **Q-003.** No licence chosen for the code yet. MIT is common for hackathon entries. Your call.
 - **Q-004 (needed by P3).** Three real Hong Kong streets for the presets: narrow (H/W ≈ 3), medium (≈ 1.5), wide (≈ 0.5).
 
