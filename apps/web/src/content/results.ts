@@ -78,13 +78,30 @@ export interface RegimeRow {
   width_cells: number;
   stacked_primary_vortices: number;
   floor_fraction_with_wind: number;
+  strongest_vortex_rotation?: 'clockwise' | 'anticlockwise' | null;
+  top_flow_over_uref?: number;
   vortices: { x: number; z: number; psi: number; rotation: 'clockwise' | 'anticlockwise' }[];
   psi: { rows: number; cols: number; values: number[] };
 }
 
 export interface RegimesResult extends Provenance {
   rows: RegimeRow[];
-  checks: { aspect: number; expectation: string; observed: string; passed: boolean }[];
+  checks: {
+    id?: 'skimming' | 'rotation' | 'stacked' | 'wake' | 'deep';
+    aspect: number;
+    expectation: string;
+    observed: string;
+    passed: boolean;
+  }[];
+}
+
+export interface UpwindResult extends Provenance {
+  rows: {
+    streets_in_row: number;
+    top_flow_over_uref: number;
+    strongest_vortex_rotation: 'clockwise' | 'anticlockwise' | null;
+    centre_profile_over_uref: number[];
+  }[];
 }
 
 export interface SpongeResult extends Provenance {

@@ -3,6 +3,7 @@
     python -m treesvb.street sponge      # acoustic noise with and without absorbing layers
     python -m treesvb.street stability   # Reynolds number x Smagorinsky constant sweep
     python -m treesvb.street regimes     # vortex structure against H/W
+    python -m treesvb.street upwind      # why the studied street has a street upwind of it
     python -m treesvb.street all
 
 Each writes results/street/<name>.json. Runs use the JAX solver in float32, as the browser does.
@@ -157,6 +158,7 @@ def _regime_row(aspect: float, height: int, spin_up: int, average: int) -> dict:
     vortices.sort(key=lambda v: v["z"])
     stacked = _stacked(vortices)
     floor = analysis.floor_reattachment(mean_u, x0, x1, rows=2)
+    strongest = max(vortices, key=lambda v: abs(v["psi"])) if vortices else None
     # Averaged stream function inside the street, normalised by its peak, for the evidence chart.
     u = mean_u[: g.height, x0:x1]
     psi = np.cumsum(u, axis=0) - 0.5 * u
@@ -170,6 +172,8 @@ def _regime_row(aspect: float, height: int, spin_up: int, average: int) -> dict:
         "vortices": vortices,
         "stacked_primary_vortices": stacked,
         "floor_fraction_with_wind": floor,
+        "strongest_vortex_rotation": strongest["rotation"] if strongest else None,
+        "top_flow_over_uref": _top_flow(mean_u, g),
         "psi": {
             "rows": int(psi.shape[0]),
             "cols": int(psi.shape[1]),
@@ -177,6 +181,16 @@ def _regime_row(aspect: float, height: int, spin_up: int, average: int) -> dict:
             "values": [round(float(v), 3) for v in psi.reshape(-1)],
         },
     }
+
+
+def _top_flow(mean_u: np.ndarray, g) -> float:
+    """Mean along-wind speed over the top tenth of the street, over u_ref.
+
+    Positive means the top of the street moves with the wind, as it does under a skimming flow.
+    """
+    x0, x1 = g.street
+    rows = max(1, g.height // 10)
+    return float(mean_u[g.height - rows : g.height, x0:x1].mean() / U_REF)
 
 
 def _stacked(vortices: list[dict]) -> int:
@@ -197,6 +211,7 @@ def regimes(quick: bool = False) -> dict:
     by = {r["aspect"]: r for r in rows}
     checks = [
         {
+            "id": "skimming",
             "aspect": 1.0,
             "expectation": "Skimming flow: one vortex fills the street (Oke 1988; Liu, Barth "
             "and Leung 2004)",
@@ -206,6 +221,17 @@ def regimes(quick: bool = False) -> dict:
             and by[1.0]["floor_fraction_with_wind"] < 0.3,
         },
         {
+            "id": "rotation",
+            "aspect": 1.0,
+            "expectation": "The street vortex turns with the wind above it: clockwise for wind "
+            "from the left, so the top of the street moves with the wind and the floor against it",
+            "observed": f"strongest vortex {by[1.0]['strongest_vortex_rotation']}; top of the "
+            f"street at {by[1.0]['top_flow_over_uref']:+.2f} u_ref",
+            "passed": by[1.0]["strongest_vortex_rotation"] == "clockwise"
+            and by[1.0]["top_flow_over_uref"] > 0,
+        },
+        {
+            "id": "stacked",
             "aspect": 2.0,
             "expectation": "Two vertically stacked, counter-rotating vortices (Liu, Barth and "
             "Leung 2004)",
@@ -213,6 +239,7 @@ def regimes(quick: bool = False) -> dict:
             "passed": by[2.0]["stacked_primary_vortices"] >= 2,
         },
         {
+            "id": "wake",
             "aspect": 0.3,
             "expectation": "Outside skimming flow (H/W below 0.7, Oke 1988): the outer flow "
             "reaches the street floor",
@@ -223,6 +250,7 @@ def regimes(quick: bool = False) -> dict:
     if 3.0 in by:
         checks.append(
             {
+                "id": "deep",
                 "aspect": 3.0,
                 "expectation": "Very deep street: at least two stacked vortices",
                 "observed": f"{by[3.0]['stacked_primary_vortices']} stacked vortex cells",
@@ -245,7 +273,54 @@ def regimes(quick: bool = False) -> dict:
     }
 
 
-STUDIES = {"sponge": sponge, "stability": stability, "regimes": regimes}
+def upwind(quick: bool = False) -> dict:
+    """Why the studied street has a street upwind of it.
+
+    In 2D the vortex shed from the upwind edge of the first block stays over the first street;
+    its backward flow turns that street's mean vortex the wrong way. The same street behind one
+    upwind street of equal width has the skimming flow of the wind tunnel and the city.
+    """
+    height, spin_up, average = (16, 8_000, 4_000) if quick else (24, 30_000, 30_000)
+    rows = []
+    for streets in (1, 2):
+        g = cases.canyon_geometry(height, 1.0, streets=streets)
+        case = cases.canyon(g, u_ref=U_REF, reynolds=20000.0, smagorinsky=0.17)
+        s = _solver(case)
+        s.step(spin_up)
+        mean_u = np.zeros((g.top, g.nx))
+        samples = 0
+        while s.time < spin_up + average:
+            s.step(200)
+            mean_u += s.macros()[1]
+            samples += 1
+        mean_u /= samples
+        x0, x1 = g.street
+        vort = analysis.canyon_vortices(mean_u, mean_u * 0, x0, x1, g.height, min_strength=0.1)
+        strongest = max(vort, key=lambda v: abs(v["psi"])) if vort else None
+        rows.append(
+            {
+                "streets_in_row": streets,
+                "top_flow_over_uref": _top_flow(mean_u, g),
+                "strongest_vortex_rotation": strongest["rotation"] if strongest else None,
+                "centre_profile_over_uref": [
+                    round(float(v), 3) for v in mean_u[: 2 * g.height, (x0 + x1) // 2] / U_REF
+                ],
+            }
+        )
+    by = {r["streets_in_row"]: r for r in rows}
+    return {
+        "name": "A street upwind of the studied street",
+        "method": f"Street H/W = 1, H = {height} cells, Re 20000, Cs 0.17; the studied street "
+        f"alone (one street in the row) and behind one upwind street of equal width; "
+        f"{spin_up} steps of spin-up, velocities averaged over {average} steps",
+        "metric": "mean along-wind speed over the top tenth of the studied street, over u_ref",
+        "rows": rows,
+        "passed": by[2]["top_flow_over_uref"] > 0
+        and by[2]["strongest_vortex_rotation"] == "clockwise",
+    }
+
+
+STUDIES = {"sponge": sponge, "stability": stability, "regimes": regimes, "upwind": upwind}
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -39,42 +39,106 @@ Phases follow `BRIEF.md` section 12. Each phase starts with a checklist here; it
 - **Q-003 (resolved 2026-10-02).** MIT licence, at the user's request.
 - **Q-004 (needed by P3).** Three real Hong Kong streets for the presets: narrow (H/W ≈ 3), medium (≈ 1.5), wide (≈ 0.5).
 
-## P1 — Live solver core (plan)
+## P1 — Live solver core
 
-Goal: one D2Q9 lattice Boltzmann solver in three implementations (NumPy, JAX, browser) that pass the textbook benchmarks, agree with each other, and show the street-canyon vortex live.
+Goal: one D2Q9 lattice Boltzmann solver in four implementations (NumPy, JAX, TypeScript, WGSL) that pass the textbook benchmarks, agree with each other, and show the street-canyon vortex live.
 
-### Sources to verify first (recorded in `docs/sources.md`)
+### Sources (recorded in `docs/sources.md`)
 
-- [ ] Hou, Sterling, Chen and Doolen 1996: the Smagorinsky form for LBM (effective relaxation time), and the value of Cs we adopt
-- [ ] Guo, Zheng and Shi 2002: the forcing scheme. Needed already in P1 for the body-force Poiseuille case; P2 reuses it for crown drag
-- [ ] Ghia, Ghia and Shin 1982: centreline velocity tables for the lid-driven cavity at Re 100 and 1000
-- [ ] Oke 1988: H/W thresholds between isolated roughness, wake interference and skimming flow
-- [ ] Krüger et al. 2017, _The Lattice Boltzmann Method_: half-way bounce-back, velocity inlet, outflow and free-slip boundaries
+- [x] Hou, Sterling, Chen and Doolen (1994/1996): read on arXiv. Their C is C_s²; their printed closed form has a typo, so the formula is derived afresh and checked numerically
+- [x] Guo, Zheng and Shi (2002, PRE): verified through the Li et al. (2016) review on arXiv
+- [x] Ghia, Ghia and Shin (1982): Re 1000 through LLNL-TR-403164, Re 100 through a Nextjournal reproduction cross-checked with Mramor et al. (2013); the primary tables are not reachable from here
+- [x] Oke (1988) through Buccolieri et al. (2020); Liu, Barth and Leung (2004) abstract for the deep-street check
+- [x] Boundary conditions documented in `docs/solver.md` with Guo, Zheng and Shi (2002, Chinese Physics) and Xu and Sagaut (2013) instead of Krüger et al.
 
 ### Python reference (`python/treesvb/solver2d/`)
 
-- [ ] `docs/solver.md`: equations, lattice units and the conversion to physical units, boundary conditions, the stability limit (lattice velocity ≤ 0.08), and the effective Reynolds number
-- [ ] NumPy D2Q9: BGK with Smagorinsky, Guo forcing, pull streaming, half-way bounce-back on a solid mask, velocity inlet, zero-gradient outlet, free-slip top, periodic option; float64 and float32
-- [ ] JAX version of the same kernel, jit-compiled and written with a batch axis so `jax.vmap` works for the P4 dataset
-- [ ] Blow-up guard shared by every implementation: detect NaN or runaway velocity, restore the last good state, lower the lattice velocity
-- [ ] Benchmarks in pytest writing `results/benchmarks/*.json`: Poiseuille relative L2 error below 1% at H ≥ 32 cells; cavity within 2% (Re 100) and 5% (Re 1000) of Ghia; mass conservation
-- [ ] NumPy against JAX on every benchmark, within 0.5%
+- [x] `docs/solver.md`: equations, units, boundary rules, absorbing layers, the guard
+- [x] One step written against an array module (`core.py`), run by NumPy and by JAX (jit, `vmap`-ready); a precomputed streaming map holds every boundary rule
+- [x] Benchmarks writing `results/benchmarks/*.json`: Poiseuille, cavity Re 100 and 1000 against Ghia, mass conservation, the eddy viscosity in uniform shear, the force correction of the stress, NumPy against JAX
+- [ ] Full-resolution results committed (running from commit `f9140ce`)
 
 ### Browser (`apps/web/src/sim/`)
 
-- [ ] CPU: TypeScript port of the kernel in a Web Worker (Float32Array A-B buffers)
-- [ ] GPU: WGSL compute shaders (pull collide-stream, boundaries), A-B buffers, several sub-steps per frame; a render pass with colour maps; a particle pass moving a few thousand wind markers
-- [ ] Engine selection with a real adapter probe (`requestAdapter()`), device-lost handling, and quiet fallback to the CPU worker
-- [ ] Golden outputs: Python writes small steady benchmark fields to `tests/golden/`; Vitest checks the CPU worker against them (within 0.5%); Playwright checks the WGSL kernel in headless Chromium if a software WebGPU adapter is available, and otherwise through a `?selftest` page I ask you to open on your phone
-- [ ] Design screen v1: the empty street with live wind particles and a speed field, an H/W slider, and readouts of the effective Reynolds number and lattice velocity, tagged "Simulated"
-- [ ] Regime sweep over H/W (0.3 to 3): count vortices in the time-averaged stream function, compare with Oke 1988 and with one vortex in skimming flow and stacked vortices in deep streets; `results/street/regimes.json`
-- [ ] First "How we know" cards (benchmarks), read from `results/benchmarks/*.json`
+- [x] CPU solver in TypeScript, run in a Web Worker
+- [x] WGSL kernel with A-B buffers and several steps per submit; a compute pass for 4096 wind markers; trails in a float texture; a compose pass for speed shading and buildings
+- [x] Engine selection with a real adapter probe, device-loss fallback to the CPU, and `?engine=gpu|cpu`
+- [x] Golden outputs (`python -m treesvb.golden`); Vitest checks the CPU solver and the streaming map; a Playwright project runs the WGSL kernel on a SwiftShader WebGPU adapter. Worst difference recorded in `results/benchmarks/browser_agreement.json`
+- [x] Blow-up guard: health check, restore the last good state, lower the time step
+- [x] Design screen v1: live street, H/W slider, wind and speed layers, the regime expected from the literature, model readouts tagged "Simulated", English and Traditional Chinese
+- [x] Street studies (`python -m treesvb.street`): absorbing layers, stability, regime sweep over H/W 0.3 to 3
+- [ ] Full-resolution street results committed (running)
+- [x] "How we know" cards and `docs/validation.md`, both read from `results/`
+
+### Found and fixed along the way
+
+- The zero-gradient outlet fixed no pressure level, and mass built up (density up to 10% high). Replaced by a pressure outlet: equilibrium at density 1 with the neighbour's velocity.
+- Copying the non-equilibrium part into the outlet one step late was unstable with τ close to ½, so the outlet uses the equilibrium part only.
+- Sound from vortex shedding filled the domain with pressure noise of order the vortex pressure itself. Absorbing layers at the inlet, outlet and top remove most of it (`results/street/sponge.json`).
+- Starting the street from rest sends a strong pressure pulse; runs start from uniform flow.
+- With C_s = 0.1 the street blew up at Re 10 000 and above; C_s = 0.17 is stable from Re 2000 to 50 000 (`results/street/stability.json`).
+- The mean vortex of a single street turned the wrong way: the top of the street moved against the wind at about u_ref, and road fumes collected on the windward wall. In 2D the vortex shed from the first block's upwind edge stays over the street. The regime check had only counted vortices, so it passed anyway; it now also checks the rotation. Inflow fluctuations of 20% at roof height did not help; one street upwind did (D-019, `results/street/upwind.json`).
+- Headless Chromium's default shell loses a WebGPU device once a canvas is configured; the full Chromium build with Vulkan on SwiftShader keeps it. Real GPUs are not affected.
+- The production CSS minifier writes `#fff` for `#ffffff`, which the canvas colour reader did not accept.
+
+### Decisions
+
+| ID    | Decision                                                                                  | Why                                                                                                   |
+| ----- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| D-012 | NumPy and JAX share one step function written against an array module                     | One algorithm, two backends, nothing to keep in sync                                                  |
+| D-013 | JAX streams with shifts and masks plus a small gather, not one big gather                 | XLA's CPU gather was the bottleneck; a test checks the result equals the map exactly                  |
+| D-014 | Inlet and outlet columns are set from the previous state of their neighbours              | Keeps the GPU kernel free of read-after-write races between threads                                   |
+| D-015 | Live street: Re 20 000, C_s 0.17, u_ref 0.05, H = 48 cells on WebGPU and 24 on the CPU    | From the stability sweep; C_s within the brief's range                                                |
+| D-016 | Uniform inflow until the CODASC approach-flow profile is wired in (P2)                    | No unverified profile exponent is assumed                                                             |
+| D-017 | Evidence colours are neutral (ink and grey); series differ by mark (line or open markers) | Green, violet-grey and yellow-to-red each already carry one meaning in the app                        |
+| D-018 | CODASC raw files are fetched by a script with checksums and not committed                 | Its terms forbid modifying the material and only grant non-commercial scientific use with attribution |
+| D-019 | The studied street is the second in a row of three equal blocks                           | A single street sits under the first block's shed vortex in 2D and turns the wrong way                |
 
 ### Exit
 
-Benchmark JSON green in CI for NumPy, JAX and the CPU worker, the GPU kernel checked (headless or on a phone), and a screenshot of the street vortex.
+- [x] GPU kernel checked headless against the Python reference
+- [ ] Benchmark and street result files green and committed; CI green
+- [ ] Screenshot of the street vortex
 
-### Risks
+### Still open from P1
 
-- Headless WebGPU may not run in the container or on CI runners. Then the GPU check moves to the self-test page on real phones.
-- Cross-implementation agreement within 0.5% only makes sense on steady, laminar cases; turbulent canyon flow diverges between float32 implementations after enough steps. Golden comparisons use the steady benchmarks and short fixed-step canyon runs.
+- Performance on real phones (the brief's 30 fps target) can only be measured on a device; please open the Design screen and `selftest.html` on your phone when convenient.
+- Time-averaged fields and breathing-zone probes in the browser are built in P2 together with the fumes.
+
+## P2 — Trees, hedges and fumes (plan)
+
+Goal: porous trees and hedges in the street, traffic fumes as a passive tracer, pedestrian exposure on both pavements, and the first comparison with the CODASC wind-tunnel measurements.
+
+### Sources to verify first
+
+- [ ] CODASC (Gromke and Ruck, KIT): geometry, approach-flow profile (tabulated on the site), line-source layout, measuring positions, c⁺ and λ definitions, file format; terms already read (non-commercial scientific use with attribution, no modification)
+- [ ] Gromke (2011), vegetation modelling concept: how λ scales between wind tunnel and full scale
+- [ ] Tominaga and Stathopoulos (2007): turbulent Schmidt number
+- [ ] Chang and Hanna (2004) and Hanna and Chang (2012): FAC2, FB, NMSE and the urban acceptance criteria
+- [ ] Abhijith et al. (2017): direction of the effect of trees and hedges in street canyons
+- [ ] Hong Kong guidance on clearance of tree crowns over carriageways (bus headroom)
+
+### Physics
+
+- [ ] Porous drag f = −(λ/2)|u|u in crowns and hedges through the Guo forcing, with the velocity solved implicitly so dense crowns stay stable; check: a porous block across a channel must give back λ = Δp / (½ρu² d), CODASC's own definition
+- [ ] D2Q5 advection-diffusion lattice for the tracer, diffusivity ν_t/Sc_t + D_mol; checks against an analytic diffusing pulse and tracer conservation (imbalance below 0.5%)
+- [ ] Line sources at road level following CODASC's layout; c⁺ = c u_H H / (Q/l)
+- [ ] CODASC approach-flow profile at the inlet, replacing the uniform inflow (assumption A-003)
+- [ ] Time-averaged fields (moving average and a fixed window) with a convergence measure; breathing-zone probes on both pavements
+- [ ] All four implementations, golden cases extended to trees and tracer
+
+### Evidence
+
+- [ ] CODASC loader (`python -m treesvb.codasc fetch` with checksums) and the 2D comparison at the centre plane: empty street at W/H 1 and 2, tree avenues at both crown densities and stand densities; FAC2, FB, NMSE against the Hanna and Chang criteria; at most one parameter calibrated on one case
+- [ ] Direction checks: in a narrow street with cross-wind, trees raise and low hedges lower pedestrian exposure
+- [ ] Reynolds sensitivity: pavement exposure changes by less than 10% when Re doubles
+- [ ] Colab job `01_reference_2d.ipynb` for the high-resolution runs, handed over when the Python reference passes
+
+### App
+
+- [ ] Design screen: add, drag and resize trees and hedges; crown density; constraint badges (pavement width, bus headroom, buildings)
+- [ ] Fumes layer (violet-grey ramp) and per-pavement exposure as a percentage of the same street without trees, shown as a range and tagged "Simulated"
+
+### Exit
+
+The CODASC comparison table is generated, and the direction checks pass or come with a written analysis.

@@ -162,5 +162,19 @@
   "hwk.stabQuestion": "Which combinations of Reynolds number and Smagorinsky constant run without blowing up? The live street uses Reynolds number {re} with Cs {cs}.",
   "hwk.stable": "Stable ({steps} steps)",
   "hwk.unstable": "Blew up by step {steps}",
-  "hwk.later": "The wind-tunnel comparison (CODASC), the direction checks for trees and hedges, and the sun and heat checks are added in phases 2 to 4."
+  "hwk.later": "The wind-tunnel comparison (CODASC), the direction checks for trees and hedges, and the sun and heat checks are added in phases 2 to 4.",
+  "hwk.check.skimming": "Skimming flow: one vortex fills the street (Oke 1988; Liu, Barth and Leung 2004). Observed: {n} vortex cells, {floor} of the floor with the wind.",
+  "hwk.check.rotation": "The vortex turns with the wind above the roofs: clockwise for wind from the left. Observed: {rotation}; top of the street moving at {top} × the inflow speed.",
+  "hwk.check.stacked": "Two vortices stacked one above the other, turning in opposite directions (Liu, Barth and Leung 2004). Observed: {n} stacked cells.",
+  "hwk.check.wake": "Outside skimming flow (H/W below 0.7, Oke 1988) the outer flow reaches the street floor. Observed: {floor} of the floor with the wind.",
+  "hwk.check.deep": "Very deep street: at least two stacked vortices. Observed: {n} stacked cells.",
+  "hwk.upwindTitle": "Why the model street has a street upwind",
+  "hwk.upwindQuestion": "In a flat (2D) model, the vortex shed by the first building's upwind edge stays over the street behind it. Does one street upwind give the studied street the skimming flow seen in wind tunnels and city blocks?",
+  "hwk.upwindAlone": "Street on its own",
+  "hwk.upwindBehind": "Street behind one other street",
+  "hwk.upwindTop": "top of the street ÷ inflow speed",
+  "hwk.upwindChart": "Time-averaged wind across the middle of the street",
+  "hwk.upwindX": "Along-wind speed ÷ inflow speed",
+  "hwk.upwindY": "Height ÷ building height",
+  "hwk.upwindNote": "Positive values move with the wind. Under skimming flow the top of the street moves with the wind and the floor against it."
 }

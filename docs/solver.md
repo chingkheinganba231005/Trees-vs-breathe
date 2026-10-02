@@ -63,7 +63,9 @@ Solid nodes and the inlet and outlet columns read themselves. Half-way bounce-ba
 
 ## The street canyon
 
-Two buildings of height H and depth B = H stand on a no-slip ground with a street of width W between them. The domain extends 3H upstream, 6H downstream and 5H up; the top is free-slip. The inflow is uniform at u_ref, and the boundary layer grows from the ground over the upstream fetch. Runs start from uniform flow, because starting from rest sends a pressure pulse of relative size u_ref/c_s through the domain. These lengths are assumptions (`docs/assumptions.md` A-002); the approach flow will follow CODASC once its documentation is read in phase 2.
+Three buildings of height H and depth B = H stand on a no-slip ground, with two streets of width W between them; the studied street is the second. The domain extends 3H upstream, 6H downstream and 5H up; the top is free-slip. The inflow is uniform at u_ref, and the boundary layer grows from the ground over the upstream fetch. Runs start from uniform flow, because starting from rest sends a pressure pulse of relative size u_ref/c_s through the domain. These lengths are assumptions (`docs/assumptions.md` A-002).
+
+Why a street upwind: with a single street, flow separates at the upwind edge of the first building and the vortex it sheds stays over the street. Its backward flow turned the street's mean vortex the wrong way: on 2026-10-02 the top of the street moved against the wind at about u_ref, and fumes from the road collected on the windward wall instead of the leeward wall. Inflow fluctuations of 20% at roof height (the CODASC approach flow) did not change this; a street upwind did. In 3D, as in the wind tunnel, that shed vortex breaks up, so the effect belongs to 2D. `results/street/upwind.json` records both cases.
 
 The live solver uses H = 48 cells on WebGPU and H = 24 on the CPU, Re = 20 000 and C_s = 0.17. The choice of C_s rests on the stability sweep in `results/street/stability.json`. C_s = 0.17 lies inside the range 0.1–0.17 given in BRIEF.md 5.1; Hou et al. tested C = C_s² = 0.0025, 0.01 and 0.04.
 

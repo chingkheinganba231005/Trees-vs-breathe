@@ -14,6 +14,7 @@ import type {
   RegimesResult,
   ShearResult,
   SpongeResult,
+  UpwindResult,
   StabilityResult,
 } from '../content/results';
 import { useI18n } from '../i18n/context';
@@ -180,8 +181,85 @@ function SolverCards() {
   );
 }
 
-function StreetCards() {
+type Translate = ReturnType<typeof useI18n>['t'];
+
+/** A regime check in the reader's language, with its numbers taken from the result rows. */
+function checkText(
+  c: RegimesResult['checks'][number],
+  rows: RegimesResult['rows'],
+  t: Translate,
+  lang: string,
+): string {
+  const row = rows.find((r) => r.aspect === c.aspect);
+  if (!c.id || !row) return `${c.expectation}. ${t('hwk.observed')}: ${c.observed}.`;
+  const locale = lang === 'en' ? 'en-GB' : 'zh-HK';
+  return t(`hwk.check.${c.id}`, {
+    n: row.stacked_primary_vortices,
+    floor: row.floor_fraction_with_wind.toLocaleString(locale, { style: 'percent' }),
+    rotation: t(row.strongest_vortex_rotation === 'clockwise' ? 'regimes.cw' : 'regimes.acw'),
+    top: (row.top_flow_over_uref ?? Number.NaN).toLocaleString(locale, {
+      maximumFractionDigits: 2,
+      signDisplay: 'always',
+    }),
+  });
+}
+
+function UpwindCard() {
   const { t } = useI18n();
+  const upwind = result<UpwindResult>('street/upwind.json');
+  const label = (n: number) => t(n === 1 ? 'hwk.upwindAlone' : 'hwk.upwindBehind');
+  return (
+    <EvidenceCard title={t('hwk.upwindTitle')} question={t('hwk.upwindQuestion')} result={upwind}>
+      {upwind && (
+        <>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            {upwind.rows.map((r) => (
+              <StatTile
+                key={r.streets_in_row}
+                label={`${label(r.streets_in_row)}: ${t('hwk.upwindTop')}`}
+                value={r.top_flow_over_uref.toLocaleString('en-GB', {
+                  maximumFractionDigits: 2,
+                  signDisplay: 'always',
+                })}
+              />
+            ))}
+          </div>
+          <LineChart
+            title={t('hwk.upwindChart')}
+            xLabel={t('hwk.upwindX')}
+            yLabel={t('hwk.upwindY')}
+            xDomain={[-1.5, 2.5]}
+            yDomain={[0, 2]}
+            xTicks={[-1, 0, 1, 2]}
+            yTicks={[0, 0.5, 1, 1.5, 2]}
+            series={upwind.rows.map((r) => {
+              const n = r.centre_profile_over_uref.length / 2;
+              return {
+                id: String(r.streets_in_row),
+                label: label(r.streets_in_row),
+                kind: r.streets_in_row === 1 ? ('markers' as const) : ('line' as const),
+                points: r.centre_profile_over_uref
+                  .map((u, j) => [u, (j + 0.5) / n] as const)
+                  .filter((_, j) => r.streets_in_row !== 1 || j % 3 === 0),
+              };
+            })}
+            table={{
+              columns: [t('hwk.upwindY'), ...upwind.rows.map((r) => label(r.streets_in_row))],
+              rows: upwind.rows[0]!.centre_profile_over_uref.map((_, j) => [
+                (j + 0.5) / (upwind.rows[0]!.centre_profile_over_uref.length / 2),
+                ...upwind.rows.map((r) => r.centre_profile_over_uref[j] ?? Number.NaN),
+              ]),
+            }}
+          />
+          <p className="mt-2 text-sm text-ink-muted">{t('hwk.upwindNote')}</p>
+        </>
+      )}
+    </EvidenceCard>
+  );
+}
+
+function StreetCards() {
+  const { t, lang } = useI18n();
   const regimes = result<RegimesResult>('street/regimes.json');
   const sponge = result<SpongeResult>('street/sponge.json');
   const stability = result<StabilityResult>('street/stability.json');
@@ -201,18 +279,19 @@ function StreetCards() {
             </div>
             <p className="mt-2 text-sm text-ink-muted">{t('hwk.regimeKey')}</p>
             <ul className="mt-3 space-y-2 text-sm">
-              {regimes.checks.map((c) => (
-                <li key={c.aspect} className="border-t border-line pt-2">
+              {regimes.checks.map((c, k) => (
+                <li key={k} className="border-t border-line pt-2">
                   <span className="font-bold">
                     H/W {c.aspect}: {t(c.passed ? 'evidence.passed' : 'evidence.failed')}.
                   </span>{' '}
-                  {c.expectation}. {t('hwk.observed')}: {c.observed}.
+                  {checkText(c, regimes.rows, t, lang)}
                 </li>
               ))}
             </ul>
           </>
         )}
       </EvidenceCard>
+      <UpwindCard />
       <EvidenceCard title={t('hwk.spongeTitle')} question={t('hwk.spongeQuestion')} result={sponge}>
         {sponge && (
           <>
