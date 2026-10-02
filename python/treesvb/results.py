@@ -25,6 +25,18 @@ def _git(*args: str) -> str:
         return ""
 
 
+def _code_state() -> tuple[str, bool]:
+    return (
+        _git("rev-parse", "HEAD") or "unknown",
+        # Results computed from uncommitted code are flagged, so they can be regenerated.
+        bool(_git("status", "--porcelain", "--", "python", "apps/web/src")),
+    )
+
+
+# The code a run used is the code at process start, not at the moment a long run finishes.
+_START = _code_state()
+
+
 def provenance(generated_by: str, packages: tuple[str, ...] = ("numpy", "jax")) -> dict[str, Any]:
     versions = {"python": platform.python_version()}
     for p in packages:
@@ -34,9 +46,8 @@ def provenance(generated_by: str, packages: tuple[str, ...] = ("numpy", "jax")) 
         "schema": SCHEMA,
         "generated_by": generated_by,
         "generated_at": dt.datetime.now(dt.UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "commit": _git("rev-parse", "HEAD") or "unknown",
-        # Results computed from uncommitted code are flagged, so they can be regenerated.
-        "dirty": bool(_git("status", "--porcelain", "--", "python", "apps/web/src")),
+        "commit": _START[0],
+        "dirty": _START[1],
         "platform": platform.platform(),
         "versions": versions,
     }

@@ -3,6 +3,7 @@ import { isHealthy, lowerTimeStep, MIN_TAU_MARGIN } from '../../apps/web/src/sim
 import { Particles, sampleVelocity } from '../../apps/web/src/sim/particles';
 import { canyonGeometry, canyonNx, streetColumns } from '../../apps/web/src/sim/street';
 import { parseColor, streetView } from '../../apps/web/src/sim/view';
+import { contourSegments } from '../../apps/web/src/components/charts/contour';
 
 describe('blow-up guard', () => {
   it('flags NaN and runaway speeds', () => {
@@ -73,5 +74,26 @@ describe('colour parsing for the canvas', () => {
     expect(parseColor('#1d6b3b')).toEqual([29 / 255, 107 / 255, 59 / 255]);
     expect(parseColor('rgb(14, 14, 14)')).toEqual([14 / 255, 14 / 255, 14 / 255]);
     expect(() => parseColor('papayawhip')).toThrow();
+  });
+});
+
+describe('contours for the streamline plots', () => {
+  it('finds a closed ring around a peak', () => {
+    const n = 21;
+    const values = new Float64Array(n * n);
+    for (let r = 0; r < n; r++)
+      for (let c = 0; c < n; c++)
+        values[r * n + c] = Math.exp(-((r - 10) ** 2 + (c - 10) ** 2) / 20);
+    const segs = contourSegments(values, n, n, 0.5);
+    expect(segs.length).toBeGreaterThan(8);
+    // Every crossing lies near the radius where the field equals 0.5.
+    const radius = Math.sqrt(20 * Math.log(2));
+    for (const [x0, y0] of segs) {
+      expect(Math.hypot(x0 - 10, y0 - 10)).toBeCloseTo(radius, 0);
+    }
+  });
+
+  it('finds nothing in a flat field', () => {
+    expect(contourSegments(new Float64Array(9).fill(1), 3, 3, 0.5)).toEqual([]);
   });
 });
