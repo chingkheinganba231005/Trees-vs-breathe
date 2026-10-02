@@ -40,6 +40,27 @@ for (const screen of screens) {
   });
 }
 
+test('the Design screen runs the live street on the CPU worker', async ({ page }, testInfo) => {
+  test.setTimeout(60_000);
+  const errors = collectErrors(page);
+  await page.goto('./?engine=cpu#/design');
+  const readouts = page.locator('dl');
+  await expect(readouts).toContainText('CPU worker', { timeout: 20_000 });
+  await expect(readouts).toContainText('20,000');
+  await expect(readouts).toContainText('time steps per second');
+  // The H/W slider rebuilds the street.
+  const slider = page.getByLabel('Street shape: building height ÷ street width (H/W)');
+  await slider.fill('2');
+  await slider.dispatchEvent('pointerup');
+  await expect(page.getByText('Deep street')).toBeVisible();
+  await page.waitForTimeout(4000);
+  await page.screenshot({
+    path: `test-results/screens/${testInfo.project.name}-design-live.png`,
+    fullPage: true,
+  });
+  expect(errors).toEqual([]);
+});
+
 test('the solver engine follows ?engine=cpu', async ({ page }) => {
   await page.goto('./?engine=cpu#/');
   await expect(page.getByText('Solver engine: CPU worker')).toBeVisible();

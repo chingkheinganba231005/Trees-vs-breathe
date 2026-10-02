@@ -23,13 +23,23 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 800 } },
     },
     {
-      // Headless Chromium exposes a SwiftShader (software) WebGPU adapter behind this flag,
-      // which is enough to check the WGSL kernel against the Python reference.
+      // Headless Chromium exposes a SwiftShader (software) WebGPU adapter, which is enough to
+      // check the WGSL kernel against the Python reference and the GPU rendering path.
       name: 'webgpu',
       testMatch: /gpu\.spec/,
       use: {
         ...devices['Desktop Chrome'],
-        launchOptions: { args: ['--enable-unsafe-webgpu'] },
+        // The full Chromium build with Vulkan on SwiftShader keeps a WebGPU canvas alive; the
+        // headless shell loses the device as soon as a canvas is configured.
+        channel: 'chromium',
+        launchOptions: {
+          args: [
+            '--enable-unsafe-webgpu',
+            '--enable-features=Vulkan',
+            '--use-vulkan=swiftshader',
+            '--use-angle=swiftshader',
+          ],
+        },
       },
     },
   ],
