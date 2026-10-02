@@ -16,10 +16,21 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   projects: [
-    { name: 'phone', use: { ...devices['Pixel 7'] } },
+    { name: 'phone', testIgnore: /gpu\.spec/, use: { ...devices['Pixel 7'] } },
     {
       name: 'desktop',
+      testIgnore: /gpu\.spec/,
       use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 800 } },
+    },
+    {
+      // Headless Chromium exposes a SwiftShader (software) WebGPU adapter behind this flag,
+      // which is enough to check the WGSL kernel against the Python reference.
+      name: 'webgpu',
+      testMatch: /gpu\.spec/,
+      use: {
+        ...devices['Desktop Chrome'],
+        launchOptions: { args: ['--enable-unsafe-webgpu'] },
+      },
     },
   ],
   // Serves the production build, so the smoke test checks what GitHub Pages will serve.

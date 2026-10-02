@@ -26,6 +26,17 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true,
+    rollupOptions: {
+      input: {
+        main: fileURLToPath(new URL('index.html', import.meta.url)),
+        // The solver self-test, also opened on phones to check the GPU kernel.
+        selftest: fileURLToPath(new URL('selftest.html', import.meta.url)),
+      },
+    },
+  },
+  server: {
+    // The self-test page imports golden files from tests/golden.
+    fs: { allow: [fileURLToPath(new URL('../..', import.meta.url))] },
   },
   preview: {
     port: 4173,
