@@ -1,0 +1,73 @@
+{
+  "schema": 1,
+  "notebook": "01_reference_2d",
+  "run": "20261003T050408Z",
+  "git": {
+    "commit": "c8d665e3be3ab310cf6065eabc3812ec8eae09a5",
+    "dirty": false
+  },
+  "parameters": {
+    "repo_ref": "claude/relaxed-lamport-aefen3",
+    "height": 24,
+    "smoke": false,
+    "jax_pin": "jax[cuda12]==0.10.2"
+  },
+  "seeds": {},
+  "runtime": {
+    "smoke": false,
+    "gpus": [
+      {
+        "name": "NVIDIA A100-SXM4-80GB",
+        "memory.total": "81920 MiB",
+        "driver_version": "580.82.07"
+      }
+    ],
+    "platform": "Linux-6.6.122+-x86_64-with-glibc2.39",
+    "versions": {
+      "python": "3.13.15",
+      "numpy": "2.1.3",
+      "jax": "0.10.2",
+      "jaxlib": "0.10.2"
+    }
+  },
+  "wall_time_s": 431.764,
+  "manifest_repo_path": "results/trees/01_reference_2d.manifest.json",
+  "outputs": [
+    {
+      "path": "trees/calibration.json",
+      "bytes": 3053,
+      "sha256": "d7ff3162c8a0891d766c612bf824234faaef9b45f1e0eb3bdc4dd7cd2a5e3f76",
+      "repo_path": "results/trees/calibration.json"
+    },
+    {
+      "path": "trees/codasc.json",
+      "bytes": 161324,
+      "sha256": "431927ae11c09d5bd41157da20b7d925039e997ea29de63cf80993a876ed66c0",
+      "repo_path": "results/trees/codasc.json"
+    },
+    {
+      "path": "trees/directions.json",
+      "bytes": 1725,
+      "sha256": "7114ca8db21028fc477b6cb603973afa740322eb8669d05e38c622c8cdbdde7e",
+      "repo_path": "results/trees/directions.json"
+    },
+    {
+      "path": "trees/reynolds.json",
+      "bytes": 1317,
+      "sha256": "7b515275cd943c14b49f17fe9dbc4a4330795a5620f96ec12f64a562b7bbc0d5",
+      "repo_path": "results/trees/reynolds.json"
+    },
+    {
+      "path": "trees/resolution.json",
+      "bytes": 2994,
+      "sha256": "503ba41a7e18b23a602274623341315fb13177e13c2ce2c8215e34403dd2d3b2",
+      "repo_path": "results/trees/resolution.json"
+    },
+    {
+      "path": "street/regimes_h48.json",
+      "bytes": 36275,
+      "sha256": "b84e288c517b8e8e0142708e4fa2b66caeae1b93cce328181d1b1edd2e18d0c8",
+      "repo_path": "results/street/regimes_h48.json"
+    }
+  ]
+}
