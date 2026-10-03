@@ -202,7 +202,7 @@ Goal: the time of day moves the sun, shade falls from the roofs and the crowns, 
 - [ ] Custom street: H, W, pavement widths, compass direction
 - [ ] Phone mode: compass for the direction, tilt to the roofline for the height (h = d tan θ + eye height, with its uncertainty), thermometer reading
 - [x] Weather presets measured (`python -m treesvb.hkweather`, `results/weather/presets.json`)
-- [ ] Date, time and weather preset controls on Design
+- [x] Weather preset and hour controls on Design; a street without a preset gets a direction choice, measured streets keep their bearing
 
 ### Sun and shade
 
@@ -215,16 +215,18 @@ Goal: the time of day moves the sun, shade falls from the roofs and the crowns, 
 - [x] Simplified SOLWEIG mean radiant temperature at each pavement; surface temperatures by a steady balance (A-017 to A-021)
 - [x] UTCI polynomial in TypeScript, within 0.1 °C of `pythermalcomfort` over a grid of inputs (`results/sun/utci.json`)
 - [x] Pedestrian wind converted to 10 m with UTCI's log law (A-023); the solver's pavement wind is wired in with the Design readouts
-- [ ] UTCI stress categories in plain words
+- [x] UTCI stress categories in plain words, both languages
 
 ### App
 
-- [ ] Design: shade band, UTCI strip along each pavement, time-of-day slider, wind-speed control; per-pavement Heat (UTCI °C and category) and Fumes readouts as ranges
+- [x] Design: per-pavement Heat (UTCI °C and category, sun or shade, radiant temperature, 10 m wind) next to the Fumes readouts, with the shade the greenery gives against the bare street; the street drawn to scale with the ground in sun and the sun's direction
+- [ ] Shade band and UTCI strip on the live canvas; a wind-speed control (the wind now comes from the weather preset)
+- [ ] Tree rows along the kerbs for real streets: CODASC's central row puts Nathan Road's local trees over the carriageway, so their shade misses the pavements unless moved
 - [x] Trees sized in metres on the real streets: a typical local roadside tree (A-014, A-015), the default for presets; the wind-tunnel avenue stays as an option
 - [ ] Lanes and the breathing zone sized in metres on the real streets in the live app (the Wing Lok run already uses them: A-012, A-016)
 - [ ] Wing Lok Street at its measured shape, recorded on Colab and shown beside the live view (D-030)
 - [ ] Constraint badges: pavement width and bus headroom
-- [ ] Evidence cards: solar position against `pvlib`, UTCI against `pythermalcomfort`
+- [x] Evidence cards: solar position against `pvlib`, UTCI against `pythermalcomfort`, and the collision margin
 
 ### Decisions
 
