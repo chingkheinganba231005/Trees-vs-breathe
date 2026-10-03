@@ -77,7 +77,8 @@ Goal: one D2Q9 lattice Boltzmann solver in four implementations (NumPy, JAX, Typ
 - Sound from vortex shedding filled the domain with pressure noise of order the vortex pressure itself. Absorbing layers at the inlet, outlet and top remove most of it (`results/street/sponge.json`).
 - Starting the street from rest sends a strong pressure pulse; runs start from uniform flow.
 - With C_s = 0.1 the street blew up at Re 10 000 and above; C_s = 0.17 is stable from Re 2000 to 50 000 (`results/street/stability.json`).
-- The mean vortex of a single street turned the wrong way: the top of the street moved against the wind at about u_ref, and road fumes collected on the windward wall. In 2D the vortex shed from the first block's upwind edge stays over the street. The regime check had only counted vortices, so it passed anyway; it now also checks the rotation. Inflow fluctuations of 20% at roof height did not help; one street upwind did (D-019, `results/street/upwind.json`).
+- The mean vortex of a single street turned the wrong way: the top of the street moved against the wind at about u_ref, and road fumes collected on the windward wall. In 2D the vortex shed from the first block's upwind edge stays over the street. The regime check had only counted vortices, so it passed anyway; it now also checks the rotation. Inflow fluctuations of 20% at roof height did not help; one street upwind did at H/W 1, but at H/W 2 and 3 the studied street needed two, so the rule is now a clearance of 3H from the row's upwind edge (D-019, `results/street/upwind.json`).
+- The regime check's "street floor with the wind" measure stopped telling the regimes apart once the vortex turned the right way: corner eddies at the foot of both walls carry the floor flow with the wind over a large part of the floor at every H/W, so the measure no longer separated H/W 0.3 from H/W 1 (`results/street/regimes.json` keeps reporting it). It is replaced by measures that follow the regime definitions: the top of the street moves with the wind in skimming and deep streets, and that flow weakens as the street narrows from H/W 0.3 to 1 (Oke 1988).
 - Headless Chromium's default shell loses a WebGPU device once a canvas is configured; the full Chromium build with Vulkan on SwiftShader keeps it. Real GPUs are not affected.
 - The production CSS minifier writes `#fff` for `#ffffff`, which the canvas colour reader did not accept.
 
@@ -92,7 +93,7 @@ Goal: one D2Q9 lattice Boltzmann solver in four implementations (NumPy, JAX, Typ
 | D-016 | Uniform inflow until the CODASC approach-flow profile is wired in (P2)                    | No unverified profile exponent is assumed                                                             |
 | D-017 | Evidence colours are neutral (ink and grey); series differ by mark (line or open markers) | Green, violet-grey and yellow-to-red each already carry one meaning in the app                        |
 | D-018 | CODASC raw files are fetched by a script with checksums and not committed                 | Its terms forbid modifying the material and only grant non-commercial scientific use with attribution |
-| D-019 | The studied street is the second in a row of three equal blocks                           | A single street sits under the first block's shed vortex in 2D and turns the wrong way                |
+| D-019 | The studied street starts at least 3H behind the upwind edge of a row of equal blocks     | A street close to the edge sits under the first block's shed vortex in 2D and turns the wrong way     |
 
 ### Exit
 

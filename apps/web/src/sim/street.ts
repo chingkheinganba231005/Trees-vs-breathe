@@ -33,19 +33,30 @@ export function roundHalfEven(v: number): number {
   return Math.abs(v % 1) === 0.5 && r % 2 !== 0 ? r - 1 : r;
 }
 
+/** As CLEAR_OF_LEADING_EDGE in cases.py: the studied street starts 3 H behind the row's edge. */
+export const CLEAR_OF_LEADING_EDGE = 3;
+
+/** Streets in front of the studied one (upwind_streets in cases.py, same integer arithmetic). */
+export function upwindStreets(height: number, width: number, building: number): number {
+  const need = CLEAR_OF_LEADING_EDGE * height - building;
+  return Math.max(1, Math.ceil(need / (building + width)));
+}
+
 export function canyonGeometry(
   height: number,
   aspect: number,
   o: CanyonOptions = {},
 ): CanyonGeometry {
+  const width = Math.max(2, roundHalfEven(height / aspect));
+  const building = roundHalfEven((o.building ?? 1) * height);
   return {
     height,
-    width: Math.max(2, roundHalfEven(height / aspect)),
-    building: roundHalfEven((o.building ?? 1) * height),
+    width,
+    building,
     upstream: roundHalfEven((o.upstream ?? 3) * height),
     downstream: roundHalfEven((o.downstream ?? 6) * height),
     top: roundHalfEven((o.top ?? 5) * height),
-    streets: o.streets ?? 2,
+    streets: o.streets ?? 1 + upwindStreets(height, width, building),
   };
 }
 

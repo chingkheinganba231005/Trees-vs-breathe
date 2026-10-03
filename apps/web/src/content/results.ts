@@ -97,9 +97,10 @@ export interface RegimesResult extends Provenance {
 
 export interface UpwindResult extends Provenance {
   rows: {
+    aspect: number;
     streets_in_row: number;
     top_flow_over_uref: number;
-    strongest_vortex_rotation: 'clockwise' | 'anticlockwise' | null;
+    top_vortex_rotation: 'clockwise' | 'anticlockwise' | null;
     centre_profile_over_uref: number[];
   }[];
 }

@@ -222,19 +222,20 @@ def render() -> str:
     body = []
     if r:
         body = [
-            "| Streets in the row | Strongest vortex | Top of the street ÷ u_ref |",
-            "| --- | --- | --- |",
+            "| H/W | Streets in the row | Studied street from the row's edge (H) | Top vortex | "
+            "Top of the street ÷ u_ref |",
+            "| --- | --- | --- | --- | --- |",
             *[
-                f"| {x['streets_in_row']} | {x['strongest_vortex_rotation']} | "
-                f"{x['top_flow_over_uref']:+.2f} |"
+                f"| {x['aspect']} | {x['streets_in_row']} | {x['leading_edge_to_street_h']:.1f} | "
+                f"{x['top_vortex_rotation']} | {x['top_flow_over_uref']:+.2f} |"
                 for x in r["rows"]
             ],
             "",
-            "With a single street, the vortex shed from the first block's upwind edge stays over "
-            "the street and turns its mean vortex the wrong way; the studied street therefore "
-            "sits behind one upwind street (docs/solver.md).",
+            "Close to the row's upwind edge, the vortex shed from the first block stays over the "
+            "street and turns its mean vortex the wrong way; the studied street therefore starts "
+            "at least 3 H behind the edge (docs/solver.md).",
         ]
-    lines += _section("A street upwind of the studied street", r, body)
+    lines += _section("Streets upwind of the studied street", r, body)
 
     r = load("street/sponge.json")
     body = []

@@ -5,7 +5,7 @@ Heavy GPU work runs on the user's Colab Pro A100 (80 GB). The notebooks import t
 | Notebook | Purpose | A100 time | Outputs | Status |
 | --- | --- | --- | --- | --- |
 | `00_setup_check.ipynb` | Checks the runtime, Drive, run folder, manifest and hand-off | 2 min | `results/colab/00_setup_check*.json` | Ready |
-| `01_reference_2d.ipynb` | CODASC calibration and comparison, direction checks for trees and a hedge, Reynolds sensitivity, grid resolution | 20–30 min | `results/trees/*.json` (the brief's `results/reference2d/` is named after the studies instead) | Ready |
+| `01_reference_2d.ipynb` | CODASC calibration and comparison, direction checks for trees and a hedge, Reynolds sensitivity, grid resolution | 30–40 min | `results/trees/*.json`, `results/street/regimes_h48.json` (the brief's `results/reference2d/` is named after the studies instead) | Ready |
 | `02_codasc_3d.ipynb` | 3D LES of 2–4 CODASC cases | 1–3 h | `results/codasc3d/*.json`, `apps/web/public/data/3d/*.bin` | Phase 4 |
 | `03_dataset.ipynb` | Batched 2D runs over the design space | 1–2 h | Dataset on Drive, `results/dataset/manifest.json` | Phase 4 |
 | `04_train_surrogate.ipynb` | MLP ensemble and U-Net: train, evaluate, export | 30–60 min | `apps/web/public/models/*.onnx`, `results/surrogate/metrics.json` | Phase 4 |

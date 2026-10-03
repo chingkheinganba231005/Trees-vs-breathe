@@ -7,9 +7,10 @@
 # 2. **codasc**: the ten cross-wind CODASC cases against the wind-tunnel data (FB, NMSE, FAC2);
 # 3. **directions**: do trees raise and a hedge lower the exposure on the pavements?
 # 4. **reynolds**: does pavement exposure move when the Reynolds number doubles?
-# 5. **resolution**: two cases again on a grid twice as fine.
+# 5. **resolution**: two cases again on a grid twice as fine;
+# 6. **deep streets**: the vortex structure at H/W 2 and 3 on 48 cells per building height.
 #
-# About 20 to 30 minutes on an A100. Everything is simulated; the wind-tunnel data are fetched
+# About 30 to 40 minutes on an A100. Everything is simulated; the wind-tunnel data are fetched
 # from the CODASC site and checked against the checksums in the repository.
 #
 # **How to run:** Runtime → Change runtime type → A100 GPU, then Runtime → Run all.
@@ -126,6 +127,22 @@ print(
 )
 
 # %% [markdown]
+# ## Deep streets on a finer grid
+#
+# At H = 24 cells a street with H/W 3 is only 8 cells wide, too coarse to trust its vortices. The
+# regime study runs H/W 2 and 3 again at H = 48; until it passes, the app's slider stops at 2.
+
+# %%
+from treesvb import street
+
+deep_args = ["regimes", "--tag", "h48", "--out", str(run.path)]
+if SMOKE:
+    deep_args += ["--quick", "--aspects", "2"]
+else:
+    deep_args += ["--height", str(2 * HEIGHT), "--aspects", "2", "3"]
+print("exit status", street.main(deep_args))
+
+# %% [markdown]
 # ## Manifest and download instructions
 
 # %%
@@ -133,6 +150,8 @@ names = (
     ["directions"] if SMOKE else ["calibration", "codasc", "directions", "reynolds", "resolution"]
 )
 outputs = {f"trees/{n}.json": f"results/trees/{n}.json" for n in names}
+if not SMOKE:
+    outputs["street/regimes_h48.json"] = "results/street/regimes_h48.json"
 manifest = colab.write_manifest(
     run,
     repo=REPO,

@@ -77,9 +77,9 @@ class CanyonGeometry:
     """A street canyon in a row of equal blocks on a ground plane, wind across the street.
 
     The street studied is the last of `streets` equal streets. In 2D the vortex shed from the
-    upwind edge of the first block stays over the first street and turns its mean vortex the
-    wrong way (results/street/upwind.json); one street upwind gives the studied street the
-    skimming flow it has in the wind tunnel and in a city block.
+    upwind edge of the first block stays over the streets close behind it and turns their mean
+    vortex the wrong way (results/street/upwind.json); see upwind_streets for how many streets
+    go in front of the studied one.
     """
 
     height: int  # building height H, cells
@@ -117,6 +117,21 @@ class CanyonGeometry:
         return s
 
 
+#: The studied street's upwind wall stands at least this many building heights behind the
+#: row's upwind edge; one street upwind at H/W 1 (3 H) gave the skimming flow, none (1 H) did
+#: not (results/street/upwind.json).
+CLEAR_OF_LEADING_EDGE = 3
+
+
+def upwind_streets(height: int, width: int, building: int) -> int:
+    """Streets in front of the studied one: at least one, and enough to clear the leading edge.
+
+    Integer arithmetic in cells, so apps/web/src/sim/street.ts gets the same answer.
+    """
+    need = CLEAR_OF_LEADING_EDGE * height - building
+    return max(1, -(-need // (building + width)))
+
+
 def canyon_geometry(
     height: int,
     aspect: float,
@@ -124,17 +139,22 @@ def canyon_geometry(
     upstream: float = 3.0,
     downstream: float = 6.0,
     top: float = 5.0,
-    streets: int = 2,
+    streets: int | None = None,
 ) -> CanyonGeometry:
-    """Lengths after `aspect` are multiples of the building height (docs/assumptions.md A-002)."""
+    """Lengths after `aspect` are multiples of the building height (docs/assumptions.md A-002).
+
+    `streets` defaults to the studied street plus upwind_streets in front of it.
+    """
+    width = max(2, round(height / aspect))
+    b = round(building * height)
     return CanyonGeometry(
         height=height,
-        width=max(2, round(height / aspect)),
-        building=round(building * height),
+        width=width,
+        building=b,
         upstream=round(upstream * height),
         downstream=round(downstream * height),
         top=round(top * height),
-        streets=streets,
+        streets=streets if streets is not None else 1 + upwind_streets(height, width, b),
     )
 
 

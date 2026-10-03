@@ -212,7 +212,10 @@ function checkText(
 function UpwindCard() {
   const { t } = useI18n();
   const upwind = result<UpwindResult>('street/upwind.json');
-  const label = (n: number) => t(n === 1 ? 'hwk.upwindAlone' : 'hwk.upwindBehind');
+  const label = (r: UpwindResult['rows'][number]) =>
+    t(r.streets_in_row === 1 ? 'hwk.upwindAlone' : 'hwk.upwindBehind', { aspect: r.aspect });
+  // The profile chart shows H/W 1; the tiles cover every street shape tested.
+  const chartRows = upwind?.rows.filter((r) => r.aspect === 1) ?? [];
   return (
     <EvidenceCard title={t('hwk.upwindTitle')} question={t('hwk.upwindQuestion')} result={upwind}>
       {upwind && (
@@ -220,8 +223,8 @@ function UpwindCard() {
           <div className="mt-3 grid grid-cols-2 gap-2">
             {upwind.rows.map((r) => (
               <StatTile
-                key={r.streets_in_row}
-                label={`${label(r.streets_in_row)}: ${t('hwk.upwindTop')}`}
+                key={`${r.aspect}-${r.streets_in_row}`}
+                label={`${label(r)}: ${t('hwk.upwindTop')}`}
                 value={r.top_flow_over_uref.toLocaleString('en-GB', {
                   maximumFractionDigits: 2,
                   signDisplay: 'always',
@@ -229,33 +232,35 @@ function UpwindCard() {
               />
             ))}
           </div>
-          <LineChart
-            title={t('hwk.upwindChart')}
-            xLabel={t('hwk.upwindX')}
-            yLabel={t('hwk.upwindY')}
-            xDomain={[-1.5, 2.5]}
-            yDomain={[0, 2]}
-            xTicks={[-1, 0, 1, 2]}
-            yTicks={[0, 0.5, 1, 1.5, 2]}
-            series={upwind.rows.map((r) => {
-              const n = r.centre_profile_over_uref.length / 2;
-              return {
-                id: String(r.streets_in_row),
-                label: label(r.streets_in_row),
-                kind: r.streets_in_row === 1 ? ('markers' as const) : ('line' as const),
-                points: r.centre_profile_over_uref
-                  .map((u, j) => [u, (j + 0.5) / n] as const)
-                  .filter((_, j) => r.streets_in_row !== 1 || j % 3 === 0),
-              };
-            })}
-            table={{
-              columns: [t('hwk.upwindY'), ...upwind.rows.map((r) => label(r.streets_in_row))],
-              rows: upwind.rows[0]!.centre_profile_over_uref.map((_, j) => [
-                (j + 0.5) / (upwind.rows[0]!.centre_profile_over_uref.length / 2),
-                ...upwind.rows.map((r) => r.centre_profile_over_uref[j] ?? Number.NaN),
-              ]),
-            }}
-          />
+          {chartRows.length > 0 && (
+            <LineChart
+              title={t('hwk.upwindChart')}
+              xLabel={t('hwk.upwindX')}
+              yLabel={t('hwk.upwindY')}
+              xDomain={[-1.5, 2.5]}
+              yDomain={[0, 2]}
+              xTicks={[-1, 0, 1, 2]}
+              yTicks={[0, 0.5, 1, 1.5, 2]}
+              series={chartRows.map((r) => {
+                const n = r.centre_profile_over_uref.length / 2;
+                return {
+                  id: String(r.streets_in_row),
+                  label: label(r),
+                  kind: r.streets_in_row === 1 ? ('markers' as const) : ('line' as const),
+                  points: r.centre_profile_over_uref
+                    .map((u, j) => [u, (j + 0.5) / n] as const)
+                    .filter((_, j) => r.streets_in_row !== 1 || j % 3 === 0),
+                };
+              })}
+              table={{
+                columns: [t('hwk.upwindY'), ...chartRows.map(label)],
+                rows: chartRows[0]!.centre_profile_over_uref.map((_, j) => [
+                  (j + 0.5) / (chartRows[0]!.centre_profile_over_uref.length / 2),
+                  ...chartRows.map((r) => r.centre_profile_over_uref[j] ?? Number.NaN),
+                ]),
+              }}
+            />
+          )}
           <p className="mt-2 text-sm text-ink-muted">{t('hwk.upwindNote')}</p>
         </>
       )}

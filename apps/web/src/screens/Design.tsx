@@ -14,8 +14,10 @@ import type { GreeneryDesign } from '../sim/greenery';
 import { buildGreenery, DEFAULT_DESIGN, shiftRange } from '../sim/greenery';
 import type { SimStats } from '../sim/streetSim';
 
+// The street shapes the regime study has checked (results/street/regimes.json); H/W 3 waits for
+// the finer-grid check in the Colab job.
 const ASPECT_MIN = 0.3;
-const ASPECT_MAX = 3;
+const ASPECT_MAX = 2;
 
 function Readout({ label, value, mono = true }: { label: string; value: string; mono?: boolean }) {
   return (
