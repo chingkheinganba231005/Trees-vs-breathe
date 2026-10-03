@@ -351,5 +351,6 @@
   "green.rows": "樹木位置",
   "green.rowsKerbs": "沿兩邊路緣",
   "green.rowsTunnel": "按風洞實驗",
-  "hwk.collisionFlickerMean": "該範圍內每步之間的平均閃動（標準 → 我們的）"
+  "hwk.collisionFlickerMean": "該範圍內每步之間的平均閃動（標準 → 我們的）",
+  "recorded.notSettled": "這次計算尚未穩定：前後兩半的平均值仍相差多達 {p}，比任何設計造成的改變還大。它顯示在二維計算中，如此深的街道內廢氣如何積聚，但不能說明哪個設計較好。"
 }

@@ -430,7 +430,9 @@ def render() -> str:
                     for k in sorted((k for k in x if k.startswith("h")), key=lambda k: int(k[1:]))
                 ],
             ]
-        out += _section("Grid resolution of the comparison" + label, r, body, target=False)
+        # The finer grids skip the resolution study (it would need twice their grid again).
+        if r or not suffix:
+            out += _section("Grid resolution of the comparison" + label, r, body, target=False)
         return out
 
     lines += ["## 3. Trees, hedges and fumes", ""]

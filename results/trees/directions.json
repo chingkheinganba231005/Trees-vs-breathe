@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "generated_by": "python -m treesvb.trees",
-  "generated_at": "2026-10-03T05:59:39Z",
-  "commit": "1484bd99533ae56466984d39a05692e03420cf99",
+  "generated_at": "2026-10-03T09:06:24Z",
+  "commit": "5173b1b68adaaa288be04d7092047d4482f9cf67",
   "dirty": false,
   "platform": "Linux-6.6.122+-x86_64-with-glibc2.39",
   "versions": {
@@ -23,16 +23,16 @@
       "aspect_w_over_h": 1,
       "expected_leeward": "up",
       "pavement_without": {
-        "A": 61.912,
-        "B": 139.4627
+        "A": 91.6988,
+        "B": 137.8294
       },
       "pavement_with": {
-        "A": 87.4937,
-        "B": 48.8454
+        "A": 163.9704,
+        "B": 18.6035
       },
       "ratio": {
-        "A": 1.4132,
-        "B": 0.3502
+        "A": 1.7881,
+        "B": 0.135
       },
       "passed": true
     },
@@ -41,20 +41,20 @@
       "aspect_w_over_h": 2,
       "expected_leeward": "down",
       "pavement_without": {
-        "A": 20.4273,
-        "B": 4.4677
+        "A": 9.4888,
+        "B": 2.3894
       },
       "pavement_with": {
-        "A": 19.3228,
-        "B": 4.4076
+        "A": 11.7389,
+        "B": 2.7602
       },
       "ratio": {
-        "A": 0.9459,
-        "B": 0.9865
+        "A": 1.2371,
+        "B": 1.1552
       },
-      "passed": true
+      "passed": false
     }
   ],
-  "passed": true,
+  "passed": false,
   "height_cells": 24
 }

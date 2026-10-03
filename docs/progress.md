@@ -134,11 +134,12 @@ Goal: porous trees and hedges in the street, traffic fumes as a passive tracer, 
 - [x] CODASC loader (`python -m treesvb.codasc fetch` with checksums) and the comparison study (`python -m treesvb.trees`)
 - [x] CODASC comparison results (Colab job `01_reference_2d`, run 20261003T050408Z, 24 cells per H): meets the urban criteria over all ten cases; the windward wall near the ground and the wide street with trees do not agree (analysis in `docs/codasc.md`)
 - [x] Direction checks: trees raise and a central hedge lowers leeward pavement exposure; both pass
-- [ ] Reynolds sensitivity: pavement exposure changes by less than 10% when Re doubles. Misses at 24 cells per H; at 48 both runs at Re 40 000 blew up (analysis in `docs/codasc.md`). Open until the collision is more stable
+- [ ] Reynolds sensitivity: pavement exposure changes by less than 10% when Re doubles. In the third Colab run (first regularised collision) the tree-free W/H 1 street meets it at 24 cells; the dense-crown street and the 48-cell runs miss (analysis in `docs/codasc.md`)
 - [x] Follow-up Colab run (20261003T055628Z): every study at 24 and 48 cells per H, a calibration per grid, run lengths scaled to the grid, and a settling measure per run
 - [x] A collision with more margin near τ = ½: regularised, with the bulk stress relaxed fully, in all four implementations (D-028), goldens regenerated; on the thin double shear layer plain BGK blows up at every Reynolds number tried and the regularised collision at none, and outside the absorbing layers the street's largest step-to-step flicker is below BGK's and its average somewhat above (`results/benchmarks/collision_margin.json`)
-- [ ] Averaging windows four times longer (D-029), and the comparison again at 24 and 48 with the regularised collision: Colab run prepared in `01_reference_2d.ipynb`
-- [x] Deep streets at 48 cells per H: H/W 2 and 3 pass (`results/street/regimes_h48.json`). The live app runs at 24 cells on every device (D-024), so its slider stops at 2
+- [x] Averaging windows four times longer (D-029) and the comparison again at 24 and 48: Colab run 20261003T085700Z, made with the first regularised collision; every run stable, the urban criteria met at both grids, the hedge direction not established
+- [ ] The studies again with the current collision (bulk stress relaxed fully, BGK in the layers)
+- [ ] Deep streets at 48 cells per H: H/W 2 holds two stacked vortices; H/W 3 held two in the BGK run and one in the third run (`results/street/regimes_h48.json`). The live app runs at 24 cells on every device (D-024), so its slider stops at 2
 - [x] Colab notebook `01_reference_2d.ipynb`, smoke-tested on CPU
 
 ### App
@@ -224,7 +225,7 @@ Goal: the time of day moves the sun, shade falls from the roofs and the crowns, 
 - [x] Tree rows along the kerbs (A-024), the default on measured streets: CODASC's central row had put Nathan Road's local trees over the carriageway, where their shade missed the pavements
 - [x] Trees sized in metres on the real streets: a typical local roadside tree (A-014, A-015), the default for presets; the wind-tunnel avenue stays as an option
 - [ ] Lanes and the breathing zone sized in metres on the real streets in the live app (the Wing Lok run already uses them: A-012, A-016)
-- [ ] Wing Lok Street at its measured shape, recorded on Colab and shown beside the live view (D-030)
+- [x] Wing Lok Street at its measured shape, recorded on Colab at 96 cells and shown beside the live view (D-030); the run had not settled, and the app says so
 - [ ] Constraint badges: pavement width and bus headroom
 - [x] Evidence cards: solar position against `pvlib`, UTCI against `pythermalcomfort`, and the collision margin
 

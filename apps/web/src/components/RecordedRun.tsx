@@ -70,6 +70,13 @@ export function RecordedRun({ run, name }: { run: StreetRun; name: string }) {
   const date = new Date(run.generated_at).toLocaleDateString(locale, { dateStyle: 'long' });
   const rows = run.rows.filter((r) => r.healthy);
   const hedge = run.rows.find((r) => r.design === 'hedge')?.crowns?.[0];
+  // A change smaller than how far the averages still moved is not established (settlingHelp).
+  const established = rows.some(
+    (r) =>
+      r.ratio &&
+      (['A', 'B'] as const).some((k) => Math.abs(r.ratio![k] - 1) > (r.settling ?? Infinity)),
+  );
+  const moved = Math.max(...rows.map((r) => r.settling ?? 0));
   return (
     <section
       aria-labelledby="recorded"
@@ -84,6 +91,13 @@ export function RecordedRun({ run, name }: { run: StreetRun; name: string }) {
       <p className="mt-1 text-sm text-ink-muted">
         {t('recorded.intro', { h: run.height_cells, w: run.width_cells })}
       </p>
+      {!established && (
+        <p className="mt-3 rounded-md border border-line px-3 py-2 text-sm" role="note">
+          {t('recorded.notSettled', {
+            p: moved.toLocaleString(locale, { style: 'percent', maximumFractionDigits: 0 }),
+          })}
+        </p>
+      )}
       <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-4">
         {rows.map((r) => (
           <figure key={r.design}>

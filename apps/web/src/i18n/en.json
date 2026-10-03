@@ -351,5 +351,6 @@
   "green.rows": "Where the trees stand",
   "green.rowsKerbs": "Along both kerbs",
   "green.rowsTunnel": "As in the wind tunnel",
-  "hwk.collisionFlickerMean": "Average step-to-step flicker there (standard → ours)"
+  "hwk.collisionFlickerMean": "Average step-to-step flicker there (standard → ours)",
+  "recorded.notSettled": "This run had not settled: its averages still moved by up to {p} between the first and second half, more than any design changed them. It shows how the fumes build up in a street this deep in two dimensions, not which design is better."
 }

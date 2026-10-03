@@ -71,13 +71,26 @@ Colab run `20261003T055628Z` (commit `1484bd9`) repeated every study at 24 and a
 - The hedge in the middle of the W/H 2 street lowered the leeward pavement at 24 cells and raised it at 48. Both changes are smaller than the settling, so the model does not yet say which way a hedge works. The trees' effect at 24 cells is larger than the settling.
 - The Reynolds check misses at 24 cells and could not be done at 48.
 
+### Third run: the first regularised collision, longer averaging
+
+Colab run `20261003T085700Z` (commit `5173b1b`) repeated the studies at 24 and 48 cells per building height with averaging windows four times longer, and ran Wing Lok Street at its measured shape at 96 cells. It used the first regularised collision. The collision has changed twice since (`docs/solver.md`): the bulk stress now relaxes fully, and the absorbing layers run plain BGK. These results are the record of that run until a run with the current collision replaces them.
+
+- Every run stayed stable at both grids, including the four that blew up under BGK (the dense crown at W/H 1 and both runs at Re 40 000 at 48 cells). That was the aim of the new collision.
+- Over all ten cases the model meets the urban criteria at both grids.
+- At 24 cells the averages have settled better than in the second run; at 48 cells several cases still move by more than half between the two halves of the window.
+- Trees raise the leeward pavement's exposure at both grids, as CODASC shows.
+- The hedge in the middle of the W/H 2 street raised the leeward pavement slightly at both grids. The literature reports a decrease; the BGK runs lowered it at 24 cells and raised it at 48. Each change is smaller than the run's settling, so the model does not establish a hedge effect either way, and the direction check is reported as failed.
+- Doubling Re now moves the tree-free W/H 1 street's pavements by less than the 10% target at 24 cells; the dense-crown street and the 48-cell runs still miss.
+- At 48 cells the H/W 3 street held one primary vortex where Liu, Barth and Leung (2004) and the BGK run found two. Until this is understood the live slider stays at H/W 2, which holds two stacked vortices at both grids.
+- Wing Lok Street (H/W 4.4) was still filling with fumes at the end: pavement c⁺ came out around a hundred times that of the W/H 1 street and was still moving by over half between the halves, far more than any design changed it. A street this deep exchanges almost no air across its roof in two dimensions; a real one is also ventilated along its length. The app shows the run with that warning (D-030).
+
 ### What follows
 
-1. A collision with more margin near a relaxation time of ½. Done: the regularised BGK collision runs in all four implementations (`docs/solver.md`, D-028), and on a stress test where plain BGK fails it holds.
-2. Averaging windows four times longer (D-029), and the settling measure reported again.
-3. The comparison again at 24 and 48 cells, in the Colab run prepared in `colab/01_reference_2d.ipynb`, together with Wing Lok Street at its measured shape.
+1. The studies again with the current collision (`01_reference_2d.ipynb` as it stands).
+2. The hedge question: longer averaging, and the hedge where the brief places it, between road and pavement, as well as in the middle.
+3. Wing Lok Street: a 2D section will not settle, so its levels need either far longer runs or the 3D runs of `02_codasc_3d.ipynb`; until then the recorded run shows the flow, not a verdict on designs.
 
-Until then the live app runs at 24 cells on every device (`docs/progress.md`, D-024), and the numbers above are from the BGK runs.
+The live app runs at 24 cells on every device (`docs/progress.md`, D-024).
 
 ## Sources
 

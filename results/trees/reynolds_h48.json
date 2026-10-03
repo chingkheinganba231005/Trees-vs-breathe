@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "generated_by": "python -m treesvb.trees",
-  "generated_at": "2026-10-03T06:21:10Z",
-  "commit": "1484bd99533ae56466984d39a05692e03420cf99",
+  "generated_at": "2026-10-03T12:14:39Z",
+  "commit": "5173b1b68adaaa288be04d7092047d4482f9cf67",
   "dirty": false,
   "platform": "Linux-6.6.122+-x86_64-with-glibc2.39",
   "versions": {
@@ -19,12 +19,38 @@
   "rows": [
     {
       "case": "1_90_0,0_000",
-      "healthy": false,
+      "pavement": {
+        "20000": {
+          "A": 109.924,
+          "B": 123.3935
+        },
+        "40000": {
+          "A": 181.681,
+          "B": 106.7516
+        }
+      },
+      "relative_change": {
+        "A": 0.6528,
+        "B": 0.1349
+      },
       "passed": false
     },
     {
       "case": "1_90_1,0_200",
-      "healthy": false,
+      "pavement": {
+        "20000": {
+          "A": 224.3358,
+          "B": 95.7494
+        },
+        "40000": {
+          "A": 227.7027,
+          "B": 54.9817
+        }
+      },
+      "relative_change": {
+        "A": 0.015,
+        "B": 0.4258
+      },
       "passed": false
     }
   ],

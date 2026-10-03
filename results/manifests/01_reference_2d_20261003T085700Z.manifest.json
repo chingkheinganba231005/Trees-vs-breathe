@@ -1,0 +1,109 @@
+{
+  "schema": 1,
+  "notebook": "01_reference_2d",
+  "run": "20261003T085700Z",
+  "git": {
+    "commit": "5173b1b68adaaa288be04d7092047d4482f9cf67",
+    "dirty": false
+  },
+  "parameters": {
+    "repo_ref": "claude/relaxed-lamport-aefen3",
+    "heights": [
+      24,
+      48
+    ],
+    "street": "wing_lok",
+    "street_height": 96,
+    "deep_streets": true,
+    "smoke": false,
+    "jax_pin": "jax[cuda12]==0.10.2"
+  },
+  "seeds": {},
+  "runtime": {
+    "smoke": false,
+    "gpus": [
+      {
+        "name": "NVIDIA A100-SXM4-80GB",
+        "memory.total": "81920 MiB",
+        "driver_version": "580.82.07"
+      }
+    ],
+    "platform": "Linux-6.6.122+-x86_64-with-glibc2.39",
+    "versions": {
+      "python": "3.13.15",
+      "numpy": "2.1.3",
+      "jax": "0.10.2",
+      "jaxlib": "0.10.2"
+    }
+  },
+  "wall_time_s": 11948.391,
+  "manifest_repo_path": "results/manifests/01_reference_2d_20261003T085700Z.manifest.json",
+  "outputs": [
+    {
+      "path": "trees/calibration.json",
+      "bytes": 3084,
+      "sha256": "91800579fc5e47cba839906542f469e4549a55d8dbd8d15a7faa3c207b4bc2ca",
+      "repo_path": "results/trees/calibration.json"
+    },
+    {
+      "path": "trees/codasc.json",
+      "bytes": 160685,
+      "sha256": "57c1393030830b6d16ab25fee099a4f1742fcd4a53f6b4576a018670968e2917",
+      "repo_path": "results/trees/codasc.json"
+    },
+    {
+      "path": "trees/directions.json",
+      "bytes": 1749,
+      "sha256": "12b78fe2320ccc06b82bba0405aa1fc59f57d7f05ce7633d9d851dcf94b1a239",
+      "repo_path": "results/trees/directions.json"
+    },
+    {
+      "path": "trees/reynolds.json",
+      "bytes": 1342,
+      "sha256": "af314d388925d1b11fd0ecb9835f72016fae03678f5417c79cce27fad3a58583",
+      "repo_path": "results/trees/reynolds.json"
+    },
+    {
+      "path": "trees/resolution.json",
+      "bytes": 3105,
+      "sha256": "f86b23868c3d88a374272b7bc2dd9eaa14e7f17abdc71c8e895d06649ccafc49",
+      "repo_path": "results/trees/resolution.json"
+    },
+    {
+      "path": "trees/calibration_h48.json",
+      "bytes": 3088,
+      "sha256": "fbbbec87d71bb6cc3b2992f262ec500098e93eed547c9213c710dd41ee2feb58",
+      "repo_path": "results/trees/calibration_h48.json"
+    },
+    {
+      "path": "trees/codasc_h48.json",
+      "bytes": 620508,
+      "sha256": "fb3117d5ded280fc905ae067d25ca588984c6ea9dd05ab68236ba4ee35c29492",
+      "repo_path": "results/trees/codasc_h48.json"
+    },
+    {
+      "path": "trees/directions_h48.json",
+      "bytes": 1750,
+      "sha256": "5673c69b92c556ec58c8eeb2c381b774ffe1d9c8d22bd24a993e93bdb6472758",
+      "repo_path": "results/trees/directions_h48.json"
+    },
+    {
+      "path": "trees/reynolds_h48.json",
+      "bytes": 1342,
+      "sha256": "952458a1f89d1c31f96195331b031f46c5816a440e8f4d5e0040bdf459aa2278",
+      "repo_path": "results/trees/reynolds_h48.json"
+    },
+    {
+      "path": "streets/run_wing_lok.json",
+      "bytes": 431669,
+      "sha256": "b8393b1fd5337437359c9be56445ac2aeb44ffe46d4452a0d5e78f8bc1629663",
+      "repo_path": "results/streets/run_wing_lok.json"
+    },
+    {
+      "path": "street/regimes_h48.json",
+      "bytes": 36477,
+      "sha256": "3818fdb39bd53dff13bab69172e839ad110abb8fc829f90c3b8701240e270a6d",
+      "repo_path": "results/street/regimes_h48.json"
+    }
+  ]
+}

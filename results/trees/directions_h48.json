@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "generated_by": "python -m treesvb.trees",
-  "generated_at": "2026-10-03T06:18:38Z",
-  "commit": "1484bd99533ae56466984d39a05692e03420cf99",
+  "generated_at": "2026-10-03T12:10:36Z",
+  "commit": "5173b1b68adaaa288be04d7092047d4482f9cf67",
   "dirty": false,
   "platform": "Linux-6.6.122+-x86_64-with-glibc2.39",
   "versions": {
@@ -20,24 +20,37 @@
   "rows": [
     {
       "case": "trees",
-      "healthy": false,
-      "passed": false
+      "aspect_w_over_h": 1,
+      "expected_leeward": "up",
+      "pavement_without": {
+        "A": 109.924,
+        "B": 123.3935
+      },
+      "pavement_with": {
+        "A": 224.3358,
+        "B": 95.7494
+      },
+      "ratio": {
+        "A": 2.0408,
+        "B": 0.776
+      },
+      "passed": true
     },
     {
       "case": "hedge",
       "aspect_w_over_h": 2,
       "expected_leeward": "down",
       "pavement_without": {
-        "A": 23.3757,
-        "B": 2.5609
+        "A": 26.8833,
+        "B": 9.5962
       },
       "pavement_with": {
-        "A": 27.1463,
-        "B": 2.414
+        "A": 27.7739,
+        "B": 6.7643
       },
       "ratio": {
-        "A": 1.1613,
-        "B": 0.9426
+        "A": 1.0331,
+        "B": 0.7049
       },
       "passed": false
     }
