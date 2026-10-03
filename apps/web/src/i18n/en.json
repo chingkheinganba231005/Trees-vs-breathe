@@ -290,5 +290,6 @@
   "recorded.method": "Trees: the typical local roadside tree, {tree} m tall with a {spread} m crown of dense foliage. Hedge: {hh} m high and {hw} m wide. Breathing zone: within {zw} m of each wall, {z0}–{z1} m above the ground. The percentage under a reading compares it with no greenery.",
   "recorded.settlingHelp": "\"Still moving\" is how much the average changed between the first and second half of the recording. A difference between two designs smaller than this is not established.",
   "recorded.source": "Recorded on Colab on {date} (commit {commit}). Simulated, not measured.",
-  "design.presetRecorded": "A run at its measured shape, recorded on a finer grid, is shown below the live view."
+  "design.presetRecorded": "A run at its measured shape, recorded on a finer grid, is shown below the live view.",
+  "hwk.spongeFailedLabel": "Step at which the run without the layers failed"
 }

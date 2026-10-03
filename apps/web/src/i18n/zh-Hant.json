@@ -290,5 +290,6 @@
   "recorded.method": "樹木：典型的本地路旁樹，高 {tree} 米，樹冠闊 {spread} 米，枝葉茂密。綠籬：高 {hh} 米，闊 {hw} 米。呼吸高度範圍：離每邊牆 {zw} 米以內，離地 {z0}–{z1} 米。讀數下的百分比是與沒有綠化時的比較。",
   "recorded.settlingHelp": "「仍在變動」是記錄的前半段與後半段平均值之間的差距。兩個設計之間比這更小的差別並不可靠。",
   "recorded.source": "於 {date} 在 Colab 記錄（提交 {commit}）。模擬結果，並非實測。",
-  "design.presetRecorded": "下方即時畫面之後，附有在較細網格上按實測形狀運行的記錄結果。"
+  "design.presetRecorded": "下方即時畫面之後，附有在較細網格上按實測形狀運行的記錄結果。",
+  "hwk.spongeFailedLabel": "沒有吸收層時計算失敗的步數"
 }

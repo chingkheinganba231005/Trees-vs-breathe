@@ -110,9 +110,13 @@ export interface SpongeResult extends Provenance {
   rows: {
     configuration: string;
     series: { step: number; rho_std: number; max_speed_over_uref: number }[];
-    mean_rho_std_second_half: number;
+    /** Absent when the run failed (see failed_at). */
+    mean_rho_std_second_half?: number;
+    healthy?: boolean;
+    failed_at?: number;
   }[];
-  noise_reduction_factor: number;
+  /** Null when the run without the layers failed. */
+  noise_reduction_factor: number | null;
 }
 
 export interface StabilityResult extends Provenance {

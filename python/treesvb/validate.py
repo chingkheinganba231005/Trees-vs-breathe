@@ -265,11 +265,20 @@ def render() -> str:
         body = [
             "| Configuration | Mean density spread, second half |",
             "| --- | --- |",
-            *[f"| {x['configuration']} | {x['mean_rho_std_second_half']:.4f} |" for x in r["rows"]],
+            *[
+                f"| {x['configuration']} | {x['mean_rho_std_second_half']:.4f} |"
+                if "mean_rho_std_second_half" in x
+                else f"| {x['configuration']} | {UNSTABLE} at step {x['failed_at']} |"
+                for x in r["rows"]
+            ],
             "",
-            f"Noise reduced {r['noise_reduction_factor']:.1f} times. For scale, the pressure "
-            f"of a vortex turning at twice the inflow speed corresponds to a density change of "
-            f"{r['vortex_pressure_scale']:.4f}.",
+            (
+                f"Noise reduced {r['noise_reduction_factor']:.1f} times."
+                if r["noise_reduction_factor"] is not None
+                else "Without the layers the noise grows until the run fails."
+            )
+            + " For scale, the pressure of a vortex turning at twice the inflow speed "
+            f"corresponds to a density change of {r['vortex_pressure_scale']:.4f}.",
         ]
     lines += _section("Absorbing layers against trapped sound", r, body)
 

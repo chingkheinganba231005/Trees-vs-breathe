@@ -311,22 +311,31 @@ function StreetCards() {
         {sponge && (
           <>
             <div className="mt-3 grid grid-cols-2 gap-2">
-              <StatTile
-                label={t('hwk.spongeFactor')}
-                value={`${sponge.noise_reduction_factor.toFixed(1)}×`}
-              />
+              {sponge.noise_reduction_factor !== null ? (
+                <StatTile
+                  label={t('hwk.spongeFactor')}
+                  value={`${sponge.noise_reduction_factor.toFixed(1)}×`}
+                />
+              ) : (
+                <StatTile
+                  label={t('hwk.spongeFailedLabel')}
+                  value={(sponge.rows[0]!.failed_at ?? 0).toLocaleString(
+                    lang === 'en' ? 'en-GB' : 'zh-HK',
+                  )}
+                />
+              )}
             </div>
             <LineChart
               title={t('hwk.spongeChart')}
               xLabel={t('hwk.spongeX')}
               yLabel={t('hwk.spongeY')}
-              xDomain={[0, Math.max(...sponge.rows[0]!.series.map((p) => p.step))]}
+              xDomain={[0, Math.max(...sponge.rows.flatMap((r) => r.series.map((p) => p.step)))]}
               yDomain={[
                 0,
                 Math.max(...sponge.rows.flatMap((r) => r.series.map((p) => p.rho_std))) * 1.1,
               ]}
               xTicks={[0, 10000, 20000, 30000, 40000].filter(
-                (v) => v <= Math.max(...sponge.rows[0]!.series.map((p) => p.step)),
+                (v) => v <= Math.max(...sponge.rows.flatMap((r) => r.series.map((p) => p.step))),
               )}
               yTicks={[0, 0.02, 0.04, 0.06].filter(
                 (v) =>
