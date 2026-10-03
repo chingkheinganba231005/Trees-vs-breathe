@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "generated_by": "python -m treesvb.hktrees measure",
-  "generated_at": "2026-10-03T08:19:32Z",
-  "commit": "475e00ed2af3e08e8d354b9410fcbbe3ce10ef43",
+  "generated_at": "2026-10-03T08:20:02Z",
+  "commit": "6a2112314367f4cc255b84daf1b50da8ebc8d0f6",
   "dirty": false,
   "platform": "Linux-6.18.44-fc-v64-x86_64-with-glibc2.39",
   "versions": {
@@ -88,5 +88,24 @@
       }
     }
   ],
+  "overall": {
+    "dbh_mm": {
+      "median": 179.0,
+      "p25": 128.0,
+      "p75": 258.0
+    },
+    "roadside_trees": 1461,
+    "matched": 3187,
+    "height_m": {
+      "median": 8.0,
+      "p25": 6.0,
+      "p75": 10.0
+    },
+    "crown_spread_m": {
+      "median": 4.0,
+      "p25": 3.0,
+      "p75": 5.0
+    }
+  },
   "passed": true
 }
