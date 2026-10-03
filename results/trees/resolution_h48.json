@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "generated_by": "python -m treesvb.trees",
-  "generated_at": "2026-10-03T06:01:57Z",
+  "generated_at": "2026-10-03T06:37:16Z",
   "commit": "1484bd99533ae56466984d39a05692e03420cf99",
   "dirty": false,
   "platform": "Linux-6.6.122+-x86_64-with-glibc2.39",
@@ -11,7 +11,7 @@
     "jax": "0.10.2"
   },
   "name": "Grid resolution of the CODASC comparison",
-  "method": "Two CODASC cases at H = 24 and 48 cells, Sc_t 0.2, run lengths scaled with the grid so both cover the same flow-through times",
+  "method": "Two CODASC cases at H = 48 and 96 cells, Sc_t 0.2, run lengths scaled with the grid so both cover the same flow-through times",
   "metric": "FB, NMSE and FAC2 at each resolution",
   "rows": [
     {
@@ -31,30 +31,6 @@
           9.4127,
           8.7965
         ]
-      },
-      "h24": {
-        "model": {
-          "A": [
-            47.5599,
-            34.8693,
-            31.3071,
-            29.683,
-            29.6942
-          ],
-          "B": [
-            135.0463,
-            58.5758,
-            5.8497,
-            3.0814,
-            2.9752
-          ]
-        },
-        "metrics": {
-          "n": 10,
-          "fb": -0.6189459355755949,
-          "nmse": 2.3519353086161012,
-          "fac2": 0.6
-        }
       },
       "h48": {
         "model": {
@@ -79,6 +55,9 @@
           "nmse": 1.0022934621432087,
           "fac2": 0.8
         }
+      },
+      "h96": {
+        "healthy": false
       }
     },
     {
@@ -99,35 +78,35 @@
           5.1089
         ]
       },
-      "h24": {
+      "h48": {
+        "healthy": false
+      },
+      "h96": {
         "model": {
           "A": [
-            67.4181,
-            52.1867,
-            45.6721,
-            42.847,
-            41.0315
+            140.9171,
+            90.0964,
+            79.925,
+            79.1543,
+            75.0828
           ],
           "B": [
-            43.6818,
-            7.6499,
-            2.002,
-            1.9106,
-            2.0715
+            17.4273,
+            4.1262,
+            2.9283,
+            2.7916,
+            2.6059
           ]
         },
         "metrics": {
           "n": 10,
-          "fb": -0.07754513450318375,
-          "nmse": 0.18404177762406648,
-          "fac2": 0.6
+          "fb": -0.543151858902061,
+          "nmse": 0.757065570030778,
+          "fac2": 0.8
         }
-      },
-      "h48": {
-        "healthy": false
       }
     }
   ],
   "passed": false,
-  "height_cells": 24
+  "height_cells": 48
 }

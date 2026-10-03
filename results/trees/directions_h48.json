@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "generated_by": "python -m treesvb.trees",
+  "generated_at": "2026-10-03T06:18:38Z",
+  "commit": "1484bd99533ae56466984d39a05692e03420cf99",
+  "dirty": false,
+  "platform": "Linux-6.6.122+-x86_64-with-glibc2.39",
+  "versions": {
+    "python": "3.13.15",
+    "numpy": "2.1.3",
+    "jax": "0.10.2"
+  },
+  "name": "Direction of the effect: trees and a hedge on the pavements",
+  "method": "2D street, H = 48 cells, Re 20000, Sc_t 0.2; trees: CODASC crown at W/H 1 (lambda 200 1/m, dense); hedge: 2.5 m high, 1.5 m wide, lambda 3.34 1/m in the middle of a W/H 2 street (Gromke et al. 2016 via Abhijith et al. 2017, Table 3), full-scale H = 18 m; exposure: mean c+ within 0.15 H of each wall, 0.05-0.15 H above the ground",
+  "metric": "pavement exposure with the trees or hedge over exposure without",
+  "sources": [
+    "Abhijith et al. (2017), Atmos. Environ. 162, 71-86, pp. 4, 8, 15 and Table 3",
+    "Gromke et al. (2016), Atmos. Environ. 139, 75-86, as summarised in Table 3 above"
+  ],
+  "rows": [
+    {
+      "case": "trees",
+      "healthy": false,
+      "passed": false
+    },
+    {
+      "case": "hedge",
+      "aspect_w_over_h": 2,
+      "expected_leeward": "down",
+      "pavement_without": {
+        "A": 23.3757,
+        "B": 2.5609
+      },
+      "pavement_with": {
+        "A": 27.1463,
+        "B": 2.414
+      },
+      "ratio": {
+        "A": 1.1613,
+        "B": 0.9426
+      },
+      "passed": false
+    }
+  ],
+  "passed": false,
+  "height_cells": 48
+}

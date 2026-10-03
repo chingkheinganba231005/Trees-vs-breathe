@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "generated_by": "python -m treesvb.trees",
-  "generated_at": "2026-10-03T05:08:36Z",
-  "commit": "c8d665e3be3ab310cf6065eabc3812ec8eae09a5",
+  "generated_at": "2026-10-03T06:00:13Z",
+  "commit": "1484bd99533ae56466984d39a05692e03420cf99",
   "dirty": false,
   "platform": "Linux-6.6.122+-x86_64-with-glibc2.39",
   "versions": {
@@ -54,5 +54,6 @@
       "passed": false
     }
   ],
-  "passed": false
+  "passed": false,
+  "height_cells": 24
 }

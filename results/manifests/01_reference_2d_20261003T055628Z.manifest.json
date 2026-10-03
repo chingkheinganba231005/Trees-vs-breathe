@@ -1,0 +1,101 @@
+{
+  "schema": 1,
+  "notebook": "01_reference_2d",
+  "run": "20261003T055628Z",
+  "git": {
+    "commit": "1484bd99533ae56466984d39a05692e03420cf99",
+    "dirty": false
+  },
+  "parameters": {
+    "repo_ref": "claude/relaxed-lamport-aefen3",
+    "heights": [
+      24,
+      48
+    ],
+    "deep_streets": false,
+    "smoke": false,
+    "jax_pin": "jax[cuda12]==0.10.2"
+  },
+  "seeds": {},
+  "runtime": {
+    "smoke": false,
+    "gpus": [
+      {
+        "name": "NVIDIA A100-SXM4-80GB",
+        "memory.total": "81920 MiB",
+        "driver_version": "580.82.07"
+      }
+    ],
+    "platform": "Linux-6.6.122+-x86_64-with-glibc2.39",
+    "versions": {
+      "python": "3.13.15",
+      "numpy": "2.1.3",
+      "jax": "0.10.2",
+      "jaxlib": "0.10.2"
+    }
+  },
+  "wall_time_s": 2504.937,
+  "manifest_repo_path": "results/manifests/01_reference_2d_20261003T055628Z.manifest.json",
+  "outputs": [
+    {
+      "path": "trees/calibration.json",
+      "bytes": 3075,
+      "sha256": "3a7732296f7607abd8446b963e34bfd4a16e7deaccb3d54e33d2d6d6477e0e1f",
+      "repo_path": "results/trees/calibration.json"
+    },
+    {
+      "path": "trees/codasc.json",
+      "bytes": 161602,
+      "sha256": "50845eafc5118b5bde2f5364603151c1d142dbff6d9c12a22924fdfd20369aa3",
+      "repo_path": "results/trees/codasc.json"
+    },
+    {
+      "path": "trees/directions.json",
+      "bytes": 1747,
+      "sha256": "7b2967f827dd68f168a6e75c127f47a3de390576332fc3718125a250887776e0",
+      "repo_path": "results/trees/directions.json"
+    },
+    {
+      "path": "trees/reynolds.json",
+      "bytes": 1339,
+      "sha256": "0b548fd15b67c09b64783bde2bf44c78632e1d2364257f027d35815b40a02ac9",
+      "repo_path": "results/trees/reynolds.json"
+    },
+    {
+      "path": "trees/resolution.json",
+      "bytes": 2678,
+      "sha256": "f53cc612cfad97a592bb0818a6d95f40693aadf1d65606e37ed650d82c10a0bd",
+      "repo_path": "results/trees/resolution.json"
+    },
+    {
+      "path": "trees/calibration_h48.json",
+      "bytes": 3073,
+      "sha256": "62b7e6a96e67d85f59d745d5990f2a39fbf19a755bfd2a4f0ab13a0ac6b3ed2c",
+      "repo_path": "results/trees/calibration_h48.json"
+    },
+    {
+      "path": "trees/codasc_h48.json",
+      "bytes": 573359,
+      "sha256": "fe169e7620baaace9a814ce8698aa32d99937b60733cdee51013b1f712d781d3",
+      "repo_path": "results/trees/codasc_h48.json"
+    },
+    {
+      "path": "trees/directions_h48.json",
+      "bytes": 1489,
+      "sha256": "c18aaf7a5303a2c0015e3c5b249402c0c8badb8ced90707d92de360257406fbe",
+      "repo_path": "results/trees/directions_h48.json"
+    },
+    {
+      "path": "trees/reynolds_h48.json",
+      "bytes": 869,
+      "sha256": "72bf672e070ca1ddf2f8f4fdc02a74a3ee0144b969e561aae533ee8ac6e9dd1e",
+      "repo_path": "results/trees/reynolds_h48.json"
+    },
+    {
+      "path": "trees/resolution_h48.json",
+      "bytes": 2260,
+      "sha256": "0270c5d381128090ff1d4b02c6f315185e3ef926fe0e6ee93f197f765a6c109f",
+      "repo_path": "results/trees/resolution_h48.json"
+    }
+  ]
+}

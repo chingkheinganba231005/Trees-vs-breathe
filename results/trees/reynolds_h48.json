@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "generated_by": "python -m treesvb.trees",
+  "generated_at": "2026-10-03T06:21:10Z",
+  "commit": "1484bd99533ae56466984d39a05692e03420cf99",
+  "dirty": false,
+  "platform": "Linux-6.6.122+-x86_64-with-glibc2.39",
+  "versions": {
+    "python": "3.13.15",
+    "numpy": "2.1.3",
+    "jax": "0.10.2"
+  },
+  "name": "Reynolds-number sensitivity of pavement exposure",
+  "method": "CODASC W/H 1 without trees and with the dense crown (lambda 200 1/m), H = 48 cells, Sc_t 0.2, Re 20000 and 40000",
+  "metric": "relative change of pavement exposure when Re doubles",
+  "threshold": {
+    "relative_change_below": 0.1
+  },
+  "rows": [
+    {
+      "case": "1_90_0,0_000",
+      "healthy": false,
+      "passed": false
+    },
+    {
+      "case": "1_90_1,0_200",
+      "healthy": false,
+      "passed": false
+    }
+  ],
+  "passed": false,
+  "height_cells": 48
+}

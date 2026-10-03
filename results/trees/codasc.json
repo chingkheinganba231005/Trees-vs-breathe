@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "generated_by": "python -m treesvb.trees",
-  "generated_at": "2026-10-03T05:07:26Z",
-  "commit": "c8d665e3be3ab310cf6065eabc3812ec8eae09a5",
+  "generated_at": "2026-10-03T05:59:02Z",
+  "commit": "1484bd99533ae56466984d39a05692e03420cf99",
   "dirty": false,
   "platform": "Linux-6.6.122+-x86_64-with-glibc2.39",
   "versions": {
@@ -11,7 +11,7 @@
     "jax": "0.10.2"
   },
   "name": "Concentrations against the CODASC wind tunnel, wind across the street",
-  "method": "2D centre-plane model, H = 24 cells, Re 20000, Cs 0.17, Sc_t 0.2 (results/trees/calibration.json), power-law inflow (exponent 0.3), 40000 steps spin-up, 80000 averaged; ten cases, walls A and B at y = 0, z/H = 1/6 to 5/6",
+  "method": "2D centre-plane model, H = 24 cells, Re 20000, Cs 0.17, Sc_t 0.2 (calibrated at this resolution), power-law inflow (exponent 0.3), 40000 steps spin-up, 80000 averaged; ten cases, walls A and B at y = 0, z/H = 1/6 to 5/6",
   "metric": "FB, NMSE and FAC2 of c+ against the Hanna and Chang (2012) urban criteria",
   "threshold": {
     "fb_abs_below": 0.67,
@@ -648,6 +648,7 @@
         ]
       },
       "tracer_total_drift": -0.04986881492607321,
+      "settling": 0.182,
       "steps": 120000,
       "metrics": {
         "n": 10,
@@ -1277,6 +1278,7 @@
         ]
       },
       "tracer_total_drift": -0.16596033181681166,
+      "settling": 0.1163,
       "steps": 120000,
       "metrics": {
         "n": 10,
@@ -1906,6 +1908,7 @@
         ]
       },
       "tracer_total_drift": 0.004801918155890995,
+      "settling": 0.1509,
       "steps": 120000,
       "metrics": {
         "n": 10,
@@ -2535,6 +2538,7 @@
         ]
       },
       "tracer_total_drift": 0.08008560009340075,
+      "settling": 0.345,
       "steps": 120000,
       "metrics": {
         "n": 10,
@@ -3164,6 +3168,7 @@
         ]
       },
       "tracer_total_drift": 0.13825404807205025,
+      "settling": 0.1221,
       "steps": 120000,
       "metrics": {
         "n": 10,
@@ -4369,6 +4374,7 @@
         ]
       },
       "tracer_total_drift": -0.03538166140061917,
+      "settling": 0.275,
       "steps": 120000,
       "metrics": {
         "n": 10,
@@ -5574,6 +5580,7 @@
         ]
       },
       "tracer_total_drift": 0.16936843447983607,
+      "settling": 0.5559,
       "steps": 120000,
       "metrics": {
         "n": 10,
@@ -6779,6 +6786,7 @@
         ]
       },
       "tracer_total_drift": 0.4084041001462925,
+      "settling": 1.5437,
       "steps": 120000,
       "metrics": {
         "n": 10,
@@ -7984,6 +7992,7 @@
         ]
       },
       "tracer_total_drift": 0.044418449153076085,
+      "settling": 0.6682,
       "steps": 120000,
       "metrics": {
         "n": 10,
@@ -9189,6 +9198,7 @@
         ]
       },
       "tracer_total_drift": 0.256246329443354,
+      "settling": 0.8265,
       "steps": 120000,
       "metrics": {
         "n": 10,
@@ -9204,5 +9214,6 @@
     "nmse": 0.817755490230901,
     "fac2": 0.48
   },
-  "passed": true
+  "passed": true,
+  "height_cells": 24
 }
