@@ -10,6 +10,8 @@ interface Props {
   street: Street2D;
   weather: HourWeather;
   heat: HeatState;
+  /** The same street and wind without greenery, for the shade the greenery gives. */
+  bare: HeatState | null;
   /** Width of each pavement's breathing zone, metres. */
   zoneM: number;
   hour: number;
@@ -24,7 +26,7 @@ function Section({
   weather,
   zoneM,
   label,
-}: Omit<Props, 'heat' | 'hour'> & { label: string }) {
+}: Omit<Props, 'heat' | 'hour' | 'bare'> & { label: string }) {
   const pad = 8;
   // Room above the roofs for the sun's direction.
   const sky = 46;
@@ -142,10 +144,12 @@ function Section({
 }
 
 /** Heat on the two pavements: UTCI with its category, sun or shade, Tmrt and wind. */
-export function HeatPanel({ street, weather, heat, zoneM, hour }: Props) {
+export function HeatPanel({ street, weather, heat, bare, zoneM, hour }: Props) {
   const { t, lang } = useI18n();
   const locale = lang === 'en' ? 'en-GB' : 'zh-HK';
   const num = (v: number, d = 0) => v.toLocaleString(locale, { maximumFractionDigits: d });
+  const signed = (v: number) =>
+    v.toLocaleString(locale, { maximumFractionDigits: 1, signDisplay: 'exceptZero' });
   const time = `${Math.floor(hour)}:${hour % 1 ? '30' : '00'}`;
   const sides = {
     A: t(`compass.${compassPoint(street.axisDeg + 270)}`),
@@ -173,6 +177,14 @@ export function HeatPanel({ street, weather, heat, zoneM, hour }: Props) {
         {p && (
           <>
             <p className="text-right font-bold">{t(`heat.cat.${p.category}` as StringKey)}</p>
+            {bare?.[side] && street.crowns.length > 0 && (
+              <p className="text-right text-xs">
+                {t('heat.vsBare', {
+                  d: signed(p.utci - bare[side]!.utci),
+                  r: signed(p.tmrt - bare[side]!.tmrt),
+                })}
+              </p>
+            )}
             <p className="text-right text-xs text-ink-muted">
               {weather.sky.elevation > 0 ? `${shade(p)} · ` : ''}
               {t('heat.tmrt', { v: num(p.tmrt) })} · {t('heat.wind10', { v: num(p.wind10, 1) })}

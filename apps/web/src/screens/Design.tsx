@@ -143,6 +143,17 @@ function DesignScreen({ engine, preset }: { engine: EngineChoice; preset: Street
   const heat = weather
     ? pavementHeat(street2d, weather, zoneM, stats?.wind ?? null, PERSON_HEIGHT_M)
     : null;
+  // The crowns' shade alone: the same street, hour and wind with no greenery.
+  const bare =
+    weather && greenery.length > 0
+      ? pavementHeat(
+          { ...street2d, crowns: [] },
+          weather,
+          zoneM,
+          stats?.wind ?? null,
+          PERSON_HEIGHT_M,
+        )
+      : null;
   const recorded = streetRun(preset?.key ?? null);
   const presetName = preset ? (lang === 'en' ? preset.label_en : preset.label_tc) : '';
   const regime = regimeText[expectedRegime(shown)];
@@ -268,7 +279,14 @@ function DesignScreen({ engine, preset }: { engine: EngineChoice; preset: Street
             hasBaseline={(exposure.baselines[shapeKey]?.length ?? 0) > 0}
           />
           {weather && heat && (
-            <HeatPanel street={street2d} weather={weather} heat={heat} zoneM={zoneM} hour={hour} />
+            <HeatPanel
+              street={street2d}
+              weather={weather}
+              heat={heat}
+              bare={bare}
+              zoneM={zoneM}
+              hour={hour}
+            />
           )}
           <section aria-labelledby="readouts" className="mt-6">
             <div className="flex items-center justify-between">
