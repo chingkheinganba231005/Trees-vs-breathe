@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { presetByKey, streetEnds, streetPresets } from '../../apps/web/src/content/presets';
+import {
+  parseCustomStreet,
+  presetByKey,
+  streetEnds,
+  streetPresets,
+} from '../../apps/web/src/content/presets';
 
 describe('street presets', () => {
   it('loads the three measured streets', () => {
@@ -18,5 +23,22 @@ describe('street presets', () => {
     expect(streetEnds(117)).toEqual(['SE', 'NW']);
     expect(streetEnds(40)).toEqual(['NE', 'SW']);
     expect(streetEnds(179)).toEqual(['S', 'N']);
+  });
+
+  it('parses a custom street from the hash params', () => {
+    expect(
+      parseCustomStreet(
+        '#/design?street=custom&height=34&width=22&pavementLeft=2.5&pavementRight=3&bearing=45',
+      ),
+    ).toEqual({
+      key: 'custom',
+      heightM: 34,
+      widthM: 22,
+      pavementLeftM: 2.5,
+      pavementRightM: 3,
+      bearingDeg: 45,
+      aspectHOverW: 34 / 22,
+    });
+    expect(parseCustomStreet('#/design?street=wing_lok')).toBeNull();
   });
 });

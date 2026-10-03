@@ -26,6 +26,67 @@ export interface StreetPreset {
   bearing_deg: number;
 }
 
+export interface CustomStreet {
+  key: 'custom';
+  heightM: number;
+  widthM: number;
+  pavementLeftM: number;
+  pavementRightM: number;
+  bearingDeg: number;
+  aspectHOverW: number;
+}
+
+const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+
+export function parseCustomStreet(query: string | null): CustomStreet | null {
+  if (!query) return null;
+  const hashOrQuery = query.includes('?') ? query.split('?').slice(1).join('?') : query;
+  const params = new URLSearchParams(hashOrQuery.startsWith('/') ? hashOrQuery.slice(1) : hashOrQuery);
+  if (params.get('street') !== 'custom' && !params.has('custom')) return null;
+
+  const aspect = Number(params.get('aspect') ?? '0');
+  const height = Number(params.get('height') ?? '0');
+  const width = Number(params.get('width') ?? '0');
+  const bearing = Number(params.get('bearing') ?? '0');
+  const left = Number(params.get('pavementLeft') ?? params.get('pavement_left') ?? '2');
+  const right = Number(params.get('pavementRight') ?? params.get('pavement_right') ?? '2');
+
+  const resolvedHeight = clamp(Number.isFinite(height) && height > 0 ? height : 30, 6, 200);
+  const resolvedWidth = clamp(Number.isFinite(width) && width > 0 ? width : resolvedHeight / (Number.isFinite(aspect) && aspect > 0 ? aspect : 1), 6, 200);
+  const resolvedAspect = Number.isFinite(aspect) && aspect > 0 ? aspect : resolvedHeight / resolvedWidth;
+  const resolvedBearing = Number.isFinite(bearing) ? ((bearing % 360) + 360) % 360 : 0;
+  const resolvedLeft = clamp(Number.isFinite(left) && left >= 0 ? left : 2, 0, resolvedWidth);
+  const resolvedRight = clamp(Number.isFinite(right) && right >= 0 ? right : 2, 0, resolvedWidth);
+
+  return {
+    key: 'custom',
+    heightM: resolvedHeight,
+    widthM: resolvedWidth,
+    pavementLeftM: resolvedLeft,
+    pavementRightM: resolvedRight,
+    bearingDeg: resolvedBearing,
+    aspectHOverW: resolvedAspect,
+  };
+}
+
+export function customStreetHref(values: {
+  heightM: number;
+  widthM: number;
+  pavementLeftM: number;
+  pavementRightM: number;
+  bearingDeg: number;
+}): string {
+  const params = new URLSearchParams({
+    street: 'custom',
+    height: String(values.heightM),
+    width: String(values.widthM),
+    pavementLeft: String(values.pavementLeftM),
+    pavementRight: String(values.pavementRightM),
+    bearing: String(values.bearingDeg),
+  });
+  return `#/design?${params.toString()}`;
+}
+
 export interface PresetsResult extends Provenance {
   rows: StreetPreset[];
 }

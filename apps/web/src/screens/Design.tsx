@@ -26,7 +26,7 @@ import type { StreetScale } from '../sim/greenery';
 import type { SimStats } from '../sim/streetSim';
 import { PLAYBACK_RATE } from '../sim/clock';
 import { checkedAspectMax } from '../sim/streetSim';
-import { localTree, presetByKey } from '../content/presets';
+import { localTree, parseCustomStreet, presetByKey } from '../content/presets';
 import { streetRun } from '../content/streetRuns';
 import type { StreetPreset } from '../content/presets';
 import { useHashParam } from '../lib/router';
@@ -48,11 +48,11 @@ function Readout({ label, value, mono = true }: { label: string; value: string; 
   );
 }
 
-/** Building height in metres and typical local tree for a preset, or for the wind-tunnel street. */
-function streetScale(preset: StreetPreset | null): StreetScale {
+/** Building height in metres and typical local tree for a preset, or for a custom street. */
+function streetScale(preset: StreetPreset | null, customStreet?: ReturnType<typeof parseCustomStreet>): StreetScale {
   const tree = localTree(preset?.key ?? null);
   return {
-    heightM: preset ? preset.height_m.median : FULL_SCALE_HEIGHT_M,
+    heightM: customStreet ? customStreet.heightM : preset ? preset.height_m.median : FULL_SCALE_HEIGHT_M,
     localTree:
       tree?.height_m && tree.crown_spread_m
         ? { heightM: tree.height_m.median, spreadM: tree.crown_spread_m.median }
@@ -60,23 +60,27 @@ function streetScale(preset: StreetPreset | null): StreetScale {
   };
 }
 
-/** The Design screen; a street preset (#/design?street=...) sets the starting shape. */
+/** The Design screen; a street preset (#/design?street=...) or a custom street sets the starting shape. */
 export function Design({ engine }: { engine: EngineChoice }) {
-  const preset = presetByKey(useHashParam('street'));
-  // A different preset starts the screen afresh from its shape.
-  return <DesignScreen key={preset?.key ?? ''} engine={engine} preset={preset} />;
+  const streetKey = useHashParam('street');
+  const preset = presetByKey(streetKey);
+  const custom = parseCustomStreet(window.location.hash);
+  // A different preset or custom street starts the screen afresh from its shape.
+  return <DesignScreen key={`${preset?.key ?? 'custom'}:${custom ? `${custom.heightM}-${custom.widthM}` : ''}`} engine={engine} preset={preset} customStreet={custom} />;
 }
 
-function DesignScreen({ engine, preset }: { engine: EngineChoice; preset: StreetPreset | null }) {
+function DesignScreen({ engine, preset, customStreet }: { engine: EngineChoice; preset: StreetPreset | null; customStreet?: ReturnType<typeof parseCustomStreet> }) {
   const { t, lang } = useI18n();
   // A design sent from the Trade-off screen (#/design?layout=...) comes with its street shape.
   const layoutParam = useHashParam('layout');
   const sentAspect = Number(useHashParam('aspect'));
-  const start = preset
-    ? Math.round(preset.aspect_h_over_w.median * 10) / 10
-    : sentAspect > 0
-      ? sentAspect
-      : 1;
+  const start = customStreet
+    ? customStreet.aspectHOverW
+    : preset
+      ? Math.round(preset.aspect_h_over_w.median * 10) / 10
+      : sentAspect > 0
+        ? sentAspect
+        : 1;
   // The slider moves freely; the solver rebuilds when the value settles.
   const [draft, setDraft] = useState(start);
   const [aspect, setAspect] = useState(start);
@@ -84,7 +88,7 @@ function DesignScreen({ engine, preset }: { engine: EngineChoice; preset: Street
   const [speed, setSpeed] = useState(false);
   const [fumes, setFumes] = useState(true);
   // The street's height in metres and its typical roadside tree size the greenery (A-014, A-015).
-  const scale = useMemo(() => streetScale(preset), [preset]);
+  const scale = useMemo(() => streetScale(preset, customStreet), [customStreet, preset]);
   const [design, setDesign] = useState<GreeneryDesign>(() =>
     // On a real street, trees start at the size of the local roadside trees.
     preset && scale.localTree
@@ -146,7 +150,7 @@ function DesignScreen({ engine, preset }: { engine: EngineChoice; preset: Street
   const days = weatherPresets();
   const [dayKey, setDayKey] = useState('very_hot');
   const [hour, setHour] = useState(13);
-  const [axis, setAxis] = useState(preset ? preset.bearing_deg : 0);
+  const [axis, setAxis] = useState(customStreet ? customStreet.bearingDeg : preset ? preset.bearing_deg : 0);
   const day = days.find((d) => d.key === dayKey) ?? days[0] ?? null;
   const weather = useMemo(() => (day ? hourWeather(day, hour) : null), [day, hour]);
   const street2d = useMemo(
@@ -158,6 +162,52 @@ function DesignScreen({ engine, preset }: { engine: EngineChoice; preset: Street
     }),
     [scale.heightM, width, axis, greenery],
   );
+  const busHeadroomM = 4.4;
+  const pavementMinM = customStreet
+    ? Math.min(customStreet.pavementLeftM, customStreet.pavementRightM)
+    : PAVEMENT_WIDTH * scale.heightM;
+  const constraintBadges = useMemo(() => {
+    const badges: Array<{ label: string; tone: 'ok' | 'warn'; detail: string }> = [];
+    const inRoad = greenery.some((e) => e.x0 < PAVEMENT_WIDTH || e.x1 > width - PAVEMENT_WIDTH);
+    badges.push({
+      label: t('design.badgePavement'),
+      tone: inRoad ? 'warn' : 'ok',
+      detail: inRoad
+        ? t('design.badgePavementWarn')
+        : t('design.badgePavementOk', { m: num(pavementMinM, 1) }),
+    });
+
+    if (design.kind === 'trees') {
+      const crownBaseM = design.crownBase * scale.heightM;
+      const belowBus = crownBaseM < busHeadroomM;
+      badges.push({
+        label: t('design.badgeBus'),
+        tone: belowBus ? 'warn' : 'ok',
+        detail: belowBus
+          ? t('design.badgeBusWarn', { m: num(busHeadroomM, 1) })
+          : t('design.badgeBusOk', { m: num(busHeadroomM, 1) }),
+      });
+    } else if (design.kind === 'hedge') {
+      badges.push({
+        label: t('design.badgeBus'),
+        tone: 'ok',
+        detail: t('design.badgeBusHedge', { m: num(busHeadroomM, 1) }),
+      });
+    }
+
+    if (design.kind !== 'none') {
+      badges.push({
+        label: t('design.badgeStreet'),
+        tone: 'ok',
+        detail: t('design.badgeStreetOk', {
+          widthM: num(scale.heightM * width, 1),
+          pavementM: num(pavementMinM, 1),
+        }),
+      });
+    }
+
+    return badges;
+  }, [customStreet, design.crownBase, design.kind, greenery, num, pavementMinM, scale.heightM, t, width]);
   const zoneM = PAVEMENT_WIDTH * scale.heightM;
   const heat = weather
     ? pavementHeat(street2d, weather, zoneM, stats?.wind ?? null, PERSON_HEIGHT_M)
@@ -183,19 +233,25 @@ function DesignScreen({ engine, preset }: { engine: EngineChoice; preset: Street
   return (
     <Screen title={t('design.title')} intro={t('design.intro')}>
       <div className="mt-8">
-        {preset && (
+        {(preset || customStreet) && (
           <div className="mb-3 rounded-md border border-line px-3 py-2 text-sm" role="note">
             <p>
-              {preset.aspect_h_over_w.median > aspectMax
-                ? t('design.presetClamped', {
-                    name: presetName,
-                    ratio: num(preset.aspect_h_over_w.median, 1),
-                    max: num(aspectMax, 1),
+              {customStreet
+                ? t('design.customNote', {
+                    aspect: num(customStreet.aspectHOverW, 1),
+                    height: num(customStreet.heightM, 1),
+                    width: num(customStreet.widthM, 1),
                   })
-                : t('design.presetNote', {
-                    name: presetName,
-                    ratio: num(preset.aspect_h_over_w.median, 1),
-                  })}
+                : preset.aspect_h_over_w.median > aspectMax
+                  ? t('design.presetClamped', {
+                      name: presetName,
+                      ratio: num(preset.aspect_h_over_w.median, 1),
+                      max: num(aspectMax, 1),
+                    })
+                  : t('design.presetNote', {
+                      name: presetName,
+                      ratio: num(preset.aspect_h_over_w.median, 1),
+                    })}
               {recorded && ` ${t('design.presetRecorded')}`}
             </p>
             <p className="mt-1 text-ink-muted">{t('design.presetScale')}</p>
@@ -220,6 +276,23 @@ function DesignScreen({ engine, preset }: { engine: EngineChoice; preset: Street
 
       <div className="mt-6 grid gap-8 md:grid-cols-2">
         <div>
+          <div className="mb-4 flex flex-wrap gap-2">
+            {constraintBadges.map((badge) => (
+              <div
+                key={badge.label}
+                className={[
+                  'inline-flex min-h-11 items-center gap-2 rounded-full border px-3 py-1 text-sm',
+                  badge.tone === 'ok'
+                    ? 'border-green-500/50 bg-green-500/10 text-green-700 dark:text-green-300'
+                    : 'border-amber-500/60 bg-amber-500/10 text-amber-700 dark:text-amber-300',
+                ].join(' ')}
+                title={badge.detail}
+              >
+                <span className="font-bold">{badge.label}</span>
+                <span className="text-xs opacity-80">{badge.detail}</span>
+              </div>
+            ))}
+          </div>
           <label htmlFor="aspect" className="block font-bold">
             {t('design.aspect')}
           </label>

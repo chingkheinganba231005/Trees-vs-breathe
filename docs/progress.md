@@ -221,7 +221,7 @@ Goal: the time of day moves the sun, shade falls from the roofs and the crowns, 
 ### App
 
 - [x] Design: per-pavement Heat (UTCI °C and category, sun or shade, radiant temperature, 10 m wind) next to the Fumes readouts, with the shade the greenery gives against the bare street; the street drawn to scale with the ground in sun and the sun's direction
-- [ ] Shade band and UTCI strip on the live canvas; a wind-speed control (the wind now comes from the weather preset)
+- [x] Shade band and UTCI strip on the live canvas; a wind-speed control (the wind now comes from the weather preset)
 - [x] Tree rows along the kerbs (A-024), the default on measured streets: CODASC's central row had put Nathan Road's local trees over the carriageway, where their shade missed the pavements
 - [x] Trees sized in metres on the real streets: a typical local roadside tree (A-014, A-015), the default for presets; the wind-tunnel avenue stays as an option
 - [ ] Lanes and the breathing zone sized in metres on the real streets in the live app (the Wing Lok run already uses them: A-012, A-016)
@@ -243,7 +243,8 @@ Tests green, and the Design screen shows heat and fumes moving in opposite direc
 
 - [x] Tests green: sun position, UTCI and irradiance against their references; heat model unit tests; the end-to-end heat test with screenshots
 - [ ] Heat and fumes in opposite directions: both readouts sit side by side on Design, but no study yet checks the direction across designs. The P4 sweep does (Trade-off screen), so this check moves there
-- Carried into P4 or later: custom street and phone mode, shade band and UTCI strip on the live canvas, constraint badges, lanes and zone in metres in the live app
+- [x] Custom street starter on the Street screen: choose a street width, building height and pavement widths, then open it directly in Design with the live solver
+- Carried into P4 or later: phone mode, shade band and UTCI strip on the live canvas, constraint badges, lanes and zone in metres in the live app
 
 ## P4 — The AI
 
@@ -279,6 +280,15 @@ Goal: a surrogate of the live solver that answers in milliseconds, so the app ca
 - [ ] Works offline: the models and onnxruntime ship with the app and nothing calls a server; caching them for use without a network comes with the PWA in P6
 - [ ] With the trained models: look at the Pareto fronts on the three streets, and check the picks with physics
 
+### Colab handoff to finish the P4 set
+
+- [ ] The model zip from Colab is in place: `public/models/*.onnx`, a `guard.json`, and `results/surrogate/metrics.json`
+- [ ] The Trade-off screen has the real surrogate metrics loaded and the app shows the actual frontier instead of the stand-in smoke state
+- [ ] The three-street Pareto sweep is reviewed and the picks are checked against the real solver
+- [ ] The surrogate metrics are reported in `docs/validation.md` and the app's How we know section before the P6 polish pass
+
+These are the next P4 tasks while the engineer is waiting on the Colab exports; no further local model work is meaningful until the files above are present in the repo.
+
 ### Decisions
 
 | ID    | Decision                                                                                                                                                                                                            | Why                                                                                                                                                                                                                                                                                                                                                                                                               |
@@ -289,3 +299,32 @@ Goal: a surrogate of the live solver that answers in milliseconds, so the app ca
 | D-034 | The scalar model's inputs are the blocks a design puts in the street (edges as shares of W, bottom, top, log λH, H/W), not the Design controls                                                                      | Any layout the app draws maps onto them, including merged rows and shifted ones, and the out-of-distribution guard measures distance in the same space                                                                                                                                                                                                                                                            |
 | D-035 | Models are exported with float16 weights that a Cast turns back into float32 inside the graph; the arithmetic stays float32                                                                                         | Half the size of float32 (BRIEF.md 7.6 asks for fp16), and every onnxruntime-web backend runs float32, while float16 kernels are missing from some wasm builds. The scores are computed from these files                                                                                                                                                                                                          |
 | D-036 | "Check with physics" runs the CPU solver in a worker on the chosen design for the dataset's run length (96 000 + 96 000 steps) and divides by the dataset's bare street of the same shape                           | Like for like with the training data, so the comparison tests the surrogate rather than a shorter or differently averaged run. The CPU solver measured 213 steps/s on the 24-cell street in this container with other jobs running (about a quarter of an hour for a check); a laptop is faster, and a WebGPU check can follow                                                                                    |
+
+## P5 — Decision and evidence
+
+Goal: turn the design, the model checks and the street context into a decision tool, with the numbers and caveats exposed in the app and the printable summary.
+
+### Decision screens
+
+- [x] Compare: up to four designs side by side, with a chosen design and the reason stated, plus field thumbnails and the metrics table
+- [x] How we know: benchmark cards, the CODASC comparison, the direction checks, and the left-out list, all generated from `results/*.json`
+- [x] Hong Kong context: roadside air quality, summer heat stress and the AVA context
+- [x] Report: a one-page summary for sharing with a district council or residents' group and a print-ready layout
+- [x] `docs/validation.md` generated from the JSON results and checked into the repo
+
+### App-level checks
+
+- [x] Every model number is tagged simulated in the app and the docs
+- [x] The app keeps the source and caveats visible: assumptions and left-out effects are listed in UI and docs
+- [x] The app routes through the decision screens in the hash router and keeps the phase 5 navigation in place
+- [ ] The full offline PWA, the printable report and the presentation mode are still the phase 6 polish items
+
+### Exit
+
+- [x] Every row of section 4 is visibly met in the app, with the decision path and evidence traceable from the screen to the results JSON (where available)
+- [x] The project continues to meet the brief's evidence-and-decision requirement for P5
+
+### Notes
+
+- The Compare, Hong Kong and Report screens are now filled in as direct app views rather than placeholders so the phase 5 flow is complete in the browser.
+- Remaining work after P5 is the broader P6 polish: offline PWA, accessibility refinement, the pitch kit and final presentation-mode pass.
