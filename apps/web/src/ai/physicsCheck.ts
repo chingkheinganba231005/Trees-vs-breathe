@@ -8,6 +8,20 @@ import type { GreenElement } from '../sim/greenery';
 /** The dataset's run (FULL in python/treesvb/dataset.py): spin-up and average, in steps. */
 export const CHECK_RUN = { spinUp: 96_000, average: 96_000, every: 48 } as const;
 
+/**
+ * The run a check uses: CHECK_RUN, or a shorter one of `checkSteps` steps in all from the URL,
+ * which the end-to-end tests use to finish in time (the result then says so by its length).
+ */
+export function checkRun(search = globalThis.location?.search ?? '') {
+  const total = Number(new URLSearchParams(search).get('checkSteps'));
+  if (!(total > 0)) return CHECK_RUN;
+  const half = Math.max(
+    CHECK_RUN.every * 2,
+    Math.round(total / 2 / CHECK_RUN.every) * CHECK_RUN.every,
+  );
+  return { spinUp: half, average: half, every: CHECK_RUN.every };
+}
+
 export interface CheckRequest {
   aspect: number;
   elements: GreenElement[];

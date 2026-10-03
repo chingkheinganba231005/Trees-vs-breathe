@@ -28,16 +28,6 @@ function modelUrl(name: string): string {
   return `${import.meta.env.BASE_URL}models/${name}`;
 }
 
-/** Whether the trained models are in the build (they arrive from Colab, not with the code). */
-export async function modelsPresent(): Promise<boolean> {
-  try {
-    const r = await fetch(modelUrl('guard.json'), { method: 'HEAD' });
-    return r.ok;
-  } catch {
-    return false;
-  }
-}
-
 async function loadOrt(preferWasm: boolean): Promise<{ ort: Ort; backend: AiBackend }> {
   if (!preferWasm && typeof navigator !== 'undefined' && 'gpu' in navigator) {
     try {

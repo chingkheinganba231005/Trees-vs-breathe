@@ -2,9 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { gridStreet } from '../ai/designs';
 import { decodeLayout, encodeLayout } from '../ai/layout';
 import { fieldInput } from '../ai/fieldInput';
-import { CHECK_RUN, FILLING, meanOfHalves, runCheck } from '../ai/physicsCheck';
+import { CHECK_RUN, FILLING, checkRun, meanOfHalves, runCheck } from '../ai/physicsCheck';
 import type { CheckResult } from '../ai/physicsCheck';
-import { loadSurrogate, modelsPresent } from '../ai/runtime';
+import { loadSurrogate } from '../ai/runtime';
 import type { Surrogate } from '../ai/runtime';
 import { heatOf, picks, scoreElements, search } from '../ai/tradeoff';
 import type { Scored } from '../ai/tradeoff';
@@ -17,7 +17,7 @@ import { ParetoChart } from '../components/charts/ParetoChart';
 import type { ParetoPoint } from '../components/charts/ParetoChart';
 import { presetByKey } from '../content/presets';
 import type { StreetPreset } from '../content/presets';
-import { datasetBare } from '../content/surrogate';
+import { datasetBare, surrogateMetrics } from '../content/surrogate';
 import { useI18n } from '../i18n/context';
 import { useHashParam } from '../lib/router';
 import { FULL_SCALE_HEIGHT_M } from '../sim/greenery';
@@ -98,7 +98,9 @@ function TradeOffScreen({ preset }: { preset: StreetPreset | null }) {
   useEffect(() => {
     let live = true;
     void (async () => {
-      if (!(await modelsPresent())) {
+      // The models and results/surrogate/metrics.json come back from Colab in one zip, so the
+      // metrics in the build say the models are there without probing for a missing file.
+      if (!surrogateMetrics()) {
         if (live) setModel({ state: 'missing' });
         return;
       }
@@ -193,9 +195,10 @@ function TradeOffScreen({ preset }: { preset: StreetPreset | null }) {
     const ctl = new AbortController();
     abort.current = ctl;
     const id = selected;
-    setCheck({ state: 'running', id, done: 0, total: CHECK_RUN.spinUp + CHECK_RUN.average });
+    const run = checkRun();
+    setCheck({ state: 'running', id, done: 0, total: run.spinUp + run.average });
     runCheck(
-      { aspect, elements: chosen.elements, ...CHECK_RUN },
+      { aspect, elements: chosen.elements, ...run },
       (done, total) => setCheck({ state: 'running', id, done, total }),
       ctl.signal,
     ).then(
@@ -342,8 +345,7 @@ function TradeOffScreen({ preset }: { preset: StreetPreset | null }) {
                         num(100 * p.fumes),
                       ]),
                     }}
-                    formatX={(v) => num(v, 1)}
-                    formatY={(v) => num(v)}
+                    format={(v, d) => num(v, d)}
                   />
                   <section aria-labelledby="picks" className="mt-6">
                     <h2 id="picks" className="font-bold">
@@ -483,7 +485,7 @@ function TradeOffScreen({ preset }: { preset: StreetPreset | null }) {
                       label={t('tradeOff.field')}
                     />
                   </div>
-                  <FumesLegend cmax={niceMax(field.cplus)} />
+                  <FumesLegend cmax={niceMax(field.cplus)} caption={t('tradeOff.fieldLegend')} />
                 </figure>
               )}
               <div className="mt-4 flex flex-wrap gap-2">

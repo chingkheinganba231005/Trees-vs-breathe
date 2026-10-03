@@ -208,3 +208,25 @@ test('every screen is reachable from the navigation', async ({ page, isMobile })
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(screen.heading);
   }
 });
+
+test('Trade-off sweeps designs and checks one with physics, or says the models are missing', async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(240_000);
+  const errors = collectErrors(page);
+  await page.goto('./?engine=cpu&ai=wasm&checkSteps=800#/trade-off');
+  const missing = page.getByText(/AI models are not trained yet/);
+  const scored = page.getByText(/designs scored/);
+  await expect(missing.or(scored)).toBeVisible({ timeout: 120_000 });
+  if (await scored.isVisible()) {
+    await page.getByRole('button', { name: 'Balanced', exact: true }).click();
+    await expect(page.getByRole('heading', { name: /Selected design/ })).toBeVisible();
+    await page.getByRole('button', { name: 'Check with physics' }).click();
+    await expect(page.getByText('AI against the solver')).toBeVisible({ timeout: 90_000 });
+  }
+  await page.screenshot({
+    path: `test-results/screens/${testInfo.project.name}-trade-off-sweep.png`,
+    fullPage: true,
+  });
+  expect(errors).toEqual([]);
+});

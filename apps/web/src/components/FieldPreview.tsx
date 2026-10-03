@@ -83,7 +83,11 @@ export function FieldPreview({
       role="img"
       aria-label={label}
       className="w-full rounded-md border border-line"
-      style={{ aspectRatio: `${Math.min(4, Math.max(0.4, widthH))} / 1` }}
+      // At most 18rem tall, at the street's own proportions.
+      style={{
+        aspectRatio: `${Math.min(4, Math.max(0.4, widthH))} / 1`,
+        maxWidth: `${18 * Math.min(4, Math.max(0.4, widthH))}rem`,
+      }}
     />
   );
 }

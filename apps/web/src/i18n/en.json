@@ -407,5 +407,6 @@
   "tradeOff.tableHeat": "Heat, °C",
   "tradeOff.tableFumes": "Fumes, %",
   "design.toTradeOff": "See the trade-off for this street",
-  "design.sentLayout": "A design from the Trade-off screen. Change any greenery control to go back to your own design."
+  "design.sentLayout": "A design from the Trade-off screen. Change any greenery control to go back to your own design.",
+  "tradeOff.fieldLegend": "c⁺ from the field model"
 }

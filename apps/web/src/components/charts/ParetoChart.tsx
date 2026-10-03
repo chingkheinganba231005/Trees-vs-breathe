@@ -25,23 +25,23 @@ interface Props {
   /** Tooltip body for a point. */
   describe: (id: string) => ReactNode;
   table: { columns: string[]; rows: (string | number)[][] };
-  formatX?: (v: number) => string;
-  formatY?: (v: number) => string;
+  /** Formats a value with the given number of decimals (chosen from the tick step). */
+  format?: (v: number, digits: number) => string;
 }
 
 const W = 340;
 const H = 280;
 const M = { top: 14, right: 14, bottom: 42, left: 48 };
 
-/** Round step for about five ticks over [lo, hi]. */
-function ticks(lo: number, hi: number): number[] {
+/** Round step for about five ticks over [lo, hi], the ticks, and the decimals they need. */
+function ticks(lo: number, hi: number): { values: number[]; digits: number } {
   const span = hi - lo || 1;
   const raw = span / 5;
   const p = 10 ** Math.floor(Math.log10(raw));
   const step = [1, 2, 5, 10].map((m) => m * p).find((s) => s >= raw) ?? 10 * p;
-  const out: number[] = [];
-  for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) out.push(+v.toFixed(10));
-  return out;
+  const values: number[] = [];
+  for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) values.push(+v.toFixed(10));
+  return { values, digits: Math.max(0, -Math.floor(Math.log10(step) + 1e-9)) };
 }
 
 function Mark({ kind, x, y, big }: { kind: PointKind; x: number; y: number; big: boolean }) {
@@ -85,8 +85,7 @@ export function ParetoChart(props: Props) {
   const id = useId();
   const [showTable, setShowTable] = useState(false);
   const [hover, setHover] = useState<string | null>(null);
-  const fx = props.formatX ?? ((v: number) => v.toFixed(1));
-  const fy = props.formatY ?? ((v: number) => v.toFixed(0));
+  const format = props.format ?? ((v: number, d: number) => v.toFixed(d));
   const { points } = props;
 
   const dom = useMemo(() => {
@@ -101,6 +100,10 @@ export function ParetoChart(props: Props) {
       y: ys.length ? pad(Math.min(...ys), Math.max(...ys)) : ([0, 1] as [number, number]),
     };
   }, [points]);
+  const xt = ticks(dom.x[0], dom.x[1]);
+  const yt = ticks(dom.y[0], dom.y[1]);
+  const fx = (v: number) => format(v, xt.digits);
+  const fy = (v: number) => format(v, yt.digits);
   const sx = (v: number) =>
     M.left + ((v - dom.x[0]) / (dom.x[1] - dom.x[0])) * (W - M.left - M.right);
   const sy = (v: number) =>
@@ -177,7 +180,7 @@ export function ParetoChart(props: Props) {
             role="img"
             aria-label={props.title}
           >
-            {ticks(dom.y[0], dom.y[1]).map((v) => (
+            {yt.values.map((v) => (
               <g key={`y${v}`}>
                 <line x1={M.left} x2={W - M.right} y1={sy(v)} y2={sy(v)} stroke="var(--line)" />
                 <text
@@ -191,7 +194,7 @@ export function ParetoChart(props: Props) {
                 </text>
               </g>
             ))}
-            {ticks(dom.x[0], dom.x[1]).map((v) => (
+            {xt.values.map((v) => (
               <g key={`x${v}`}>
                 <line x1={sx(v)} x2={sx(v)} y1={M.top} y2={H - M.bottom} stroke="var(--line)" />
                 <text

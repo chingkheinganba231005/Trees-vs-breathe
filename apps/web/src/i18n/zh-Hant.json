@@ -407,5 +407,6 @@
   "tradeOff.tableHeat": "熱力，°C",
   "tradeOff.tableFumes": "廢氣，%",
   "design.toTradeOff": "查看這條街道的取捨",
-  "design.sentLayout": "這是來自「取捨」頁的設計。調整任何綠化控制即可回到你自己的設計。"
+  "design.sentLayout": "這是來自「取捨」頁的設計。調整任何綠化控制即可回到你自己的設計。",
+  "tradeOff.fieldLegend": "場模型的 c⁺"
 }
