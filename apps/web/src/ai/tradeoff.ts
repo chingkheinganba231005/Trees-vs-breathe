@@ -5,9 +5,8 @@
 import type { GreenElement } from '../sim/greenery';
 import { CROWN_LAM_H, FULL_SCALE_HEIGHT_M, HEDGE_HEIGHTS_M, HEDGE_LAMBDAS } from '../sim/greenery';
 import { PERSON_HEIGHT_M } from '../sun/canyon';
-import type { ShadeCrown } from '../sun/canyon';
 import type { HourWeather } from '../sun/heat';
-import { CROWN_TRANSMISSIVITY, pavementHeat } from '../sun/heat';
+import { pavementHeat, shadeCrowns } from '../sun/heat';
 import type { AiDesign } from './designs';
 import { designElements, gridStreet } from './designs';
 import { features } from './features';
@@ -116,20 +115,6 @@ export function decode(x: readonly number[], b: Bounds): AiDesign {
   };
 }
 
-/**
- * Share of direct sunlight a crown lets through, from its density per metre: Takacs et al.'s
- * light-crown value at CODASC's light crown, their dense-crown value at the dense crown, linear in
- * between and held beyond (A-018, A-027). A hedge counts as dense, as on the Design screen.
- */
-export function transmissivity(e: GreenElement, heightM: number): number {
-  if (e.kind === 'hedge') return CROWN_TRANSMISSIVITY.dense;
-  const perM = e.lamH / heightM;
-  const light = CROWN_LAM_H.light / FULL_SCALE_HEIGHT_M;
-  const dense = CROWN_LAM_H.dense / FULL_SCALE_HEIGHT_M;
-  const t = Math.min(1, Math.max(0, (perM - light) / (dense - light)));
-  return CROWN_TRANSMISSIVITY.light + t * (CROWN_TRANSMISSIVITY.dense - CROWN_TRANSMISSIVITY.light);
-}
-
 export interface Scored {
   design: AiDesign;
   elements: GreenElement[];
@@ -164,42 +149,45 @@ export function summarise(members: number[][]) {
   };
 }
 
-/** Score designs in one call to the surrogate, then the heat model for each. */
-export async function score(
-  designs: AiDesign[],
+/** The heat on both pavements for a set of blocks, with a given pavement wind. */
+export function heatOf(
+  elements: GreenElement[],
+  street: SearchStreet,
+  weather: HourWeather,
+  wind: { A: number; B: number },
+): { A: number; B: number } | null {
+  const grid = gridStreet(street.aspect);
+  const crowns = shadeCrowns(elements, street.heightM);
+  const heat = pavementHeat(
+    {
+      heightM: street.heightM,
+      widthM: street.heightM * grid.width,
+      axisDeg: street.axisDeg,
+      crowns,
+    },
+    weather,
+    PAVEMENT_ZONE * street.heightM,
+    wind,
+    PERSON_HEIGHT_M,
+  );
+  return heat.A && heat.B ? { A: heat.A.utci, B: heat.B.utci } : null;
+}
+
+/** Score sets of blocks in one call to the surrogate, then the heat model for each. */
+export async function scoreElements(
+  els: GreenElement[][],
   street: SearchStreet,
   weather: HourWeather,
   surrogate: Pick<Surrogate, 'scalar' | 'guard'>,
-): Promise<Scored[]> {
+): Promise<Omit<Scored, 'design'>[]> {
   const grid = gridStreet(street.aspect);
-  const els = designs.map((d) => designElements(d, grid.width));
   const feats = els.map((e) => features(grid.aspect, e));
   const out = await surrogate.scalar(feats);
-  return designs.map((design, i) => {
+  return els.map((elements, i) => {
     const s = summarise(out[i]!);
-    const crowns: ShadeCrown[] = els[i]!.map((e) => ({
-      x0: e.x0 * street.heightM,
-      x1: e.x1 * street.heightM,
-      z0: e.z0 * street.heightM,
-      z1: e.z1 * street.heightM,
-      transmissivity: transmissivity(e, street.heightM),
-    }));
-    const heat = pavementHeat(
-      {
-        heightM: street.heightM,
-        widthM: street.heightM * grid.width,
-        axisDeg: street.axisDeg,
-        crowns,
-      },
-      weather,
-      PAVEMENT_ZONE * street.heightM,
-      s.wind,
-      PERSON_HEIGHT_M,
-    );
-    const utci = heat.A && heat.B ? { A: heat.A.utci, B: heat.B.utci } : null;
+    const utci = heatOf(elements, street, weather, s.wind);
     return {
-      design,
-      elements: els[i]!,
+      elements,
       features: feats[i]!,
       guard: check(surrogate.guard, feats[i]!),
       ...s,
@@ -208,6 +196,19 @@ export async function score(
       fumes: 0.5 * (s.ratio.A + s.ratio.B),
     };
   });
+}
+
+/** Score designs: their blocks in this street, then scoreElements. */
+export async function score(
+  designs: AiDesign[],
+  street: SearchStreet,
+  weather: HourWeather,
+  surrogate: Pick<Surrogate, 'scalar' | 'guard'>,
+): Promise<Scored[]> {
+  const grid = gridStreet(street.aspect);
+  const els = designs.map((d) => designElements(d, grid.width));
+  const scored = await scoreElements(els, street, weather, surrogate);
+  return scored.map((s, i) => ({ ...s, design: designs[i]! }));
 }
 
 /** How far a design lies outside what the surrogate knows; 0 inside. */

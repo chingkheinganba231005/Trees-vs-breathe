@@ -1,4 +1,5 @@
 import type { GreenElement } from '../sim/greenery';
+import { CROWN_LAM_H, FULL_SCALE_HEIGHT_M } from '../sim/greenery';
 import type { Radiant, ShadeCrown, Sky, Street2D } from './canyon';
 import { meanRadiant, surfaces } from './canyon';
 import { splitGlobal } from './irradiance';
@@ -79,18 +80,28 @@ export interface HeatState {
   floorSunlit: number;
 }
 
+/**
+ * Share of direct sunlight a crown lets through, from its foliage density per metre: the
+ * light-crown value at CODASC's light crown, the dense-crown value at its dense crown, linear in
+ * between and held beyond (A-018, A-027). A hedge counts as dense.
+ */
+export function crownTransmissivity(e: GreenElement, heightM: number): number {
+  if (e.kind === 'hedge') return CROWN_TRANSMISSIVITY.dense;
+  const perM = e.lamH / heightM;
+  const light = CROWN_LAM_H.light / FULL_SCALE_HEIGHT_M;
+  const dense = CROWN_LAM_H.dense / FULL_SCALE_HEIGHT_M;
+  const t = Math.min(1, Math.max(0, (perM - light) / (dense - light)));
+  return CROWN_TRANSMISSIVITY.light + t * (CROWN_TRANSMISSIVITY.dense - CROWN_TRANSMISSIVITY.light);
+}
+
 /** Greenery elements (units of H) as shading crowns in metres. */
-export function shadeCrowns(
-  elements: GreenElement[],
-  heightM: number,
-  density: 'light' | 'dense',
-): ShadeCrown[] {
+export function shadeCrowns(elements: GreenElement[], heightM: number): ShadeCrown[] {
   return elements.map((e) => ({
     x0: e.x0 * heightM,
     x1: e.x1 * heightM,
     z0: e.z0 * heightM,
     z1: e.z1 * heightM,
-    transmissivity: e.kind === 'hedge' ? CROWN_TRANSMISSIVITY.dense : CROWN_TRANSMISSIVITY[density],
+    transmissivity: crownTransmissivity(e, heightM),
   }));
 }
 

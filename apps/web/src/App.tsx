@@ -10,6 +10,7 @@ import { Placeholder } from './screens/Placeholder';
 import { Present } from './screens/Present';
 import { Start } from './screens/Start';
 import { Street } from './screens/Street';
+import { TradeOff } from './screens/TradeOff';
 
 function screenFor(route: string, engine: EngineChoice) {
   switch (route) {
@@ -20,7 +21,7 @@ function screenFor(route: string, engine: EngineChoice) {
     case '/design':
       return <Design engine={engine} />;
     case '/trade-off':
-      return <Placeholder title="tradeOff.title" intro="tradeOff.intro" phase={4} />;
+      return <TradeOff />;
     case '/compare':
       return <Placeholder title="compare.title" intro="compare.intro" phase={5} />;
     case '/how-we-know':

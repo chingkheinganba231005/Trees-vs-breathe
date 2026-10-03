@@ -30,6 +30,7 @@ import { localTree, presetByKey } from '../content/presets';
 import { streetRun } from '../content/streetRuns';
 import type { StreetPreset } from '../content/presets';
 import { useHashParam } from '../lib/router';
+import { decodeLayout, encodeLayout } from '../ai/layout';
 import { PERSON_HEIGHT_M } from '../sun/canyon';
 import { hourWeather, pavementHeat, shadeCrowns } from '../sun/heat';
 import { weatherPresets } from '../sun/weather';
@@ -68,7 +69,14 @@ export function Design({ engine }: { engine: EngineChoice }) {
 
 function DesignScreen({ engine, preset }: { engine: EngineChoice; preset: StreetPreset | null }) {
   const { t, lang } = useI18n();
-  const start = preset ? Math.round(preset.aspect_h_over_w.median * 10) / 10 : 1;
+  // A design sent from the Trade-off screen (#/design?layout=...) comes with its street shape.
+  const layoutParam = useHashParam('layout');
+  const sentAspect = Number(useHashParam('aspect'));
+  const start = preset
+    ? Math.round(preset.aspect_h_over_w.median * 10) / 10
+    : sentAspect > 0
+      ? sentAspect
+      : 1;
   // The slider moves freely; the solver rebuilds when the value settles.
   const [draft, setDraft] = useState(start);
   const [aspect, setAspect] = useState(start);
@@ -98,7 +106,15 @@ function DesignScreen({ engine, preset }: { engine: EngineChoice; preset: Street
 
   // Street width in building heights, and the greenery placed in it.
   const width = 1 / street;
-  const greenery = useMemo(() => buildGreenery(design, width, scale), [design, width, scale]);
+  const sent = useMemo(() => decodeLayout(layoutParam), [layoutParam]);
+  // The sent layout holds until the user changes the greenery themselves.
+  const [useSent, setUseSent] = useState(sent !== null);
+  const own = useMemo(() => buildGreenery(design, width, scale), [design, width, scale]);
+  const greenery = useSent && sent ? sent : own;
+  const changeDesign = useCallback((d: GreeneryDesign) => {
+    setUseSent(false);
+    setDesign(d);
+  }, []);
   const range = useMemo(
     () => shiftRange(buildGreenery({ ...design, shift: 0 }, width, scale), width),
     [design, width, scale],
@@ -115,11 +131,13 @@ function DesignScreen({ engine, preset }: { engine: EngineChoice; preset: Street
     setExposure((e) => addReading(e, s, keys.current.shapeKey, keys.current.designKey));
   }, []);
   const onDrag = useCallback(
-    (dx: number) =>
+    (dx: number) => {
+      setUseSent(false);
       setDesign((d) => ({
         ...d,
         shift: Math.min(Math.max(d.shift + dx, range[0]), range[1]),
-      })),
+      }));
+    },
     [range],
   );
   const comparison = compare(exposure, shapeKey);
@@ -136,9 +154,9 @@ function DesignScreen({ engine, preset }: { engine: EngineChoice; preset: Street
       heightM: scale.heightM,
       widthM: scale.heightM * width,
       axisDeg: axis,
-      crowns: shadeCrowns(greenery, scale.heightM, design.density),
+      crowns: shadeCrowns(greenery, scale.heightM),
     }),
-    [scale.heightM, width, axis, greenery, design.density],
+    [scale.heightM, width, axis, greenery],
   );
   const zoneM = PAVEMENT_WIDTH * scale.heightM;
   const heat = weather
@@ -251,7 +269,17 @@ function DesignScreen({ engine, preset }: { engine: EngineChoice; preset: Street
             </div>
           </fieldset>
 
-          <GreeneryControls design={design} onChange={setDesign} shiftRange={range} scale={scale} />
+          {useSent && sent && (
+            <p className="mt-6 rounded-md border border-accent px-3 py-2 text-sm" role="note">
+              {t('design.sentLayout')}
+            </p>
+          )}
+          <GreeneryControls
+            design={design}
+            onChange={changeDesign}
+            shiftRange={range}
+            scale={scale}
+          />
 
           {days.length > 0 && (
             <HeatControls
@@ -289,6 +317,18 @@ function DesignScreen({ engine, preset }: { engine: EngineChoice; preset: Street
               hour={hour}
             />
           )}
+          <p className="mt-4">
+            <a
+              className="inline-flex min-h-11 items-center underline underline-offset-4"
+              href={`#/trade-off?${new URLSearchParams({
+                ...(preset ? { street: preset.key } : {}),
+                aspect: String(street),
+                ...(greenery.length > 0 ? { mine: encodeLayout(greenery) } : {}),
+              }).toString()}`}
+            >
+              {t('design.toTradeOff')}
+            </a>
+          </p>
           <section aria-labelledby="readouts" className="mt-6">
             <div className="flex items-center justify-between">
               <h2 id="readouts" className="font-bold">

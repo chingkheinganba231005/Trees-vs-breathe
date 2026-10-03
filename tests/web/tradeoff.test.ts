@@ -8,10 +8,13 @@ import {
   score,
   search,
   searchBounds,
-  transmissivity,
 } from '../../apps/web/src/ai/tradeoff';
 import { CROWN_LAM_H, FULL_SCALE_HEIGHT_M } from '../../apps/web/src/sim/greenery';
-import { CROWN_TRANSMISSIVITY, hourWeather } from '../../apps/web/src/sun/heat';
+import {
+  CROWN_TRANSMISSIVITY,
+  crownTransmissivity,
+  hourWeather,
+} from '../../apps/web/src/sun/heat';
 import { weatherPresets } from '../../apps/web/src/sun/weather';
 
 const weather = hourWeather(
@@ -66,7 +69,7 @@ describe('the trade-off search', () => {
 
   it('interpolates crown transmissivity between the light and dense crowns', () => {
     const at = (lamH: number) =>
-      transmissivity({ id: 't', kind: 'trees', x0: 0, x1: 1, z0: 0.3, z1: 1, lamH }, 18);
+      crownTransmissivity({ id: 't', kind: 'trees', x0: 0, x1: 1, z0: 0.3, z1: 1, lamH }, 18);
     expect(at(CROWN_LAM_H.light)).toBeCloseTo(CROWN_TRANSMISSIVITY.light, 12);
     expect(at(CROWN_LAM_H.dense)).toBeCloseTo(CROWN_TRANSMISSIVITY.dense, 12);
     expect(at(1)).toBeCloseTo(CROWN_TRANSMISSIVITY.light, 12);
