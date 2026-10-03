@@ -83,6 +83,7 @@ function DesignScreen({ engine, preset }: { engine: EngineChoice; preset: Street
       ? {
           ...DEFAULT_DESIGN,
           treeSize: 'local',
+          rows: 'kerbs',
           crownBase: crownTop({ ...DEFAULT_DESIGN, treeSize: 'local' }, scale) / 3,
         }
       : DEFAULT_DESIGN,

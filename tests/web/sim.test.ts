@@ -241,3 +241,25 @@ describe('greenery sized in metres', () => {
     expect(hedge!.lamH).toBeCloseTo(3.34 * 36);
   });
 });
+
+describe('trees along the kerbs', () => {
+  it('stand one row over each pavement edge and merge in a narrow street', async () => {
+    const { buildGreenery, DEFAULT_DESIGN, PAVEMENT_WIDTH } =
+      await import('../../apps/web/src/sim/greenery');
+    // Local trees (7 m, 4 m crowns) in a 36.8 m street: one row centred on each kerb line.
+    const scale = { heightM: 36.8, localTree: { heightM: 7, spreadM: 4 } };
+    const local = { ...DEFAULT_DESIGN, kind: 'trees' as const, rows: 'kerbs' as const };
+    const rows = buildGreenery({ ...local, treeSize: 'local' }, 1.2, scale);
+    expect(rows).toHaveLength(2);
+    expect(0.5 * (rows[0]!.x0 + rows[0]!.x1)).toBeCloseTo(PAVEMENT_WIDTH, 10);
+    expect(0.5 * (rows[1]!.x0 + rows[1]!.x1)).toBeCloseTo(1.2 - PAVEMENT_WIDTH, 10);
+    // Wind-tunnel-sized rows reach the walls and stop there.
+    const tunnel = buildGreenery(local, 1.2);
+    expect(tunnel[0]!.x0).toBe(0);
+    expect(tunnel[1]!.x1).toBeCloseTo(1.2, 10);
+    const narrow = buildGreenery({ ...DEFAULT_DESIGN, kind: 'trees', rows: 'kerbs' }, 0.5);
+    expect(narrow).toHaveLength(1);
+    expect(narrow[0]!.x0).toBeGreaterThanOrEqual(0);
+    expect(narrow[0]!.x1).toBeLessThanOrEqual(0.5);
+  });
+});

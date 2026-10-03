@@ -90,6 +90,29 @@ export function avenueTrees(
 }
 
 /**
+ * Trees along both kerbs: one row centred on each kerb line, taken as the outer edge of the
+ * pavement breathing zone, PAVEMENT_WIDTH from each wall (assumption A-024). Rows are as wide as
+ * CODASC's W/H 2 rows (0.42 H) until sized by a local tree.
+ */
+export function kerbTrees(
+  width: number,
+  density: CrownDensity,
+  heightM = FULL_SCALE_HEIGHT_M,
+): GreenElement[] {
+  const lamH = crownLamH(density, heightM);
+  const half = 0.21;
+  return [PAVEMENT_WIDTH, width - PAVEMENT_WIDTH].map((mid, i) => ({
+    id: `trees-${i}`,
+    kind: 'trees' as const,
+    x0: mid - half,
+    x1: mid + half,
+    z0: 1 / 3,
+    z1: 1,
+    lamH,
+  }));
+}
+
+/**
  * Hedge options from Gromke et al. (2016) via Abhijith et al. (2017, Table 3): heights 1.5 and
  * 2.5 m, pressure-loss coefficients 1.67 and 3.34 1/m, 1.5 m wide.
  */
@@ -101,6 +124,8 @@ export interface GreeneryDesign {
   kind: 'none' | 'trees' | 'hedge';
   /** CODASC's trees, as tall as the buildings, or a typical local roadside tree (A-014, A-015). */
   treeSize: 'tunnel' | 'local';
+  /** CODASC's row layout, or one row along each kerb (A-024). */
+  rows: 'tunnel' | 'kerbs';
   density: CrownDensity;
   /** Crown base above the ground, units of H. CODASC: 1/3, its crowns reaching the roofs. */
   crownBase: number;
@@ -115,6 +140,7 @@ export interface GreeneryDesign {
 export const DEFAULT_DESIGN: GreeneryDesign = {
   kind: 'none',
   treeSize: 'tunnel',
+  rows: 'tunnel',
   density: 'dense',
   crownBase: 1 / 3,
   crownScale: 1,
@@ -153,7 +179,8 @@ export function buildGreenery(
   if (d.kind === 'trees') {
     const top = crownTop(d, scale);
     const local = d.treeSize === 'local' && scale.localTree ? scale.localTree : null;
-    els = avenueTrees(width, d.density, scale.heightM).map((e) => {
+    const layout = d.rows === 'kerbs' ? kerbTrees : avenueTrees;
+    els = layout(width, d.density, scale.heightM).map((e) => {
       const mid = 0.5 * (e.x0 + e.x1);
       const full = local ? local.spreadM / scale.heightM : e.x1 - e.x0;
       const half = 0.5 * full * d.crownScale;

@@ -138,6 +138,16 @@ export function GreeneryControls({ design, onChange, shiftRange, scale }: Props)
               )}
             </>
           )}
+          <p className="mt-4 text-sm font-bold">{t('green.rows')}</p>
+          <Choice
+            name="tree-rows"
+            value={design.rows}
+            onChange={(rows) => set({ rows, shift: 0 })}
+            options={[
+              { value: 'kerbs', label: t('green.rowsKerbs') },
+              { value: 'tunnel', label: t('green.rowsTunnel') },
+            ]}
+          />
           <p className="mt-4 text-sm font-bold">{t('green.density')}</p>
           <Choice
             name="green-density"
