@@ -13,14 +13,20 @@ export type ToWorker =
   | { type: 'greenery'; drag: Float32Array }
   /** Time constant of the running mean, in steps. */
   | { type: 'averaging'; steps: number }
-  /** Step for about budgetMs, then reply with a frame. */
-  | { type: 'run'; budgetMs: number; maxSteps: number };
+  /**
+   * Playback speed: `rate` flow-through times per second, `stepsPerFlowThrough` lattice steps in
+   * one. The worker steps on its own clock and keeps going between frames.
+   */
+  | { type: 'clock'; rate: number; stepsPerFlowThrough: number }
+  /** Reply with the current state; requests also keep the worker stepping (see PAUSE_MS). */
+  | { type: 'frame' };
 
 export type FromWorker =
   | {
       type: 'frame';
       ux: Float32Array;
       uy: Float32Array;
+      /** Steps run since the previous frame. */
       steps: number;
       time: number;
       maxSpeed: number;
@@ -30,5 +36,7 @@ export type FromWorker =
       meanSteps: number;
       /** True when this frame followed a restore from the last good state. */
       recovered: boolean;
+      /** Share of the target playback speed reached over the last second. */
+      achieved: number;
     }
   | { type: 'error'; message: string };

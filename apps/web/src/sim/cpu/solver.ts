@@ -174,9 +174,18 @@ export class CpuSolver {
       const f7 = fPost[src[n7 + k]!]! + add[n7 + k]!;
       const f8 = fPost[src[n8 + k]!]! + add[n8 + k]!;
 
-      if (gPost && gNext) {
-        // Tracer streaming uses the same map: directions 0-4 only reference each other.
-        for (let i = 0; i < 5; i++) gNext[i * n + k] = gPost[src[i * n + k]!]!;
+      // Tracer streaming uses the same map: directions 0-4 only reference each other.
+      let g0 = 0;
+      let g1 = 0;
+      let g2 = 0;
+      let g3 = 0;
+      let g4 = 0;
+      if (gPost) {
+        g0 = gPost[src[k]!]!;
+        g1 = gPost[src[n + k]!]!;
+        g2 = gPost[src[n2 + k]!]!;
+        g3 = gPost[src[n3 + k]!]!;
+        g4 = gPost[src[n4 + k]!]!;
       }
 
       if (!fluid[k]) {
@@ -189,6 +198,13 @@ export class CpuSolver {
         fNext[n6 + k] = f6;
         fNext[n7 + k] = f7;
         fNext[n8 + k] = f8;
+        if (gNext) {
+          gNext[k] = g0;
+          gNext[n + k] = g1;
+          gNext[n2 + k] = g2;
+          gNext[n3 + k] = g3;
+          gNext[n4 + k] = g4;
+        }
         continue;
       }
 
@@ -276,11 +292,6 @@ export class CpuSolver {
       fNext[n8 + k] = f8 - omega * (f8 - e8) + s8 + sp * e8;
 
       if (gNext && source) {
-        const g0 = gNext[k]!;
-        const g1 = gNext[n + k]!;
-        const g2 = gNext[n2 + k]!;
-        const g3 = gNext[n3 + k]!;
-        const g4 = gNext[n4 + k]!;
         const c = g0 + g1 + g2 + g3 + g4;
         const tauC = 0.5 + 3 * (d0 + (tau - tau0) / 3 / sct);
         const om = 1 / tauC;
@@ -354,10 +365,17 @@ export class CpuSolver {
     const { n, src, gPost } = this;
     const res = out ?? new Float32Array(n);
     if (!gPost) return res.fill(0);
+    const n2 = 2 * n;
+    const n3 = 3 * n;
+    const n4 = 4 * n;
+    // Written out per direction: a loop over the five directions here ran several times slower.
     for (let k = 0; k < n; k++) {
-      let c = 0;
-      for (let i = 0; i < 5; i++) c += gPost[src[i * n + k]!]!;
-      res[k] = c;
+      res[k] =
+        gPost[src[k]!]! +
+        gPost[src[n + k]!]! +
+        gPost[src[n2 + k]!]! +
+        gPost[src[n3 + k]!]! +
+        gPost[src[n4 + k]!]!;
     }
     return res;
   }
@@ -374,27 +392,37 @@ export class CpuSolver {
 
   /** Density and velocity that the next collision will see. */
   fields(out?: Fields): Fields {
-    const { n, src, add, fPost } = this;
+    const { n, src, add, fPost, fluid, drag } = this;
     const { gx, gy } = this.params;
     const res = out ?? {
       rho: new Float32Array(n),
       ux: new Float32Array(n),
       uy: new Float32Array(n),
     };
+    const n2 = 2 * n;
+    const n3 = 3 * n;
+    const n4 = 4 * n;
+    const n5 = 5 * n;
+    const n6 = 6 * n;
+    const n7 = 7 * n;
+    const n8 = 8 * n;
+    // Written out per direction like stepOnce; a loop over the nine directions ran several times
+    // slower and cost as much as two steps on every frame.
     for (let k = 0; k < n; k++) {
-      let rho = 0;
-      let jx = 0;
-      let jy = 0;
-      for (let i = 0; i < Q; i++) {
-        const f = fPost[src[i * n + k]!]! + add[i * n + k]!;
-        rho += f;
-        jx += f * CXS[i]!;
-        jy += f * CYS[i]!;
-      }
-      const g = this.fluid[k] ? 1 : 0;
-      let ux = jx / rho + 0.5 * gx * g;
-      let uy = jy / rho + 0.5 * gy * g;
-      const lam = this.drag ? this.drag[k]! : 0;
+      const f0 = fPost[src[k]!]! + add[k]!;
+      const f1 = fPost[src[n + k]!]! + add[n + k]!;
+      const f2 = fPost[src[n2 + k]!]! + add[n2 + k]!;
+      const f3 = fPost[src[n3 + k]!]! + add[n3 + k]!;
+      const f4 = fPost[src[n4 + k]!]! + add[n4 + k]!;
+      const f5 = fPost[src[n5 + k]!]! + add[n5 + k]!;
+      const f6 = fPost[src[n6 + k]!]! + add[n6 + k]!;
+      const f7 = fPost[src[n7 + k]!]! + add[n7 + k]!;
+      const f8 = fPost[src[n8 + k]!]! + add[n8 + k]!;
+      const rho = f0 + f1 + f2 + f3 + f4 + f5 + f6 + f7 + f8;
+      const g = fluid[k] ? 0.5 : 0;
+      let ux = (f1 - f3 + f5 - f6 - f7 + f8) / rho + g * gx;
+      let uy = (f2 - f4 + f5 + f6 - f7 - f8) / rho + g * gy;
+      const lam = drag ? drag[k]! : 0;
       if (lam > 0) {
         const kk = 2 / (1 + Math.sqrt(1 + lam * Math.hypot(ux, uy)));
         ux *= kk;

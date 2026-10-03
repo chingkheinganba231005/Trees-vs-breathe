@@ -10,6 +10,7 @@ import type { Engine, EngineChoice } from './engine';
 import { isHealthy, lowerTimeStep } from './guard';
 import { GpuRenderer } from './gpu/render';
 import { GpuSolver, requestDevice } from './gpu/solver';
+import { StepClock } from './clock';
 import { Particles } from './particles';
 import type { CanyonGeometry, FlowSettings } from './street';
 import { canyonDomain, canyonGeometry, canyonNx, canyonParams, uniformStart } from './street';
@@ -21,38 +22,29 @@ import { streetView } from './view';
  * Smagorinsky model stays stable at this Reynolds number with Cs = 0.17 but not with Cs = 0.1.
  */
 export const LIVE_FLOW: FlowSettings = { uRef: 0.05, reynolds: 20000, smagorinsky: 0.17 };
-/** Building height in cells: 48 on WebGPU (BRIEF.md 5.1), 24 for the CPU worker. */
-export const HEIGHT = { gpu: 48, cpu: 24 } as const;
+/**
+ * Building height in cells, the same on every engine so every device runs the same model
+ * (docs/progress.md D-024). Results under plain names in results/ hold this grid; other grids
+ * carry a suffix such as _h48.
+ */
+export const HEIGHT = 24;
 
-/** Results at the CPU grid carry plain names; other grids add a suffix, e.g. calibration_h48. */
-function atGrid(name: string, height: number): string {
-  return height === HEIGHT.cpu ? `${name}.json` : `${name}_h${height}.json`;
+/**
+ * Turbulent Schmidt number of the fumes: the value calibrated on CODASC on the live grid
+ * (results/trees/calibration.json), else the 1.0 of Gromke (2008, p. 87).
+ */
+export function liveSchmidt(): number {
+  return result<CalibrationResult>('trees/calibration.json')?.schmidt ?? 1.0;
 }
 
 /**
- * Turbulent Schmidt number of the fumes on a grid of `height` cells per building height: the
- * value calibrated on CODASC at that grid, else the one calibrated at the CPU grid, else the 1.0
- * of Gromke (2008, p. 87).
+ * The deepest street (largest H/W) whose vortex structure the regime study has checked on the
+ * live grid (results/street/regimes.json), so the app never offers an unchecked shape. Falls back
+ * to H/W 1 when the study has not passed.
  */
-export function liveSchmidt(height: number): number {
-  const at = (h: number) => result<CalibrationResult>(`trees/${atGrid('calibration', h)}`)?.schmidt;
-  return at(height) ?? at(HEIGHT.cpu) ?? 1.0;
-}
-
-/**
- * The deepest street (largest H/W) whose vortex structure a regime study has checked on a grid
- * no finer than `height` (results/street/regimes*.json), so the app never offers an unchecked
- * shape. Falls back to H/W 1 when no study has passed.
- */
-export function checkedAspectMax(height: number): number {
-  let best = 1;
-  for (const h of [HEIGHT.cpu, HEIGHT.gpu]) {
-    if (h > height) continue;
-    const r = result<RegimesResult>(`street/${atGrid('regimes', h)}`);
-    if (!r?.passed) continue;
-    for (const row of r.rows) best = Math.max(best, row.aspect);
-  }
-  return best;
+export function checkedAspectMax(): number {
+  const r = result<RegimesResult>('street/regimes.json');
+  return r?.passed ? Math.max(1, ...r.rows.map((row) => row.aspect)) : 1;
 }
 
 /**
@@ -95,7 +87,7 @@ export function liveParams(
       source: lineSources(g, laneOffsets(g.width / g.height), SOURCE_TOTAL),
       // Molecular diffusivity equal to the molecular viscosity (docs/assumptions.md A-009).
       diffusivity: (base.tau0 - 0.5) / 3,
-      schmidt: liveSchmidt(g.height),
+      schmidt: liveSchmidt(),
     },
   };
 }
@@ -134,6 +126,10 @@ export interface SimStats {
   smagorinsky: number;
   /** Lattice steps per second of wall time. */
   stepsPerSecond: number;
+  /** Target playback speed in flow-through times (H / u_ref) per second of wall time. */
+  playbackRate: number;
+  /** Share of the target playback speed this device reached over the last second. */
+  playbackAchieved: number;
   fps: number;
   /** Lattice steps since the street was built. */
   time: number;
@@ -231,6 +227,8 @@ abstract class BaseSim {
   protected averaging = 10_000;
   protected meanSteps = 0;
   protected exposure: { A: number; B: number } | null = null;
+  /** Decides how many lattice steps each frame runs, the same in simulated time on every device. */
+  protected readonly clock = new StepClock();
 
   constructor(opts: StreetSimOptions) {
     this.opts = opts;
@@ -238,10 +236,30 @@ abstract class BaseSim {
     this.layers = opts.layers;
     this.colors = opts.colors;
     this.greenery = opts.greenery;
+    document.addEventListener('visibilitychange', this.onVisibility);
+  }
+
+  /** A hidden page gets no frames; when it is shown again the time away is not owed. */
+  private onVisibility = (): void => {
+    if (document.visibilityState === 'visible') this.clock.reset();
+  };
+
+  protected stopListening(): void {
+    document.removeEventListener('visibilitychange', this.onVisibility);
   }
 
   protected params(): SolverParams {
     return liveParams(this.geometry, this.solid, this.flow, this.greenery);
+  }
+
+  /** Lattice steps in one flow-through time H / u_ref; grows if the guard lowers the time step. */
+  protected stepsPerFlowThrough(): number {
+    return this.geometry.height / this.flow.uRef;
+  }
+
+  /** Share of the target playback speed reached over the last second. */
+  protected achieved(): number {
+    return this.clock.achieved;
   }
 
   /** Converts the running-mean concentration to c+, corrected for the mean's start. */
@@ -305,6 +323,8 @@ abstract class BaseSim {
       tau0: params.tau0,
       smagorinsky: this.flow.smagorinsky,
       stepsPerSecond: this.stepsPerSecond,
+      playbackRate: this.clock.rate,
+      playbackAchieved: this.achieved(),
       fps: this.fps,
       time,
       recoveries: this.recoveries,
@@ -317,14 +337,14 @@ abstract class BaseSim {
   }
 }
 
+/** Most lattice steps one WebGPU frame may submit, so a large ?speed= cannot stall the page. */
+const MAX_GPU_STEPS_PER_FRAME = 256;
+
 class GpuStreetSim extends BaseSim implements StreetSim {
   readonly engine = 'gpu' as const;
   private readonly device: GPUDevice;
   private readonly renderer: GpuRenderer;
   private solver!: GpuSolver;
-  private substeps = 12;
-  private lastFrame = performance.now();
-  private frameMs = 16;
   private checking = false;
   private framesSinceCheck = 0;
 
@@ -344,7 +364,7 @@ class GpuStreetSim extends BaseSim implements StreetSim {
 
   private build(): void {
     this.solver?.destroy();
-    this.geometry = canyonGeometry(HEIGHT.gpu, this.aspect);
+    this.geometry = canyonGeometry(HEIGHT, this.aspect);
     this.view = streetView(this.geometry);
     const domain = canyonDomain(this.geometry);
     this.solid = domain.solid;
@@ -382,29 +402,31 @@ class GpuStreetSim extends BaseSim implements StreetSim {
     this.renderer.attach(this.solver, width, height);
   }
 
-  private loop = (): void => {
+  private loop = (now: number = performance.now()): void => {
     if (this.stopped) return;
-    const now = performance.now();
-    this.frameMs = 0.9 * this.frameMs + 0.1 * (now - this.lastFrame);
-    this.lastFrame = now;
-    // Keep the frame rate above 30 fps by trading lattice steps per frame.
-    if (this.frameMs > 30 && this.substeps > 2) this.substeps -= 1;
-    else if (this.frameMs < 18 && this.substeps < 40) this.substeps += 1;
-
     this.takeGreenery();
-    this.solver.step(this.substeps);
-    this.meanSteps += this.substeps;
+    // The clock bounds the steps by elapsed time; the cap only matters for a large ?speed=. Slow
+    // frames are not taken as a slow GPU: drawing, not stepping, is often what makes them slow.
+    const steps = Math.min(
+      this.clock.due(now, this.stepsPerFlowThrough()),
+      MAX_GPU_STEPS_PER_FRAME,
+    );
+    if (steps > 0) {
+      this.solver.step(steps);
+      this.meanSteps += steps;
+    }
+    this.clock.ran(steps, now);
     this.renderer.draw(
       this.view,
       this.flow.uRef,
-      this.substeps,
+      steps,
       this.layers,
       this.colors,
       this.width,
       this.heightPx,
       this.cScale(),
     );
-    this.countFrame(this.substeps);
+    this.countFrame(steps);
     this.framesSinceCheck += 1;
     if (this.framesSinceCheck >= 90 && !this.checking) {
       this.framesSinceCheck = 0;
@@ -455,6 +477,7 @@ class GpuStreetSim extends BaseSim implements StreetSim {
 
   destroy(): void {
     this.stopped = true;
+    this.stopListening();
     cancelAnimationFrame(this.raf);
     this.solver.destroy();
     this.renderer.destroy();
@@ -473,6 +496,8 @@ class CpuStreetSim extends BaseSim implements StreetSim {
   private time = 0;
   private readonly note: EngineNote;
   private waiting = false;
+  /** The worker keeps its own copy of the clock; this is what it last reported. */
+  private workerAchieved = 1;
 
   constructor(canvas: HTMLCanvasElement, opts: StreetSimOptions, note: EngineNote) {
     super(opts);
@@ -481,7 +506,7 @@ class CpuStreetSim extends BaseSim implements StreetSim {
     this.worker = new Worker(new URL('./cpu/worker.ts', import.meta.url), { type: 'module' });
     this.worker.onmessage = (ev: MessageEvent<FromWorker>) => this.onFrame(ev.data);
     this.build();
-    this.requestFrame();
+    this.raf = requestAnimationFrame(this.tick);
   }
 
   private send(msg: ToWorker, transfer: Transferable[] = []): void {
@@ -489,7 +514,7 @@ class CpuStreetSim extends BaseSim implements StreetSim {
   }
 
   private build(): void {
-    this.geometry = canyonGeometry(HEIGHT.cpu, this.aspect);
+    this.geometry = canyonGeometry(HEIGHT, this.aspect);
     this.view = streetView(this.geometry);
     const domain = canyonDomain(this.geometry);
     this.solid = domain.solid;
@@ -504,6 +529,7 @@ class CpuStreetSim extends BaseSim implements StreetSim {
       params,
       initial: { ux: start.ux, uy: start.uy },
     });
+    this.sendClock();
     this.meanSteps = 0;
     this.exposure = null;
     this.conc = null;
@@ -536,12 +562,26 @@ class CpuStreetSim extends BaseSim implements StreetSim {
     this.renderer.resize(width, height);
   }
 
-  private requestFrame(): void {
+  /** The worker steps on its own; it needs the playback speed in steps of the current grid. */
+  private sendClock(): void {
+    this.send({
+      type: 'clock',
+      rate: this.clock.rate,
+      stepsPerFlowThrough: this.stepsPerFlowThrough(),
+    });
+  }
+
+  protected achieved(): number {
+    return this.workerAchieved;
+  }
+
+  /** Once per display frame: hand over new greenery and ask for the current state. */
+  private tick = (): void => {
     if (this.stopped || this.waiting) return;
     this.takeGreenery();
     this.waiting = true;
-    this.send({ type: 'run', budgetMs: 14, maxSteps: 400 });
-  }
+    this.send({ type: 'frame' });
+  };
 
   private onFrame(msg: FromWorker): void {
     this.waiting = false;
@@ -553,8 +593,10 @@ class CpuStreetSim extends BaseSim implements StreetSim {
     if (msg.recovered) {
       this.flow = lowerTimeStep(this.flow, this.geometry.height).flow;
       this.send({ type: 'params', params: this.params() });
+      this.sendClock();
       this.recoveries += 1;
     }
+    this.workerAchieved = msg.achieved;
     this.time = msg.time;
     this.conc = msg.conc;
     this.meanSteps = msg.meanSteps;
@@ -586,7 +628,7 @@ class CpuStreetSim extends BaseSim implements StreetSim {
         { conc: this.conc, cScale: this.cScale(), drag: this.drag },
       );
       this.countFrame(msg.steps);
-      this.requestFrame();
+      this.tick();
     });
   }
 
@@ -596,6 +638,7 @@ class CpuStreetSim extends BaseSim implements StreetSim {
 
   destroy(): void {
     this.stopped = true;
+    this.stopListening();
     cancelAnimationFrame(this.raf);
     this.worker.terminate();
   }

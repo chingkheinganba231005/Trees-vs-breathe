@@ -111,10 +111,10 @@ export function StreetSimulation({
     simRef.current?.setGreenery(greenery);
   }, [greenery]);
 
-  // The canvas keeps the proportions of the framed street at the GPU resolution.
-  const view = streetView(canyonGeometry(HEIGHT.gpu, aspect));
+  // The canvas keeps the proportions of the framed street.
+  const view = streetView(canyonGeometry(HEIGHT, aspect));
   const toH = (dxPx: number, el: HTMLElement) =>
-    (dxPx / el.getBoundingClientRect().width) * (view.width / HEIGHT.gpu);
+    (dxPx / el.getBoundingClientRect().width) * (view.width / HEIGHT);
 
   if (failed) {
     return (

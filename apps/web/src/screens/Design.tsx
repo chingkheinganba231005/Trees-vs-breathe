@@ -13,7 +13,8 @@ import type { ExposureState } from '../sim/exposure';
 import type { GreeneryDesign } from '../sim/greenery';
 import { buildGreenery, DEFAULT_DESIGN, shiftRange } from '../sim/greenery';
 import type { SimStats } from '../sim/streetSim';
-import { checkedAspectMax, HEIGHT } from '../sim/streetSim';
+import { PLAYBACK_RATE } from '../sim/clock';
+import { checkedAspectMax } from '../sim/streetSim';
 
 // The shallowest street the regime study checked (results/street/regimes.json); the deepest
 // depends on the engine's grid (checkedAspectMax).
@@ -40,9 +41,8 @@ export function Design({ engine }: { engine: EngineChoice }) {
   const [stats, setStats] = useState<SimStats | null>(null);
   const [exposure, setExposure] = useState<ExposureState>(EMPTY_EXPOSURE);
   const layers = useMemo(() => ({ wind, speed, fumes }), [wind, speed, fumes]);
-  // Until the engine reports its grid, offer only what the coarser CPU grid has been checked for;
-  // a street chosen on the GPU grid is cut back if the simulation falls back to the CPU.
-  const aspectMax = checkedAspectMax(stats?.height ?? HEIGHT.cpu);
+  // Only street shapes the regime study has checked on the live grid.
+  const aspectMax = checkedAspectMax();
   const street = Math.min(aspect, aspectMax);
   const shown = Math.min(draft, aspectMax);
 
@@ -74,8 +74,9 @@ export function Design({ engine }: { engine: EngineChoice }) {
   );
   const comparison = compare(exposure, shapeKey);
   const regime = regimeText[expectedRegime(shown)];
+  const locale = lang === 'en' ? 'en-GB' : 'zh-HK';
   const num = (v: number, digits = 0) =>
-    v.toLocaleString(lang === 'en' ? 'en-GB' : 'zh-HK', { maximumFractionDigits: digits });
+    v.toLocaleString(locale, { maximumFractionDigits: digits });
 
   return (
     <Screen title={t('design.title')} intro={t('design.intro')}>
@@ -184,10 +185,23 @@ export function Design({ engine }: { engine: EngineChoice }) {
                 value={stats ? num(stats.smagorinsky, 2) : '…'}
               />
               <Readout
-                label={t('readout.rate')}
-                value={stats ? t('readout.rateValue', { n: num(stats.stepsPerSecond) }) : '…'}
+                label={t('readout.playback')}
+                value={
+                  stats
+                    ? t('readout.playbackValue', {
+                        p: stats.playbackAchieved.toLocaleString(locale, {
+                          style: 'percent',
+                          maximumFractionDigits: 0,
+                        }),
+                      }) +
+                      (stats.playbackRate === PLAYBACK_RATE
+                        ? ''
+                        : ` · ${t('readout.playbackFast', { x: num(stats.playbackRate / PLAYBACK_RATE, 2) })}`)
+                    : '…'
+                }
                 mono={false}
               />
+              <Readout label={t('readout.rate')} value={stats ? num(stats.stepsPerSecond) : '…'} />
               <Readout
                 label={t('readout.engine')}
                 value={stats ? t(stats.engine === 'gpu' ? 'engine.gpu' : 'engine.cpu') : '…'}
@@ -198,6 +212,12 @@ export function Design({ engine }: { engine: EngineChoice }) {
               )}
             </dl>
             {stats?.engine === 'cpu' && <p className="mt-3 text-sm">{t(stats.note)}</p>}
+            {stats && stats.playbackAchieved < 0.9 && (
+              <p className="mt-3 text-sm" role="status">
+                {t('readout.playbackSlow')}
+              </p>
+            )}
+            <p className="mt-3 text-sm text-ink-muted">{t('readout.playbackHelp')}</p>
             <p className="mt-3 text-sm text-ink-muted">{t('readout.reynoldsHelp')}</p>
             <p className="mt-6 rounded-md border border-dashed border-line px-3 py-2 text-sm text-ink-muted">
               {t('design.next')}

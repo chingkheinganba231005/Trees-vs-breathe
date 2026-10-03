@@ -47,7 +47,8 @@ test('the Design screen runs the live street on the CPU worker', async ({ page }
   const readouts = page.getByRole('region', { name: 'Model settings' });
   await expect(readouts).toContainText('CPU worker', { timeout: 20_000 });
   await expect(readouts).toContainText('20,000');
-  await expect(readouts).toContainText('time steps per second');
+  await expect(readouts).toContainText('of normal');
+  await expect(readouts).toContainText('Lattice steps per second');
   // The H/W slider rebuilds the street.
   const slider = page.getByLabel('Street shape: building height ÷ street width (H/W)');
   await slider.fill('2');
