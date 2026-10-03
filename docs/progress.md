@@ -37,7 +37,8 @@ Phases follow `BRIEF.md` section 12. Each phase starts with a checklist here; it
 - **Q-001 (resolved 2026-10-02).** GitHub Pages switched on by the user (Source: GitHub Actions).
 - **Q-002 (resolved 2026-10-02).** The user asked for a `main` branch; it was created from the P0 head.
 - **Q-003 (resolved 2026-10-02).** MIT licence, at the user's request.
-- **Q-004 (needed by P3).** Three real Hong Kong streets for the presets: narrow (H/W ≈ 3), medium (≈ 1.5), wide (≈ 0.5).
+- **Q-004 (resolved 2026-10-03).** The user chose Wing Lok Street (narrow), Nathan Road (medium) and Yen Chow Street (wide); measured in `results/streets/presets.json`.
+- **Q-005 (open).** Wing Lok Street measures H/W 4.4, beyond the H/W 2 the live model has been checked for, so Design shows it at H/W 2 with a note. Options: keep that; add a Colab run of the street at its true shape on a fine grid, shown as a recorded result beside the live approximation; or choose a shallower narrow street.
 
 ## P1 — Live solver core
 
@@ -173,3 +174,57 @@ Goal: porous trees and hedges in the street, traffic fumes as a passive tracer, 
 The CODASC comparison table is generated, and the direction checks pass or come with a written analysis.
 
 Met on 2026-10-03: the table is in `docs/validation.md` and both direction checks pass. The Reynolds check and the resolution question stay open in the follow-up run; neither blocks phase 3.
+
+## P3 — Sun, shade and heat
+
+Goal: the time of day moves the sun, shade falls from the roofs and the crowns, and each pavement gets a heat reading (UTCI) next to its fumes reading, so the trade-off is visible: crowns that cool the pavement can hold fumes in.
+
+### Sources to verify first
+
+- [ ] Solar position: NREL SPA (Reda and Andreas 2004) or NOAA, and `pvlib` for the tests (licence)
+- [ ] Leaf or crown transmission of sunlight by crown density, for crown shade (an assumption with a cited value)
+- [ ] Diffuse fraction of global radiation: Erbs et al. (1982) or Reindl et al. (1990)
+- [ ] Mean radiant temperature of a standing person: SOLWEIG (Lindberg et al. 2008), absorption coefficients and emissivity
+- [ ] UTCI operational polynomial (Bröde et al. 2012) in `pythermalcomfort` (MIT): version and reference values
+- [ ] Wind at 10 m from pedestrian wind: log profile and its roughness length
+- [ ] Hong Kong Observatory hourly data (temperature, humidity, global radiation, wind) for a very hot day and a typical July day, with licence
+- [ ] Sizes of Hong Kong street trees, to size crowns in metres on the real streets (until found, crowns keep the wind-tunnel proportions)
+- [ ] Bus headroom over carriageways (carried over from P2)
+
+### Street
+
+- [x] Three presets measured from Lands Department data (`python -m treesvb.hkstreets`, `results/streets/presets.json`); Street screen with drawings to scale and "Open in Design"
+- [ ] Custom street: H, W, pavement widths, compass direction
+- [ ] Phone mode: compass for the direction, tilt to the roofline for the height (h = d tan θ + eye height, with its uncertainty), thermometer reading
+- [ ] Date, time and weather preset
+
+### Sun and shade
+
+- [ ] Solar position in TypeScript and Python, within 0.1° of `pvlib`
+- [ ] Profile angle in the cross-section; shadows from roof edges and crowns; crown transmission by density
+
+### Radiation and heat
+
+- [ ] Direct and diffuse split of global radiation
+- [ ] Simplified SOLWEIG mean radiant temperature at each pavement; surface temperatures by a documented simple approximation (assumption)
+- [ ] UTCI polynomial in TypeScript, within 0.1 °C of `pythermalcomfort` over a grid of inputs
+- [ ] Pedestrian wind from the solver converted to 10 m with a log profile
+- [ ] UTCI stress categories in plain words
+
+### App
+
+- [ ] Design: shade band, UTCI strip along each pavement, time-of-day slider, wind-speed control; per-pavement Heat (UTCI °C and category) and Fumes readouts as ranges
+- [ ] Trees, lanes and the breathing zone sized in metres on the real streets
+- [ ] Constraint badges: pavement width and bus headroom
+- [ ] Evidence cards: solar position against `pvlib`, UTCI against `pythermalcomfort`
+
+### Decisions
+
+| ID    | Decision                                                                                                                                                                                                                                               | Why                                                                                                                                                                                         |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D-026 | Street presets: W wall to wall and H of the tallest block on each street front (outlines within 3 m), medians over points 5 m apart; Nathan Road and Yen Chow Street measured over 300 m centred on the EPD monitoring stations, Wing Lok Street whole | The brief asks for presets measured from Lands Department or CSDI data; the stations tie the presets to measured air quality; the 3 m rule follows from the data's stated position accuracy |
+| D-027 | A preset deeper than the checked range is shown at the deepest checked shape, with a note                                                                                                                                                              | The live model is only trusted where its vortex structure has been checked (Q-005 asks the user how to go further)                                                                          |
+
+### Exit
+
+Tests green, and the Design screen shows heat and fumes moving in opposite directions as crowns grow.
