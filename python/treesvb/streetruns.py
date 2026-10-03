@@ -9,7 +9,8 @@ live view.
 
 Everything is sized in metres from the measured preset (results/streets/presets.json): the
 street's median H/W, its median building height for trees and hedges, the typical local tree
-(results/streets/trees.json, A-014) in the wind-tunnel tree's form (A-015), CODASC's lanes
+(results/streets/trees.json, A-014) in the wind-tunnel tree's form (A-015) along both kerbs
+(A-024), CODASC's lanes
 closing in with the width (A-012) and the breathing zone at its full-scale size (A-016). Three
 designs are run: no greenery, an avenue of local trees, and a hedge in the middle.
 """
@@ -56,20 +57,20 @@ def local_tree(key: str) -> dict:
     return {"height_m": tree["height_m"]["median"], "spread_m": tree["crown_spread_m"]["median"]}
 
 
-def designs(width: float, height_m: float, tree: dict) -> dict[str, list[cases.Crown]]:
-    """No greenery, an avenue of local trees, a central hedge; x from the upwind wall, units of H.
+def designs(width: float, height_m: float, tree: dict, kerb: float) -> dict[str, list[cases.Crown]]:
+    """No greenery, local trees along both kerbs, a central hedge; x from the upwind wall, in H.
 
-    The tree row follows avenueTrees and buildGreenery in apps/web/src/sim/greenery.ts: one central
-    row up to 1.5 H wide, two rows 0.29-0.71 H from each wall beyond; crown from a third of the
-    tree height to its top, as wide as the crown spread.
+    The trees follow kerbTrees and buildGreenery in apps/web/src/sim/greenery.ts: one row centred on
+    each kerb line, `kerb` from each wall (A-024), crown from a third of the tree height to its top,
+    as wide as the crown spread; rows that meet become one canopy.
     """
     top = min(1.0, tree["height_m"] / height_m)
     half = 0.5 * tree["spread_m"] / height_m
     lam_h = DENSE_LAMBDA_PER_M * height_m
-    mids = [0.5 * width] if width <= 1.5 else [0.5, width - 0.5]
-    rows = [
-        cases.Crown(max(0.0, m - half), min(width, m + half), top / 3, top, lam_h) for m in mids
-    ]
+    spans = [(max(0.0, m - half), min(width, m + half)) for m in (kerb, width - kerb)]
+    if spans[0][1] >= spans[1][0]:
+        spans = [(spans[0][0], spans[1][1])]
+    rows = [cases.Crown(a, b, top / 3, top, lam_h) for a, b in spans]
     hedge = trees.HEDGE
     h_half = 0.5 * hedge["width_m"] / height_m
     return {
@@ -129,7 +130,7 @@ def run_street(key: str, height: int, schmidt: float, run: trees.Run) -> dict:
     offsets = trees.lane_offsets(width)
     deep = replace(run, spin_up=run.spin_up * SPIN_UP_FACTOR)
     rows = []
-    for name, crowns in designs(width, height_m, tree).items():
+    for name, crowns in designs(width, height_m, tree, zone.width).items():
         t0 = time.time()
         sim = trees.simulate_street(
             width, crowns, height, schmidt, deep, offsets=offsets, zone=zone, fields=True

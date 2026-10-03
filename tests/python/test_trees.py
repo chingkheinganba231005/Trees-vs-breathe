@@ -215,16 +215,21 @@ def test_measured_street_designs_are_sized_in_metres() -> None:
     from treesvb import streetruns
 
     width, height_m = 0.225, 48.88
-    d = streetruns.designs(width, height_m, {"height_m": 10.0, "spread_m": 5.0})
+    kerb = 2.7 / height_m
+    d = streetruns.designs(width, height_m, {"height_m": 10.0, "spread_m": 5.0}, kerb)
     assert d["none"] == []
-    (row,) = d["trees"]  # a narrow street holds one central row
-    assert 0.5 * (row.x0 + row.x1) == pytest.approx(0.5 * width)
-    assert (row.x1 - row.x0) * height_m == pytest.approx(5.0)
-    assert (row.z0 * height_m, row.z1 * height_m) == pytest.approx((10 / 3, 10.0))
+    left, right = d["trees"]  # one row on each kerb line
+    assert 0.5 * (left.x0 + left.x1) == pytest.approx(kerb)
+    assert 0.5 * (right.x0 + right.x1) == pytest.approx(width - kerb)
+    assert (left.x1 - left.x0) * height_m == pytest.approx(5.0)
+    assert (left.z0 * height_m, left.z1 * height_m) == pytest.approx((10 / 3, 10.0))
     # CODASC's dense crown per metre: lambda H 24 at 18 m.
-    assert row.lam_h * 18.0 / height_m == pytest.approx(24.0)
+    assert left.lam_h * 18.0 / height_m == pytest.approx(24.0)
     (hedge,) = d["hedge"]
     assert (hedge.x1 - hedge.x0) * height_m == pytest.approx(1.5)
     assert hedge.z1 * height_m == pytest.approx(2.5)
-    wide = streetruns.designs(2.0, 18.0, {"height_m": 10.0, "spread_m": 5.0})["trees"]
+    # Wide crowns in a narrow street meet and become one canopy.
+    merged = streetruns.designs(width, height_m, {"height_m": 10.0, "spread_m": 8.0}, kerb)
+    assert len(merged["trees"]) == 1
+    wide = streetruns.designs(2.0, 18.0, {"height_m": 10.0, "spread_m": 5.0}, 0.15)["trees"]
     assert len(wide) == 2
