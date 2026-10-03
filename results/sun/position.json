@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "generated_by": "npx vitest run tests/web/sun.test.ts (RECORD_RESULTS=1)",
+  "generated_at": "2026-10-03T09:43:55Z",
+  "commit": "0edc8fda32129aedb787432400fa6271d50b0113",
+  "dirty": false,
+  "versions": {
+    "node": "22.22.0",
+    "vitest": "5.0.3",
+    "pvlib": "0.16.1"
+  },
+  "name": "Solar position against pvlib",
+  "method": "NOAA solar position (Meeus) in apps/web/src/sun/position.ts against Solar position from pvlib.solarposition.get_solarposition, method nrel_numpy (NREL SPA, Reda and Andreas 2004), default pressure and temperature; 2283 instants at Hong Kong Observatory, Equator, London, Sydney, Helsinki, every hour on the 21st of each month of 2000, 2026 and 2050, sun above -2 degrees; azimuth compared below 89 degrees elevation and apparent elevation above 2 degrees",
+  "metric": "largest absolute difference, degrees",
+  "threshold": {
+    "max_abs_diff_deg_below": 0.1
+  },
+  "cases": 2283,
+  "worst_elevation_deg": 0.0143,
+  "worst_apparent_elevation_deg": 0.0133,
+  "worst_azimuth_deg": 0.0767,
+  "passed": true
+}

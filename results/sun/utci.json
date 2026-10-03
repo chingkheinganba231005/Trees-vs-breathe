@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "generated_by": "npx vitest run tests/web/utci.test.ts (RECORD_RESULTS=1)",
+  "generated_at": "2026-10-03T09:43:55Z",
+  "commit": "0edc8fda32129aedb787432400fa6271d50b0113",
+  "dirty": false,
+  "versions": {
+    "node": "22.22.0",
+    "vitest": "5.0.3",
+    "pythermalcomfort": "4.6.0"
+  },
+  "name": "UTCI against pythermalcomfort",
+  "method": "Operational polynomial of Broede et al. (2012) in apps/web/src/sun/utci.ts against pythermalcomfort.models.utci with limit_inputs=False, round_output=False, 3630 inputs: air temperature -50 to 50 C, mean radiant temperature 30 K below to 70 K above it, wind at 10 m 0.5 to 17 m/s, humidity 5 to 100%",
+  "metric": "largest absolute difference in UTCI, C; stress categories that match",
+  "threshold": {
+    "max_abs_diff_c_below": 0.1
+  },
+  "cases": 3630,
+  "worst_abs_diff_c": 4.999937885941108e-7,
+  "categories_matching": 3630,
+  "passed": true
+}

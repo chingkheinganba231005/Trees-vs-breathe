@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "generated_by": "npx playwright test --project=webgpu (RECORD_RESULTS=1)",
-  "generated_at": "2026-10-03T02:55:07Z",
-  "commit": "da97a58cbd127e10efdecded970aff9ba1a5d895",
+  "generated_at": "2026-10-03T09:44:16Z",
+  "commit": "0edc8fda32129aedb787432400fa6271d50b0113",
   "dirty": false,
   "versions": {
     "node": "22.22.0",
@@ -22,72 +22,72 @@
       "description": "Inlet, pressure outlet, free-slip top, buildings, absorbing layers",
       "cells": 2520,
       "steps": 300,
-      "cpuError": 0.000016032778244363943,
-      "cpuMs": 82.5,
-      "gpuError": 0.000050836182613027414,
-      "gpuMs": 1759.5
+      "cpuError": 0.000002144312655633085,
+      "cpuMs": 85.20000000018626,
+      "gpuError": 0.000018908368517450702,
+      "gpuMs": 1977.9000000003725
     },
     {
       "name": "canyon_deep",
       "description": "Deep street, H/W = 2",
       "cells": 2610,
       "steps": 300,
-      "cpuError": 0.000004858956605593295,
-      "cpuMs": 89.89999999990687,
-      "gpuError": 0.00004959459121475773,
-      "gpuMs": 1653
+      "cpuError": 0.0000018838231220091872,
+      "cpuMs": 112.5,
+      "gpuError": 0.000020321201073120188,
+      "gpuMs": 1930.8999999994412
     },
     {
       "name": "cavity",
       "description": "Moving lid, bounce-back walls",
       "cells": 256,
       "steps": 400,
-      "cpuError": 6.64091487183327e-7,
-      "cpuMs": 5.400000000372529,
-      "gpuError": 0.000004475365570216772,
-      "gpuMs": 879.2999999998137
+      "cpuError": 4.4386144044950004e-7,
+      "cpuMs": 9.900000000372529,
+      "gpuError": 0.000002606150271144969,
+      "gpuMs": 960.5
     },
     {
       "name": "couette_smag",
       "description": "Smagorinsky in uniform shear",
       "cells": 40,
       "steps": 200,
-      "cpuError": 0.0000016018753902502514,
-      "cpuMs": 0.6999999997206032,
-      "gpuError": 0.000025596592963198633,
-      "gpuMs": 777.5
+      "cpuError": 9.295142489040842e-7,
+      "cpuMs": 0.7000000001862645,
+      "gpuError": 0.000021051590741970327,
+      "gpuMs": 855.0999999996275
     },
     {
       "name": "poiseuille",
       "description": "Body force with Guo forcing",
       "cells": 48,
       "steps": 600,
-      "cpuError": 5.468513603057445e-7,
-      "cpuMs": 13.200000000186265,
-      "gpuError": 0.000003848991191879314,
-      "gpuMs": 881.7000000001863
+      "cpuError": 0.000001311407591879755,
+      "cpuMs": 24.59999999962747,
+      "gpuError": 0.0000035273655345224864,
+      "gpuMs": 913
     },
     {
       "name": "poiseuille_smag",
       "description": "Body force with the Smagorinsky model",
       "cells": 48,
       "steps": 600,
-      "cpuError": 0.0000017136335668521685,
-      "cpuMs": 6.800000000279397,
-      "gpuError": 0.00001945079364268354,
-      "gpuMs": 785.1999999997206
+      "cpuError": 0.0000025729240271665788,
+      "cpuMs": 7.2999999998137355,
+      "gpuError": 0.000009418565710406224,
+      "gpuMs": 999.7000000001863
     },
     {
       "name": "street_trees",
       "description": "Power-law inflow, a porous crown, line sources and the D2Q5 tracer",
       "cells": 2520,
       "steps": 300,
-      "cpuError": 0.0000040487069824513,
-      "cpuMs": 133,
-      "gpuError": 0.00004542642553756471,
-      "gpuMs": 1611.5
+      "cpuError": 0.0000021240248550616347,
+      "cpuMs": 176.59999999962747,
+      "gpuError": 0.000019243524128076395,
+      "gpuMs": 1969.7000000001863
     }
   ],
-  "worst": 0.000050836182613027414,
+  "worst": 0.000021051590741970327,
   "passed": true
 }
