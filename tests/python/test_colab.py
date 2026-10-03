@@ -254,6 +254,15 @@ def test_git_state_reads_commit(tmp_path: Path) -> None:
     assert state["dirty"] is False
 
 
+#: Files an earlier Colab run returned that were later removed on purpose, with the reason.
+RETIRED = {
+    "results/trees/resolution_h48.json": (
+        "made with plain BGK by run 20261003T055628Z; the third run no longer runs the 48-cell "
+        "grid check, so no file made with the current collision replaces it"
+    ),
+}
+
+
 def test_returned_results_match_their_latest_manifest() -> None:
     """Files brought back from Colab are committed as they arrived; a later run may replace them."""
     manifests = [json.loads(p.read_text()) for p in REPO.glob("results/**/*.manifest.json")]
@@ -262,4 +271,7 @@ def test_returned_results_match_their_latest_manifest() -> None:
         latest.update({o["repo_path"]: o["sha256"] for o in m["outputs"] if o["repo_path"]})
     assert latest, "no manifests found"
     for path, digest in latest.items():
+        if path in RETIRED:
+            assert not (REPO / path).exists(), f"{path} is listed as retired but exists"
+            continue
         assert colab.sha256_file(REPO / path) == digest, path

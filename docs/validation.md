@@ -240,16 +240,16 @@ Method: Street canyon H = 24 cells, H/W = 1, 40000 steps from uniform flow, abso
 | --- | --- | --- |
 | 2000 | 0.1 | stable |
 | 2000 | 0.17 | stable |
-| 5000 | 0.1 | stable |
+| 5000 | 0.1 | blew up by step 28000 |
 | 5000 | 0.17 | stable |
-| 10000 | 0.1 | blew up by step 28000 |
+| 10000 | 0.1 | blew up by step 30000 |
 | 10000 | 0.17 | stable |
-| 20000 | 0.1 | blew up by step 26000 |
+| 20000 | 0.1 | stable |
 | 20000 | 0.17 | stable |
-| 50000 | 0.1 | blew up by step 34000 |
+| 50000 | 0.1 | stable |
 | 50000 | 0.17 | stable |
 
-_Source: `results/street/stability.json`, generated 2026-10-03T02:40:35Z by `python -m treesvb.street` at commit `c4f2efd`._
+_Source: `results/street/stability.json`, generated 2026-10-03T13:44:24Z by `python -m treesvb.street` at commit `0c50299`._
 
 ## 3. Trees, hedges and fumes
 
