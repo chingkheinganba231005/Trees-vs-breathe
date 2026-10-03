@@ -51,7 +51,7 @@ Colab run `20261003T050408Z` on an A100 at 24 cells per building height, the CPU
 - Over all ten cases together the model meets the urban criteria of Hanna and Chang (2012).
 - On the leeward wall (A) of the W/H 1 street the model is close to the tunnel at every tap, with and without trees.
 - Both direction checks pass: the avenue of trees raises the leeward pavement's exposure, and the hedge in the middle lowers it.
-- At 48 cells per building height, streets with H/W 2 and 3 hold two stacked vortices with the upper one turning with the wind above, as Liu, Barth and Leung (2004) report. The app now offers H/W 3 on the WebGPU engine, which runs at that grid; the CPU engine stays at H/W 2.
+- At 48 cells per building height, streets with H/W 2 and 3 hold two stacked vortices with the upper one turning with the wind above, as Liu, Barth and Leung (2004) report. The live app runs at 24 cells on every device (D-024), where only H/W up to 2 has been checked, so its slider stops at 2.
 
 ### What does not
 
@@ -61,9 +61,23 @@ Colab run `20261003T050408Z` on an A100 at 24 cells per building height, the CPU
 4. **Reynolds sensitivity misses its target.** Doubling Re moves the windward pavement of the tree-free street (the same corner) and the leeward pavement of the tree street by more than the 10% the brief asks for.
 5. **Grid resolution.** On a grid twice as fine the tree-free case moves much closer to the tunnel and the tree case moves away from it on wall A. That comparison was unfair: run lengths were fixed in steps, so the finer grid covered only half the flow-through times. Run lengths now scale with the grid (`trees.Run.at`), and every run reports how much its average still moves between the first and second half of the averaging window (`settling`).
 
+### Second run: both grids, settling measured
+
+Colab run `20261003T055628Z` (commit `1484bd9`) repeated every study at 24 and at 48 cells per building height, with run lengths matched in flow-through times, a calibration per grid and the settling measure. The tables are in `docs/validation.md`, section 3, one block per grid.
+
+- At 24 cells every number repeats the first run exactly: on the same hardware and software the solver is deterministic.
+- The averages have not settled. At 24 cells the first and second halves of the averaging window differ by tens of percent in the W/H 1 street, and in the W/H 2 street with dense trees by more than the average itself (the "Settling" column). The 2D street flow swings slowly, and a window of this length does not average the swings out. A difference between two cases smaller than their settling is not established.
+- At 48 cells the cases that ran agree better with the tunnel than at 24, but four runs blew up: the dense crown at W/H 1 (in the comparison and the direction check), both runs at Re 40 000, and the tree-free street at 96 cells. At these settings the molecular relaxation time is very close to ½, where the BGK collision has almost no margin; only the Smagorinsky term keeps it stable, and only where the flow is sheared.
+- The hedge in the middle of the W/H 2 street lowered the leeward pavement at 24 cells and raised it at 48. Both changes are smaller than the settling, so the model does not yet say which way a hedge works. The trees' effect at 24 cells is larger than the settling.
+- The Reynolds check misses at 24 cells and could not be done at 48.
+
 ### What follows
 
-A second Colab run repeats every study at 24 and at 48 cells per building height, each grid with its own calibration, equal flow-through times and the settling measure. The 48-cell results are the ones that describe the WebGPU engine; the app picks the Schmidt number calibrated for its engine's grid (`liveSchmidt` in `apps/web/src/sim/streetSim.ts`) and uses the 24-cell value until the 48-cell one exists.
+1. A collision with more margin near a relaxation time of ½: a regularised BGK collision is the first candidate, as it also removes the odd-even mode found in phase 1. It has to go through all four implementations and the goldens.
+2. Averaging windows sized from the settling measure.
+3. The comparison again at 24 and 48 cells.
+
+Until then the live app runs at 24 cells on every device (`docs/progress.md`, D-024): every CODASC case ran stably there, and the stability study of the live street was done there.
 
 ## Sources
 

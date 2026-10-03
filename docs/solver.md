@@ -67,7 +67,7 @@ A row of equal buildings of height H and depth B = H stands on a no-slip ground,
 
 Why streets upwind: flow separates at the upwind edge of the first building, and in 2D the vortex it sheds can stay over the streets close behind it; its backward flow then turns their mean vortex the wrong way. At H/W 1 the street on its own did exactly that (`results/street/upwind.json`): the top of the street moved against the wind, and in a trial fumes from the road collected on the windward wall instead of the leeward wall. Inflow fluctuations of 20% at roof height (the CODASC approach flow) did not help. The effect is not a simple function of distance: at H/W 2 the street on its own turned correctly, while in a superseded run one narrow street upwind (2.5H from the edge) left it turning the wrong way. Every case with the studied street at least 3H behind the edge turned correctly, so that is the rule. In 3D, as in the wind tunnel, the shed vortex breaks up, so the effect belongs to 2D.
 
-The live solver uses H = 48 cells on WebGPU and H = 24 on the CPU, Re = 20 000 and C_s = 0.17. The choice of C_s rests on the stability sweep in `results/street/stability.json`. C_s = 0.17 lies inside the range 0.1–0.17 given in BRIEF.md 5.1; Hou et al. tested C = C_s² = 0.0025, 0.01 and 0.04.
+The live solver uses H = 24 cells on both engines (WebGPU and the CPU worker; D-024 in `docs/progress.md`), Re = 20 000 and C_s = 0.17. Both advance one flow-through time H / u_ref per second of wall time on a shared clock (`apps/web/src/sim/clock.ts`, D-025). The choice of C_s rests on the stability sweep in `results/street/stability.json`. C_s = 0.17 lies inside the range 0.1–0.17 given in BRIEF.md 5.1; Hou et al. tested C = C_s² = 0.0025, 0.01 and 0.04.
 
 ## Blow-up guard
 
