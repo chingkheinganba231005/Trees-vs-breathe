@@ -163,6 +163,8 @@ def measure() -> dict:
         if t["Height_m"] > 0 and t["DBH_mm"] > 0 and t["Crown_Spread_m"] > 0
     ]
     rows = []
+    # Every roadside tree near any of the stretches, once, for the street without a preset.
+    all_dbh: dict[str, float] = {}
     for st in hkstreets.STREETS:
         paths = _stretch(st)
         hyd = json.loads((DATA / f"{st.key}_hyd_trees.geojson").read_text())["features"]
@@ -171,6 +173,9 @@ def measure() -> dict:
         centre = _centre(paths)
         near = (np.linalg.norm(xy - centre, axis=1) <= LOCAL_RADIUS_M) & (dbh > 0)
         on_street = near & (distance_to_paths(xy, paths) <= ON_STREET_M) if len(xy) else near
+        for f, keep in zip(hyd, near, strict=True):
+            if keep:
+                all_dbh[f["properties"]["TREE_ID"]] = float(f["properties"]["DBH"])
         row = {
             "key": st.key,
             "trees_on_stretch": int(on_street.sum()),
@@ -195,6 +200,7 @@ def measure() -> dict:
         "afcd_trees": len(afcd),
         "data_sha256": {p.name: _sha256(p) for p in _extracts()},
         "rows": rows,
+        "overall": local_tree(np.array(list(all_dbh.values())), afcd),
         "passed": all("height_m" in r for r in rows),
     }
 
