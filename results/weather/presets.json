@@ -1,0 +1,84 @@
+{
+  "schema": 1,
+  "generated_by": "python -m treesvb.hkweather measure",
+  "generated_at": "2026-10-03T10:06:44Z",
+  "commit": "63874e017c33356c2c8c3a38a5868f7e4eb6d206",
+  "dirty": false,
+  "platform": "Linux-6.18.44-fc-v64-x86_64-with-glibc2.39",
+  "versions": {
+    "python": "3.11.15",
+    "numpy": "2.4.6",
+    "jax": "0.10.2"
+  },
+  "name": "Weather presets for the heat model",
+  "method": "Hong Kong Observatory daily values at King's Park (complete days only): the day with the highest daily maximum temperature on record, and the July day of 1991-2020 closest to that period's July means of all six elements, each difference scaled by its standard deviation",
+  "station": "King's Park",
+  "units": {
+    "tmax_c": "C",
+    "tmin_c": "C",
+    "tmean_c": "C",
+    "rh_pct": "%",
+    "gsr_mj_m2": "MJ/m2",
+    "wind_kmh": "km/h"
+  },
+  "sources": {
+    "tmax_c": "https://data.weather.gov.hk/weatherAPI/opendata/opendata.php?rformat=csv&station=KP&dataType=CLMMAXT",
+    "tmin_c": "https://data.weather.gov.hk/weatherAPI/opendata/opendata.php?rformat=csv&station=KP&dataType=CLMMINT",
+    "tmean_c": "https://data.weather.gov.hk/weatherAPI/opendata/opendata.php?rformat=csv&station=KP&dataType=CLMTEMP",
+    "rh_pct": "https://data.weather.gov.hk/weatherAPI/cis/csvfile/KP/ALL/daily_KP_RH_ALL.csv",
+    "gsr_mj_m2": "https://data.weather.gov.hk/weatherAPI/cis/csvfile/KP/ALL/daily_KP_GSR_ALL.csv",
+    "wind_kmh": "https://data.weather.gov.hk/weatherAPI/cis/csvfile/KP/ALL/daily_KP_WSPD_ALL.csv"
+  },
+  "attribution": "Hong Kong Observatory, Government of the Hong Kong SAR, via DATA.GOV.HK",
+  "data_sha256": {
+    "kp_gsr.csv": "c861bd7958557da5631d54f11003681c78b82dd4100dfd1810604de83b4a50a1",
+    "kp_rh.csv": "4b01e0cf7d2eb837138da7edcd0ca5c5ff68ca7c1bef9a34c00e0ac32fe36a5f",
+    "kp_tmax.csv": "45836d22219274d042e8e86f5c87cc258e854550feffee81d787b75f5bf64711",
+    "kp_tmean.csv": "d05e5c262e7df59051c6d18d66d11068964bf07da078c1342115492bcedfcd26",
+    "kp_tmin.csv": "7822f0edcbe695ac4d61899bd1f7618dca63485a519d5d3e7156972c0a2b3414",
+    "kp_wind.csv": "e6dbe0a68e7827a655b6efc2f5580cfa9b81e285740aaec2f0686cdab71e6bea"
+  },
+  "complete_days": 9211,
+  "presets": [
+    {
+      "key": "very_hot",
+      "date": "2017-08-22",
+      "tmax_c": 36.9,
+      "tmin_c": 27.0,
+      "tmean_c": 31.0,
+      "rh_pct": 75.0,
+      "gsr_mj_m2": 18.32,
+      "wind_kmh": 8.3
+    },
+    {
+      "key": "typical_july",
+      "date": "2001-07-14",
+      "tmax_c": 31.4,
+      "tmin_c": 26.6,
+      "tmean_c": 28.9,
+      "rh_pct": 81.0,
+      "gsr_mj_m2": 16.47,
+      "wind_kmh": 8.8,
+      "july_statistics": {
+        "days": 641,
+        "mean": {
+          "tmax_c": 31.41,
+          "tmin_c": 26.446,
+          "tmean_c": 28.637,
+          "rh_pct": 81.733,
+          "gsr_mj_m2": 17.575,
+          "wind_kmh": 8.946
+        },
+        "sd": {
+          "tmax_c": 1.579,
+          "tmin_c": 1.349,
+          "tmean_c": 1.263,
+          "rh_pct": 5.382,
+          "gsr_mj_m2": 6.835,
+          "wind_kmh": 3.17
+        }
+      }
+    }
+  ],
+  "passed": true
+}
