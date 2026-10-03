@@ -56,7 +56,7 @@ Goal: one D2Q9 lattice Boltzmann solver in four implementations (NumPy, JAX, Typ
 - [x] `docs/solver.md`: equations, units, boundary rules, absorbing layers, the guard
 - [x] One step written against an array module (`core.py`), run by NumPy and by JAX (jit, `vmap`-ready); a precomputed streaming map holds every boundary rule
 - [x] Benchmarks writing `results/benchmarks/*.json`: Poiseuille, cavity Re 100 and 1000 against Ghia, mass conservation, the eddy viscosity in uniform shear, the force correction of the stress, NumPy against JAX
-- [ ] Full-resolution results committed (running from commit `f9140ce`)
+- [x] Full-resolution results committed
 
 ### Browser (`apps/web/src/sim/`)
 
@@ -67,7 +67,7 @@ Goal: one D2Q9 lattice Boltzmann solver in four implementations (NumPy, JAX, Typ
 - [x] Blow-up guard: health check, restore the last good state, lower the time step
 - [x] Design screen v1: live street, H/W slider, wind and speed layers, the regime expected from the literature, model readouts tagged "Simulated", English and Traditional Chinese
 - [x] Street studies (`python -m treesvb.street`): absorbing layers, stability, regime sweep over H/W 0.3 to 3
-- [ ] Full-resolution street results committed (running)
+- [x] Full-resolution street results committed
 - [x] "How we know" cards and `docs/validation.md`, both read from `results/`
 
 ### Found and fixed along the way
@@ -99,7 +99,7 @@ Goal: one D2Q9 lattice Boltzmann solver in four implementations (NumPy, JAX, Typ
 
 - [x] GPU kernel checked headless against the Python reference
 - [x] Benchmark and street result files green and committed; CI green
-- [ ] Screenshot of the street vortex
+- [x] Screenshot of the street vortex: time-averaged streamlines for H/W 0.3 to 2 (`docs/img/street-vortex-regimes.png`, from `results/street/regimes.json`)
 
 ### Still open from P1
 

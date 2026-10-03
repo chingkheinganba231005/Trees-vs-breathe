@@ -164,15 +164,40 @@ _Source: `results/benchmarks/browser_agreement.json`, generated 2026-10-03T02:55
 
 ### Vortex structure against street aspect ratio
 
-Verdict: not yet computed.
+Verdict: meets the target.
 
-Not yet computed.
+Method: Street canyon H = 24 cells, Re 20000, Cs 0.17, absorbing layers; 40000 steps of spin-up then velocities averaged over 40000 steps. Vortex centres are extrema of the averaged stream function inside the street holding at least 10% of its peak..
+
+| H/W | Stacked vortex cells | Strongest vortex | Top of the street ÷ u_ref | Street floor with the wind |
+| --- | --- | --- | --- | --- |
+| 0.3 | 2 | clockwise | +0.44 | 36% |
+| 0.5 | 2 | clockwise | +0.29 | 54% |
+| 1.0 | 1 | clockwise | +0.09 | 46% |
+| 2.0 | 2 | clockwise | +0.05 | 50% |
+
+- H/W 1.0: Skimming flow: one vortex fills the street (Oke 1988; Liu, Barth and Leung 2004). Observed: 1 primary vortex cells. Meets the expectation.
+- H/W 1.0: The street vortex turns with the wind above it: clockwise for wind from the left, so the top of the street moves with the wind and the floor against it. Observed: strongest vortex clockwise; top of the street at +0.09 u_ref. Meets the expectation.
+- H/W 2.0: Vortices stacked one above the other, the upper one turning with the wind above (Liu, Barth and Leung 2004). Observed: 2 stacked vortex cells; top vortex clockwise. Meets the expectation.
+- H/W 0.3: The narrower the street, the less of the outer wind reaches into it (Oke 1988): the flow at the top of the street weakens from H/W 0.3 to 0.5 to 1. Observed: +0.44, +0.29, +0.09 u_ref. Meets the expectation.
+
+_Source: `results/street/regimes.json`, generated 2026-10-03T03:47:20Z by `python -m treesvb.street` at commit `21537b2`._
 
 ### Streets upwind of the studied street
 
-Verdict: not yet computed.
+Verdict: meets the target.
 
-Not yet computed.
+Method: Streets H/W 1 and 2, H = 24 cells, Re 20000, Cs 0.17; each studied street alone and with the upwind streets the solver adds (at least 3 H from the row's upwind edge); 30000 steps of spin-up, velocities averaged over 30000 steps.
+
+| H/W | Streets in the row | Studied street from the row's edge (H) | Top vortex | Top of the street ÷ u_ref |
+| --- | --- | --- | --- | --- |
+| 1.0 | 1 | 1.0 | anticlockwise | -0.51 |
+| 1.0 | 2 | 3.0 | clockwise | +0.08 |
+| 2.0 | 1 | 1.0 | clockwise | +0.16 |
+| 2.0 | 3 | 4.0 | clockwise | +0.04 |
+
+Close to the row's upwind edge, the vortex shed from the first block stays over the street and turns its mean vortex the wrong way; the studied street therefore starts at least 3 H behind the edge (docs/solver.md).
+
+_Source: `results/street/upwind.json`, generated 2026-10-03T03:39:12Z by `python -m treesvb.street` at commit `21537b2`._
 
 ### Absorbing layers against trapped sound
 
