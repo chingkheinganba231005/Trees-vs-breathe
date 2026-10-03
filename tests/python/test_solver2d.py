@@ -189,8 +189,9 @@ def test_force_correction_of_stress() -> None:
     assert force_stress(quick=True)["ratio"] < 1e-8
 
 
-def test_regularised_collision_matches_bgk_moments() -> None:
-    """Mass, momentum and stress after collision are BGK's; only higher moments are dropped."""
+def test_regularised_collision_keeps_mass_momentum_and_shear_stress() -> None:
+    """Mass, momentum and the trace-free stress after collision are BGK's; the bulk (trace) part
+    of the non-equilibrium stress and the higher moments are relaxed fully."""
     rng = np.random.default_rng(3)
     ny, nx = 5, 6
     d = Domain(nx, ny, left="periodic", right="periodic", bottom="periodic", top="periodic")
@@ -200,15 +201,25 @@ def test_regularised_collision_matches_bgk_moments() -> None:
     rho, ux, uy = core.macros(np, f, cfg)
     fx, fy = core.body_force(np, rho, ux, uy, cfg)
     feq = core.equilibrium(np, rho, ux, uy)
-    p = core.flux(np, f, feq)
-    tau = core.relaxation_time(np, p, rho, ux, uy, fx, fy, cfg)
-    source = core.guo_source(np, tau, ux, uy, fx, fy)
-    bgk = f - (f - feq) / tau + source
-    reg = feq + (1.0 - 1.0 / tau) * core.regularised_neq(np, p, fx, fy) + source
-    for coef in (np.ones(Q), CX, CY, CX * CX, CY * CY, CX * CY):
-        assert np.allclose(np.tensordot(coef, reg, 1), np.tensordot(coef, bgk, 1), atol=1e-14)
+    tau = core.relaxation_time(np, core.flux(np, f, feq, ux, uy, fx, fy), rho, cfg)
+    bgk = f - (f - feq) / tau + core.guo_source(np, 1.0 - 0.5 / tau, ux, uy, fx, fy)
+    reg, _, _, _ = core.flow_step(np, _unstream(f, cfg), cfg)
+
+    def m(coef, a):
+        return np.tensordot(coef, a, 1)
+
+    for coef in (np.ones(Q), CX, CY, CX * CX - CY * CY, CX * CY):
+        assert np.allclose(m(coef, reg), m(coef, bgk), atol=1e-14)
+    # Bulk part: equilibrium plus half the forcing term's trace, 2 u.F / 2.
+    trace = m(CX * CX + CY * CY, reg)
+    assert np.allclose(trace, m(CX * CX + CY * CY, feq) + (ux * fx + uy * fy), atol=1e-14)
     third = CX * CX * CY
-    assert not np.allclose(np.tensordot(third, reg, 1), np.tensordot(third, bgk, 1), atol=1e-8)
+    assert not np.allclose(m(third, reg), m(third, bgk), atol=1e-8)
+
+
+def _unstream(f, cfg):
+    """The post-collision state that streams into f on a fully periodic grid."""
+    return np.stack([np.roll(f[i], (-int(CY[i]), -int(CX[i])), axis=(0, 1)) for i in range(Q)])
 
 
 def test_regularised_collision_outlasts_bgk() -> None:

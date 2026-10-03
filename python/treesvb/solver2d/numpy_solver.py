@@ -7,11 +7,11 @@ One step, identical in every implementation (docs/solver.md):
 3. Relaxation time: tau0, or with the Smagorinsky model (Hou et al. 1994)
    tau = (tau0 + sqrt(tau0^2 + 18 sqrt(2) Cs^2 sqrt(P:P) / rho)) / 2,
    where P is the non-equilibrium momentum flux corrected for the force.
-4. Regularised BGK collision (Latt and Chopard 2006) with the Guo forcing term:
-   f_post = feq + (1 - 1 / tau) f1 + (1 - 1 / (2 tau)) w_i [3 (c_i - u) + 9 (c_i . u) c_i] . F,
-   where f1 = w_i [3 c_i . m + 9/2 (c_i c_i - I/3) : P] keeps only the first and second
-   moments of f - feq: m = -F / 2 and P, the non-equilibrium momentum flux. Plain BGK uses
-   f - feq itself; dropping the higher moments gives the step its margin near tau = 1/2.
+4. Regularised collision (Latt and Chopard 2006) with the Guo forcing term:
+   f_post = feq + (1 - 1 / tau) w_i 9/2 (c_i c_i - I/3) : P_d
+            + w_i [3 (c_i - u) + 9 (c_i . u) c_i] . F / 2,
+   with P_d the trace-free part of the corrected flux of step 3. Shear stress relaxes as in BGK;
+   the higher moments and the bulk stress relax fully (core.regularised_neq, docs/solver.md).
 5. Absorbing layers relax the density towards 1 near open boundaries:
    f_post += sigma (1 - rho) / rho f_eq(rho, u)   (Xu and Sagaut 2013).
 6. Non-fluid nodes keep their value; the inlet column is set to the equilibrium at the inlet

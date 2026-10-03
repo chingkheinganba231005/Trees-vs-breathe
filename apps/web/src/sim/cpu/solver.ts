@@ -237,45 +237,30 @@ export class CpuSolver {
       const e7 = W5 * rho * (1 - 3 * a + 4.5 * a * a - usq);
       const e8 = W5 * rho * (1 - 3 * b + 4.5 * b * b - usq);
 
-      // Non-equilibrium momentum flux, sum_i c_i c_i (f_i - feq_i).
+      // Non-equilibrium momentum flux with the Guo force contribution added back (core.flux).
       const d5 = f5 - e5;
       const d6 = f6 - e6;
       const d7 = f7 - e7;
       const d8 = f8 - e8;
       const diag = d5 + d6 + d7 + d8;
-      const pxx = f1 - e1 + (f3 - e3) + diag;
-      const pyy = f2 - e2 + (f4 - e4) + diag;
-      const pxy = d5 - d6 + d7 - d8;
+      const pxx = f1 - e1 + (f3 - e3) + diag + fx * ux;
+      const pyy = f2 - e2 + (f4 - e4) + diag + fy * uy;
+      const pxy = d5 - d6 + d7 - d8 + 0.5 * (fx * uy + fy * ux);
 
       let tau = tau0;
       if (cs > 0) {
-        // The flux with the Guo force contribution removed (see core.py).
-        const sxx = pxx + fx * ux;
-        const syy = pyy + fy * uy;
-        const sxy = pxy + 0.5 * (fx * uy + fy * ux);
-        const q = Math.sqrt(sxx * sxx + syy * syy + 2 * sxy * sxy);
+        const q = Math.sqrt(pxx * pxx + pyy * pyy + 2 * pxy * pxy);
         tau = 0.5 * (tau0 + Math.sqrt(tau0 * tau0 + (smag * q) / rho));
       }
       const omega = 1 / tau;
-      const pre = 1 - 0.5 * omega;
       const keep = 1 - omega;
 
-      // Regularised non-equilibrium parts w_i [3 c_i . m + 9/2 (c_i c_i - I/3) : P], m = -F/2
-      // (core.regularised_neq).
-      const mx = -1.5 * fx;
-      const my = -1.5 * fy;
-      const tr = 3 * (pxx + pyy);
-      const r0 = -0.5 * keep * W0 * tr;
-      const ax = 3 * pxx - 1.5 * pyy;
-      const ay = 3 * pyy - 1.5 * pxx;
-      const r1 = keep * W1 * (mx + ax);
-      const r2 = keep * W1 * (my + ay);
-      const r3 = keep * W1 * (-mx + ax);
-      const r4 = keep * W1 * (-my + ay);
-      const r5 = keep * W5 * (mx + my + tr + 9 * pxy);
-      const r6 = keep * W5 * (-mx + my + tr - 9 * pxy);
-      const r7 = keep * W5 * (-mx - my + tr + 9 * pxy);
-      const r8 = keep * W5 * (mx - my + tr - 9 * pxy);
+      // Regularised non-equilibrium parts from the trace-free flux (core.regularised_neq):
+      // w_i 9/2 [(cx^2 - cy^2) (Pxx - Pyy) / 2 + 2 cx cy Pxy]; the rest direction gets none.
+      const ra = keep * W1 * 2.25 * (pxx - pyy);
+      const rd = keep * W5 * 9 * pxy;
+      // The forcing enters at half weight (core.flow_step).
+      const pre = 0.5;
 
       // Guo source terms, one per direction: w_i [3 (c_i - u) + 9 (c_i . u) c_i] . F
       let s0 = 0;
@@ -301,15 +286,15 @@ export class CpuSolver {
 
       // Absorbing layers: f_eq(1, u) - f_eq(rho, u) = (1 - rho) / rho f_eq(rho, u).
       const sp = 1 + (sigma[k]! * (1 - rho)) / rho;
-      fNext[k] = sp * e0 + r0 + s0;
-      fNext[n + k] = sp * e1 + r1 + s1;
-      fNext[n2 + k] = sp * e2 + r2 + s2;
-      fNext[n3 + k] = sp * e3 + r3 + s3;
-      fNext[n4 + k] = sp * e4 + r4 + s4;
-      fNext[n5 + k] = sp * e5 + r5 + s5;
-      fNext[n6 + k] = sp * e6 + r6 + s6;
-      fNext[n7 + k] = sp * e7 + r7 + s7;
-      fNext[n8 + k] = sp * e8 + r8 + s8;
+      fNext[k] = sp * e0 + s0;
+      fNext[n + k] = sp * e1 + ra + s1;
+      fNext[n2 + k] = sp * e2 - ra + s2;
+      fNext[n3 + k] = sp * e3 + ra + s3;
+      fNext[n4 + k] = sp * e4 - ra + s4;
+      fNext[n5 + k] = sp * e5 + rd + s5;
+      fNext[n6 + k] = sp * e6 - rd + s6;
+      fNext[n7 + k] = sp * e7 + rd + s7;
+      fNext[n8 + k] = sp * e8 - rd + s8;
 
       if (gNext && source) {
         const c = g0 + g1 + g2 + g3 + g4;

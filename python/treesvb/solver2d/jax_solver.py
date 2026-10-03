@@ -16,12 +16,12 @@ from . import core
 from .domain import Domain
 
 
-@partial(jax.jit, static_argnums=2)
-def run(f_post, cfg, n: int):
+@partial(jax.jit, static_argnums=(2, 3))
+def run(f_post, cfg, n: int, regularise: bool = True):
     """Advance n steps; compiled once per grid shape and n."""
 
     def body(_, f):
-        return core.step(jnp, f, cfg)[0]
+        return core.step(jnp, f, cfg, regularise)[0]
 
     return jax.lax.fori_loop(0, n, body, f_post)
 
@@ -57,17 +57,21 @@ def run_batch(f_posts, cfgs, n: int):
 
 
 class JaxSolver:
-    def __init__(self, domain: Domain, params, dtype=np.float32):
+    def __init__(self, domain: Domain, params, dtype=np.float32, regularise: bool = True):
         if np.dtype(dtype) == np.float64 and not jax.config.jax_enable_x64:
             raise ValueError("float64 needs jax.config.update('jax_enable_x64', True)")
         self.domain = domain
         self.params = params
         self.dtype = dtype
+        #: False runs plain BGK, for the collision benchmark only (flow without tracer).
+        self.regularise = regularise
         self.cfg = core.make_config(domain, params, jnp, dtype)
         self.fluid = domain.fluid
         self.f_post = core.initial_state(jnp, self.cfg, dtype)
         self.g_post = None
         if getattr(params, "tracer", None) is not None:
+            if not regularise:
+                raise ValueError("plain BGK is kept for the flow-only collision benchmark")
             self.g_post = jnp.zeros((core.Q5, domain.ny, domain.nx), dtype)
         self.time = 0
 
@@ -77,7 +81,7 @@ class JaxSolver:
 
     def step(self, n: int = 1) -> None:
         if self.g_post is None:
-            self.f_post = run(self.f_post, self.cfg, n)
+            self.f_post = run(self.f_post, self.cfg, n, self.regularise)
         else:
             self.f_post, self.g_post = run_coupled((self.f_post, self.g_post), self.cfg, n)
         self.time += n

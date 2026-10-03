@@ -391,12 +391,41 @@ def _shear_layer_survives(n: int, reynolds: float, regularise: bool, times: floa
     return None
 
 
+def _street_flicker(height: int, regularise: bool) -> dict:
+    """Step-to-step flicker of the street flow: |u(t) - (u(t-1) + u(t+1)) / 2| over u_H."""
+    from dataclasses import replace
+
+    from . import trees
+
+    _, c = trees.build(1, trees.crowns_for(trees.codasc.Case(1, 90, 1.0, 200)), height, 0.2)
+    c = replace(c, params=replace(c.params, tracer=None))
+    jax_solver = _jax_solver()
+    if jax_solver is not None:
+        s = jax_solver(c.domain, c.params, np.float32, regularise=regularise)
+    else:
+        s = NumpySolver(c.domain, c.params, np.float32, regularise=regularise)
+    s.set_state(*cases.uniform_start(c))
+    s.step(20_000 * height // 24)
+    u = []
+    for _ in range(3):
+        s.step(1)
+        u.append(s.macros()[1])
+    fluid = c.domain.fluid
+    p2 = np.abs(u[1] - 0.5 * (u[0] + u[2]))[fluid] / trees.U_H
+    return {
+        "healthy": s.healthy(),
+        "mean": round(float(p2.mean()), 5),
+        "max": round(float(p2.max()), 4),
+    }
+
+
 def collision_margin(quick: bool) -> dict:
-    """The regularised collision must stay bounded wherever plain BGK does, and say how far beyond.
+    """The regularised collision must stay bounded wherever plain BGK does, and flicker less.
 
     The thin double shear layer of Minion and Brown (1997) rolls up into vortices with steep
     gradients; with no sub-grid model and a viscosity near zero it is under-resolved on purpose, the
-    situation of the street near tau = 1/2.
+    situation of the street near tau = 1/2. The street itself (CODASC W/H 1 with the dense crown)
+    shows how much the flow flickers from step to step, which plain BGK does most at sharp corners.
     """
     n = 32 if quick else 64
     times = 2.0
@@ -407,23 +436,41 @@ def collision_margin(quick: bool) -> dict:
             failed = _shear_layer_survives(n, re, reg, times)
             row[name] = {"stable": failed is None, "failed_at": failed}
         rows.append(row)
+    height = 12 if quick else 24
+    flicker = {
+        name: _street_flicker(height, reg) for name, reg in (("bgk", False), ("regularised", True))
+    }
     ok = all(r["regularised"]["stable"] or not r["bgk"]["stable"] for r in rows)
+    calm = (
+        flicker["regularised"]["healthy"] and flicker["regularised"]["max"] <= flicker["bgk"]["max"]
+    )
     return {
         "name": "Stability margin of the collision near tau = 1/2",
         "method": (
             f"Thin double shear layer of Minion and Brown (1997), kappa 80, delta 0.05, on a "
             f"periodic {n} x {n} grid, u0 = 0.05, no sub-grid model, float64, run for {times:g} "
-            "times L / u0; plain BGK against the regularised collision every solver runs"
+            "times L / u0; plain BGK against the regularised collision every solver runs. Street "
+            f"flicker: CODASC W/H 1 with the dense crown at H = {height} cells, Re 20000, Cs 0.17, "
+            f"after {20_000 * height // 24} steps"
         ),
-        "metric": "bounded (finite, speed below 0.4) to the end, or the time t u0 / L it failed",
-        "threshold": {"regularised_stable_wherever_bgk_is": True},
+        "metric": (
+            "shear layer: bounded (finite, speed below 0.4) to the end, or the time t u0 / L it "
+            "failed; street: |u(t) - (u(t-1) + u(t+1)) / 2| over u_H, mean and largest over the "
+            "fluid nodes"
+        ),
+        "threshold": {
+            "regularised_stable_wherever_bgk_is": True,
+            "street_flicker_not_above_bgk": True,
+        },
         "sources": [
             "Minion, M. L. and Brown, D. L. (1997), J. Comput. Phys. 138, 734-765",
             "Latt, J. and Chopard, B. (2006), Math. Comput. Simul. 72, 165-168",
+            "Dellar, P. J. (2001), Phys. Rev. E 64, 031203",
         ],
         "grid": n,
         "rows": rows,
-        "passed": ok,
+        "street_flicker": flicker,
+        "passed": bool(ok and calm),
     }
 
 

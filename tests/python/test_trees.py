@@ -111,11 +111,12 @@ def test_tracer_leaves_through_the_outlet_and_not_the_inlet() -> None:
     case = cases.canyon(g, u_ref=0.05, reynolds=500, smagorinsky=0.17, sources=src)
     s = NumpySolver(case.domain, case.params)
     s.set_state(*cases.uniform_start(case))
-    s.step(3000)
+    # Long enough for the plume to cross the 6 H behind the street at this coarse grid.
+    s.step(6000)
     c = s.concentration()
     assert np.all(s.g_post[:, :, 0] == 0)
     assert c[:, -3:].sum() > 0
-    assert s.total_tracer() < 3000 * 1e-3
+    assert s.total_tracer() < 6000 * 1e-3
 
 
 @pytest.mark.parametrize("crowns", [(), (cases.Crown(0.25, 0.75, 1 / 3, 1.0, 9.6),)])

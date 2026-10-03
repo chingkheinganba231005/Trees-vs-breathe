@@ -200,49 +200,52 @@ def body_force(xp, rho, ux, uy, cfg):
     return rho * (cfg["gx"] - drag * ux), rho * (cfg["gy"] - drag * uy)
 
 
-def flux(xp, f, feq):
-    """Non-equilibrium momentum flux P = sum_i c_i c_i (f_i - feq_i): (Pxx, Pyy, Pxy)."""
+def flux(xp, f, feq, ux, uy, fx, fy):
+    """Non-equilibrium momentum flux sum_i c_i c_i (f_i - feq_i) + (F u + u F) / 2: (Pxx, Pyy, Pxy).
+
+    The Guo forcing leaves -(F u + u F) / 2 in the raw flux; adding it back makes the flux measure
+    the strain rate alone (tests/python/test_solver2d.py), for the sub-grid model and the collision.
+    """
     fneq = f - feq
-    return _moment(fneq, CX * CX), _moment(fneq, CY * CY), _moment(fneq, CX * CY)
+    return (
+        _moment(fneq, CX * CX) + fx * ux,
+        _moment(fneq, CY * CY) + fy * uy,
+        _moment(fneq, CX * CY) + 0.5 * (fx * uy + fy * ux),
+    )
 
 
-def relaxation_time(xp, p, rho, ux, uy, fx, fy, cfg):
-    """Smagorinsky relaxation time from the flux `p`; equals tau0 exactly when cs = 0."""
-    # The Guo forcing leaves -(F u + u F) / 2 in the non-equilibrium flux; adding it back makes
-    # the flux measure the strain rate alone (tests/python/test_solver2d.py).
-    pxx = p[0] + fx * ux
-    pyy = p[1] + fy * uy
-    pxy = p[2] + 0.5 * (fx * uy + fy * ux)
+def relaxation_time(xp, p, rho, cfg):
+    """Smagorinsky relaxation time from the corrected flux `p`; equals tau0 exactly when cs = 0."""
+    pxx, pyy, pxy = p
     q = xp.sqrt(pxx * pxx + pyy * pyy + 2.0 * pxy * pxy)
     tau0, cs = cfg["tau0"], cfg["cs"]
     return 0.5 * (tau0 + xp.sqrt(tau0 * tau0 + SQRT2_18 * cs * cs * q / rho))
 
 
-def regularised_neq(xp, p, fx, fy):
-    """The non-equilibrium part rebuilt from its first and second moments, shape (9, ...).
+def regularised_neq(xp, p):
+    """The non-equilibrium part rebuilt from the trace-free part of the flux, shape (9, ...).
 
-    w_i [3 c_i . m + 9/2 (c_i c_i - I/3) : P], with m = sum c_i (f_i - feq_i) = -F / 2 under the
-    Guo forcing and P the flux of `flux`. Keeping only these moments drops the higher ones, which
-    BGK relaxes at the same rate as the stress and which carry the odd-even ripple and the growth
-    near tau = 1/2 (Latt and Chopard 2006). The first two moments are those of f - feq, so mass,
-    momentum and stress match the BGK step exactly.
+    w_i 9/2 (c_i c_i - I/3) : P_d with P_d = P - tr(P) I / 2, which for D2Q9 is
+    w_i 9/2 [(cx^2 - cy^2) (Pxx - Pyy) / 2 + 2 cx cy Pxy]. Keeping only these moments drops the
+    third and fourth ones, which BGK relaxes at the rate of the stress, so they hardly decay near
+    tau = 1/2 (Latt and Chopard 2006). Dropping the trace relaxes the bulk stress fully every step:
+    a large bulk viscosity, which damps sound but leaves a slow, nearly incompressible flow alone,
+    and suppresses grid-scale artefacts at corners (Dellar 2001; docs/solver.md).
     """
     pxx, pyy, pxy = p
+    half_diff = 0.5 * (pxx - pyy)
     out = []
     for i in range(Q):
         cx, cy = int(CX[i]), int(CY[i])
-        m = _lin(cx, -0.5 * fx, cy, -0.5 * fy)
-        q = (cx * cx - 1 / 3) * pxx + (cy * cy - 1 / 3) * pyy
+        term = (cx * cx - cy * cy) * half_diff
         if cx * cy:
-            q = q + 2.0 * cx * cy * pxy
-        term = 4.5 * q if m is None else 3.0 * m + 4.5 * q
-        out.append(W[i] * term)
+            term = term + 2.0 * cx * cy * pxy
+        out.append(4.5 * W[i] * term if (cx or cy) else 0.0 * pxx)
     return xp.stack(out)
 
 
-def guo_source(xp, tau, ux, uy, fx, fy):
-    """(1 - 1/(2 tau)) w_i [3 (c_i - u) + 9 (c_i . u) c_i] . F, shape (9, ...)."""
-    pre = 1.0 - 0.5 / tau
+def guo_source(xp, pre, ux, uy, fx, fy):
+    """pre w_i [3 (c_i - u) + 9 (c_i . u) c_i] . F, shape (9, ...); moments F and uF + Fu."""
     out = []
     for i in range(Q):
         cx, cy = int(CX[i]), int(CY[i])
@@ -269,11 +272,15 @@ def flow_step(xp, f_post, cfg, regularise: bool = True):
     rho, ux, uy = macros(xp, f, cfg)
     fx, fy = body_force(xp, rho, ux, uy, cfg)
     feq = equilibrium(xp, rho, ux, uy)
-    p = flux(xp, f, feq)
-    tau = relaxation_time(xp, p, rho, ux, uy, fx, fy, cfg)
-    neq = regularised_neq(xp, p, fx, fy) if regularise else f - feq
-    post = feq + (1.0 - 1.0 / tau) * neq
-    post = post + guo_source(xp, tau, ux, uy, fx, fy)
+    p = flux(xp, f, feq, ux, uy, fx, fy)
+    tau = relaxation_time(xp, p, rho, cfg)
+    if regularise:
+        # With the force-corrected flux, the forcing enters at half weight whatever the rate a
+        # moment relaxes at: m_post = m_eq + (1 - s) m_neq + F_m / 2 (the Guo scheme per moment).
+        post = feq + (1.0 - 1.0 / tau) * regularised_neq(xp, p)
+        post = post + guo_source(xp, 0.5, ux, uy, fx, fy)
+    else:
+        post = f - (f - feq) / tau + guo_source(xp, 1.0 - 0.5 / tau, ux, uy, fx, fy)
     # Absorbing layers: f_eq(1, u) - f_eq(rho, u) = (1 - rho) / rho f_eq(rho, u).
     post = post + (cfg["sigma"] * (1.0 - rho) / rho) * feq
     post = xp.where(cfg["fluid"], post, f)

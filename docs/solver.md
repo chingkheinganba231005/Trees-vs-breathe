@@ -33,13 +33,20 @@ The molecular viscosity is ν₀ = (τ₀ − ½)/3. A case fixes the Reynolds n
 
    τ = ½ (τ₀ + √(τ₀² + 18√2 C_s² √Q / ρ)), with Q = Π:Π
 
-   where Π = Σ c c (f − f^eq) + ½(F u + u F) is the non-equilibrium momentum flux with the forcing contribution removed. This solves ν = ν₀ + C_s² |S| for the local strain rate |S| = √(2 S:S), using Π = −2ρ c_s² τ S. Hou et al.'s printed closed form has ν₀ where τ₀ belongs and a different prefactor, so the formula here is derived afresh and checked numerically: in uniform shear the solver's eddy viscosity must match C_s²|S| (`results/benchmarks/smagorinsky_shear.json`), and in a force-driven box without strain the corrected Π must vanish (`results/benchmarks/force_stress.json`).
+   where Π = Σ c c (f − f^eq) + ½(F u + u F) is the non-equilibrium momentum flux with the forcing contribution removed (`core.flux`). This solves ν = ν₀ + C_s² |S| for the local strain rate |S| = √(2 S:S), using Π = −2ρ c_s² τ S. Hou et al.'s printed closed form has ν₀ where τ₀ belongs and a different prefactor, so the formula here is derived afresh and checked numerically: in uniform shear the solver's eddy viscosity must match C_s²|S| (`results/benchmarks/smagorinsky_shear.json`), and in a force-driven box without strain the corrected Π must vanish (`results/benchmarks/force_stress.json`).
 
-4. **Regularised BGK collision with the Guo forcing term** (Latt and Chopard 2006).
+4. **Regularised collision with the Guo forcing term** (Latt and Chopard 2006; bulk part after Dellar 2001).
 
-   f_post = f^eq + (1 − 1/τ) f^(1) + (1 − 1/(2τ)) w_i [3(c_i − u) + 9(c_i·u) c_i] · F
+   f_post = f^eq + (1 − 1/τ) w_i (9/2) (c_i c_i − I/3) : Π_d + ½ w_i [3(c_i − u) + 9(c_i·u) c_i] · F
 
-   where f^(1) = w_i [3 c_i · m + 9/2 (c_i c_i − I/3) : Π] keeps only the first and second moments of f − f^eq: m = Σ c (f − f^eq) = −F/2 under the Guo forcing, and Π = Σ c c (f − f^eq) without the force correction. Plain BGK relaxes f − f^eq itself, so the post-collision mass, momentum and stress are the same in both (`tests/python/test_solver2d.py`); what the regularised step drops are the higher moments, which BGK carries along at the rate of the stress. Near τ = ½ those grow from step to step, which is how the 48-cell street blew up, and they also carried the odd-even ripple found in phase 1. On the thin double shear layer of Minion and Brown (1997) with no sub-grid model, plain BGK fails at every Reynolds number tried and the regularised collision at none (`results/benchmarks/collision_margin.json`). Plain BGK stays in `core.flow_step` only for that benchmark.
+   Π is the force-corrected non-equilibrium flux of step 3 and Π_d = Π − ½ tr(Π) I its trace-free part; for D2Q9 the middle term is w_i (9/2) [(c_x² − c_y²)(Π_xx − Π_yy)/2 + 2 c_x c_y Π_xy]. Written per moment, the Guo scheme relaxes the corrected non-equilibrium part of each moment at its own rate s and adds half the forcing moment, m_post = m^eq + (1 − s) m_neq + F_m/2; that is why the forcing enters at half weight here, and why plain BGK, with every rate equal to 1/τ, gives back the familiar (1 − 1/(2τ)) prefactor.
+
+   Three choices differ from plain BGK (f_post = f − (f − f^eq)/τ + (1 − 1/(2τ)) w_i [...] · F):
+   - Shear stress relaxes at 1/τ as in BGK, so the viscosity is unchanged; mass and momentum are conserved exactly (`tests/python/test_solver2d.py`).
+   - The third and fourth moments are rebuilt as zero instead of relaxing at 1/τ. Near τ = ½ BGK lets them flip sign almost undamped every step, which is how the 48-cell street blew up. On the thin double shear layer of Minion and Brown (1997), with no sub-grid model, plain BGK fails at every Reynolds number tried and this collision at none (`results/benchmarks/collision_margin.json`).
+   - The bulk (trace) part of the stress relaxes fully every step: a large bulk viscosity, which damps sound waves and leaves a slow, nearly incompressible flow alone (Dellar 2001). A first version kept the trace at the shear rate. It held a two-step flicker at the corner of the lid-driven cavity, which then never settled (Re 1000), and it raised the flicker in the street. With the trace relaxed fully the cavity converges as with BGK, and the street flickers less than with BGK, most of all at the building corners (`collision_margin.json`, `street_flicker`).
+
+   Plain BGK stays in `core.flow_step` only for that benchmark.
 
 5. **Absorbing layers.** Near open boundaries the density is relaxed towards 1:
 
