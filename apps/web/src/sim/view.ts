@@ -25,6 +25,8 @@ export interface SimColors {
   building: [number, number, number];
   ink: [number, number, number];
   particle: [number, number, number];
+  /** Trees and hedges: green carries only the user's design (theme/tokens.ts). */
+  green: [number, number, number];
 }
 
 /**
@@ -56,5 +58,6 @@ export function readSimColors(el: Element = document.documentElement): SimColors
     ink: get('--ink-muted'),
     // Wind is drawn in a neutral tone with one meaning only; see BRIEF.md section 11.2.
     particle: get('--ink-muted'),
+    green: get('--accent'),
   };
 }

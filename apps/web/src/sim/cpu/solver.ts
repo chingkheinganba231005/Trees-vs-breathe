@@ -89,7 +89,7 @@ export class CpuSolver {
   private readonly fluid: Uint8Array;
   private inletU: Float64Array;
   private readonly sigma: Float64Array;
-  private readonly drag: Float64Array | null;
+  private drag: Float64Array | null;
   /** Tracer populations (5 per node), or null when the case has no tracer. */
   gPost: Float32Array | null = null;
   private gNext: Float32Array | null = null;
@@ -128,6 +128,11 @@ export class CpuSolver {
   setParams(params: SolverParams): void {
     this.params = params;
     if (params.inletU) this.inletU = Float64Array.from(params.inletU);
+  }
+
+  /** Replace the porous drag (lambda per node, 1/cell), e.g. when trees are moved. */
+  setDrag(drag: ArrayLike<number> | null): void {
+    this.drag = drag ? Float64Array.from(drag) : null;
   }
 
   /** Replace the state with the equilibrium of the given fields. */

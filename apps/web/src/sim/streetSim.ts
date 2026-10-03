@@ -1,4 +1,9 @@
+import { result } from '../content/results';
+import type { CalibrationResult } from '../content/results';
 import type { Layers } from './cpu/canvasRenderer';
+import type { SolverParams } from './cpu/solver';
+import type { GreenElement } from './greenery';
+import { dragField, laneOffsets, lineSources, pavementExposure, SOURCE_TOTAL } from './greenery';
 import { CanvasRenderer } from './cpu/canvasRenderer';
 import type { FromWorker, ToWorker } from './cpu/protocol';
 import type { Engine, EngineChoice } from './engine';
@@ -18,6 +23,75 @@ import { streetView } from './view';
 export const LIVE_FLOW: FlowSettings = { uRef: 0.05, reynolds: 20000, smagorinsky: 0.17 };
 /** Building height in cells: 48 on WebGPU (BRIEF.md 5.1), 24 for the CPU worker. */
 export const HEIGHT = { gpu: 48, cpu: 24 } as const;
+
+/**
+ * Turbulent Schmidt number of the fumes: the value calibrated on CODASC when
+ * results/trees/calibration.json exists, otherwise the 1.0 of Gromke (2008, p. 87).
+ */
+export function liveSchmidt(): number {
+  return result<CalibrationResult>('trees/calibration.json')?.schmidt ?? 1.0;
+}
+
+/**
+ * Turnovers of the street vortex in the running mean's time constant: 3, or the value of the
+ * `averaging` URL parameter. A short window gives a rougher mean; the end-to-end tests use one to
+ * finish in time.
+ */
+export function averagingTurnovers(search = globalThis.location?.search ?? ''): number {
+  const v = Number(new URLSearchParams(search).get('averaging'));
+  return v > 0 ? v : 3;
+}
+
+/**
+ * Time constant of the running means, in steps: averagingTurnovers() turnovers of the street
+ * vortex, whose turnover time is about (W + H) / (0.25 u_H) (Gromke 2008, Eq. 5.8).
+ */
+export function averagingSteps(
+  g: CanyonGeometry,
+  uRef: number,
+  turnovers = averagingTurnovers(),
+): number {
+  return Math.round((turnovers * (g.width + g.height)) / (0.25 * uRef));
+}
+
+/** Pavement exposure counts as settled after this many averaging time constants. */
+export const SETTLE_CONSTANTS = 2;
+
+/** Solver parameters for the live street: flow, greenery drag and the traffic fumes. */
+export function liveParams(
+  g: CanyonGeometry,
+  solid: Uint8Array,
+  flow: FlowSettings,
+  greenery: GreenElement[],
+): SolverParams {
+  const base = canyonParams(g, flow);
+  return {
+    ...base,
+    drag: dragField(g, solid, greenery),
+    tracer: {
+      source: lineSources(g, laneOffsets(g.width / g.height), SOURCE_TOTAL),
+      // Molecular diffusivity equal to the molecular viscosity (docs/assumptions.md A-009).
+      diffusivity: (base.tau0 - 0.5) / 3,
+      schmidt: liveSchmidt(),
+    },
+  };
+}
+
+/** Running-mean c+ on the two pavements, corrected for the mean's start from zero. */
+function exposureFrom(
+  g: CanyonGeometry,
+  data: ArrayLike<number>,
+  stride: number,
+  offset: number,
+  uRef: number,
+  meanSteps: number,
+  averaging: number,
+): { A: number; B: number } | null {
+  if (meanSteps <= 0) return null;
+  const w = 1 - Math.pow(1 - 1 / averaging, meanSteps);
+  const e = pavementExposure(g, data, stride, offset, uRef);
+  return { A: e.A / w, B: e.B / w };
+}
 
 export type EngineNote =
   | 'engineNote.gpu'
@@ -44,10 +118,19 @@ export interface SimStats {
   recoveries: number;
   /** Why the engine is what it is; a key into the strings files. */
   note: EngineNote;
+  /** Running-mean c+ on the leeward (A) and windward (B) pavements; null before any average. */
+  exposure: { A: number; B: number } | null;
+  /** Steps averaged since the street or its greenery last changed. */
+  meanSteps: number;
+  /** Steps after which the exposure counts as settled. */
+  settleSteps: number;
+  /** Number of greenery elements in the street. */
+  greenCount: number;
 }
 
 export interface StreetSimOptions {
   aspect: number;
+  greenery: GreenElement[];
   layers: Layers;
   colors: SimColors;
   engine: EngineChoice;
@@ -59,6 +142,7 @@ export interface StreetSimOptions {
 export interface StreetSim {
   readonly engine: Engine;
   setAspect(aspect: number): void;
+  setGreenery(greenery: GreenElement[]): void;
   setLayers(layers: Layers): void;
   setColors(colors: SimColors): void;
   resize(width: number, height: number): void;
@@ -115,12 +199,29 @@ abstract class BaseSim {
   private windowStart = performance.now();
   protected stepsPerSecond = 0;
   protected fps = 0;
+  protected greenery: GreenElement[];
+  protected solid!: Uint8Array;
+  protected averaging = 10_000;
+  protected meanSteps = 0;
+  protected exposure: { A: number; B: number } | null = null;
 
   constructor(opts: StreetSimOptions) {
     this.opts = opts;
     this.aspect = opts.aspect;
     this.layers = opts.layers;
     this.colors = opts.colors;
+    this.greenery = opts.greenery;
+  }
+
+  protected params(): SolverParams {
+    return liveParams(this.geometry, this.solid, this.flow, this.greenery);
+  }
+
+  /** Converts the running-mean concentration to c+, corrected for the mean's start. */
+  protected cScale(): number {
+    if (this.meanSteps <= 0) return 0;
+    const w = 1 - Math.pow(1 - 1 / this.averaging, this.meanSteps);
+    return (this.flow.uRef * this.geometry.height) / SOURCE_TOTAL / w;
   }
 
   setLayers(layers: Layers): void {
@@ -161,6 +262,10 @@ abstract class BaseSim {
       time,
       recoveries: this.recoveries,
       note,
+      exposure: this.exposure,
+      meanSteps: this.meanSteps,
+      settleSteps: SETTLE_CONSTANTS * this.averaging,
+      greenCount: this.greenery.length,
     };
   }
 }
@@ -195,7 +300,13 @@ class GpuStreetSim extends BaseSim implements StreetSim {
     this.geometry = canyonGeometry(HEIGHT.gpu, this.aspect);
     this.view = streetView(this.geometry);
     const domain = canyonDomain(this.geometry);
-    this.solver = new GpuSolver(this.device, domain, canyonParams(this.geometry, this.flow));
+    this.solid = domain.solid;
+    this.solver = new GpuSolver(this.device, domain, this.params());
+    this.averaging = averagingSteps(this.geometry, this.flow.uRef);
+    this.solver.emaAlpha = 1 / this.averaging;
+    this.solver.writeParams();
+    this.meanSteps = 0;
+    this.exposure = null;
     // Starting from rest would send a pressure pulse through the domain (cases.uniform_start).
     const start = uniformStart(this.flow.uRef, domain.solid);
     this.solver.setState(start.rho, start.ux, start.uy);
@@ -206,6 +317,15 @@ class GpuStreetSim extends BaseSim implements StreetSim {
   setAspect(aspect: number): void {
     this.aspect = aspect;
     this.build();
+  }
+
+  setGreenery(greenery: GreenElement[]): void {
+    this.greenery = greenery;
+    this.solver.setDrag(dragField(this.geometry, this.solid, greenery));
+    this.solver.clearMean();
+    this.meanSteps = 0;
+    this.exposure = null;
+    this.report();
   }
 
   setColors(colors: SimColors): void {
@@ -228,6 +348,7 @@ class GpuStreetSim extends BaseSim implements StreetSim {
     else if (this.frameMs < 18 && this.substeps < 40) this.substeps += 1;
 
     this.solver.step(this.substeps);
+    this.meanSteps += this.substeps;
     this.renderer.draw(
       this.view,
       this.flow.uRef,
@@ -236,6 +357,7 @@ class GpuStreetSim extends BaseSim implements StreetSim {
       this.colors,
       this.width,
       this.heightPx,
+      this.cScale(),
     );
     this.countFrame(this.substeps);
     this.framesSinceCheck += 1;
@@ -257,10 +379,20 @@ class GpuStreetSim extends BaseSim implements StreetSim {
       }
       if (isHealthy(maxSpeed)) {
         this.solver.saveCheckpoint();
+        const mean = await this.solver.readMean();
+        this.exposure = exposureFrom(
+          this.geometry,
+          mean,
+          4,
+          3,
+          this.flow.uRef,
+          this.meanSteps,
+          this.averaging,
+        );
       } else {
         this.solver.restoreCheckpoint();
         this.flow = lowerTimeStep(this.flow, this.geometry.height).flow;
-        this.solver.setParams(canyonParams(this.geometry, this.flow));
+        this.solver.setParams(this.params());
         this.recoveries += 1;
         this.report();
       }
@@ -287,7 +419,9 @@ class CpuStreetSim extends BaseSim implements StreetSim {
   private readonly worker: Worker;
   private readonly renderer: CanvasRenderer;
   private particles!: Particles;
-  private solid!: Uint8Array;
+  private drag: Float32Array | null = null;
+  private conc: Float32Array | null = null;
+  private framesSinceExposure = 0;
   private time = 0;
   private readonly note: EngineNote;
   private waiting = false;
@@ -312,12 +446,19 @@ class CpuStreetSim extends BaseSim implements StreetSim {
     const domain = canyonDomain(this.geometry);
     this.solid = domain.solid;
     const start = uniformStart(this.flow.uRef, domain.solid);
+    const params = this.params();
+    this.drag = Float32Array.from(params.drag ?? []);
+    this.averaging = averagingSteps(this.geometry, this.flow.uRef);
+    this.send({ type: 'averaging', steps: this.averaging });
     this.send({
       type: 'init',
       domain,
-      params: canyonParams(this.geometry, this.flow),
+      params,
       initial: { ux: start.ux, uy: start.uy },
     });
+    this.meanSteps = 0;
+    this.exposure = null;
+    this.conc = null;
     const solid = solidAt(this.geometry, domain.solid);
     if (this.particles) this.particles.setView(this.view, solid);
     else this.particles = new Particles(900, this.view, solid, 11);
@@ -327,6 +468,16 @@ class CpuStreetSim extends BaseSim implements StreetSim {
   setAspect(aspect: number): void {
     this.aspect = aspect;
     this.build();
+  }
+
+  setGreenery(greenery: GreenElement[]): void {
+    this.greenery = greenery;
+    this.drag = dragField(this.geometry, this.solid, greenery);
+    this.send({ type: 'greenery', drag: this.drag.slice() });
+    this.meanSteps = 0;
+    this.exposure = null;
+    this.conc = null;
+    this.report();
   }
 
   setColors(colors: SimColors): void {
@@ -355,10 +506,25 @@ class CpuStreetSim extends BaseSim implements StreetSim {
     }
     if (msg.recovered) {
       this.flow = lowerTimeStep(this.flow, this.geometry.height).flow;
-      this.send({ type: 'params', params: canyonParams(this.geometry, this.flow) });
+      this.send({ type: 'params', params: this.params() });
       this.recoveries += 1;
     }
     this.time = msg.time;
+    this.conc = msg.conc;
+    this.meanSteps = msg.meanSteps;
+    this.framesSinceExposure += 1;
+    if (this.framesSinceExposure >= 30) {
+      this.framesSinceExposure = 0;
+      this.exposure = exposureFrom(
+        this.geometry,
+        msg.conc,
+        1,
+        0,
+        this.flow.uRef,
+        msg.meanSteps,
+        this.averaging,
+      );
+    }
     const nx = canyonNx(this.geometry);
     this.particles.advect(msg.ux, msg.uy, nx, this.geometry.top, msg.steps);
     this.raf = requestAnimationFrame(() => {
@@ -371,6 +537,7 @@ class CpuStreetSim extends BaseSim implements StreetSim {
         this.flow.uRef,
         this.particles,
         this.layers,
+        { conc: this.conc, cScale: this.cScale(), drag: this.drag },
       );
       this.countFrame(msg.steps);
       this.requestFrame();

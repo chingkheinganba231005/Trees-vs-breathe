@@ -137,13 +137,16 @@ Goal: porous trees and hedges in the street, traffic fumes as a passive tracer, 
 
 ### App
 
-- [ ] Design screen: add, drag and resize trees and hedges; crown density; constraint badges (pavement width, bus headroom, buildings)
-- [ ] Fumes layer (violet-grey ramp) and per-pavement exposure as a percentage of the same street without trees, shown as a range and tagged "Simulated"
+- [x] Design screen: an avenue of trees (CODASC crowns, light or dense) or a hedge in the middle (Gromke et al. 2016 sizes); position, crown base and crown width sliders; drag sideways on the street; the drag changes on the running solver without a rebuild, on both engines
+- [ ] Constraint badges: pavement width and bus headroom wait for the Hong Kong street presets and a verified headroom source (P3); greenery is already kept between the buildings
+- [x] Fumes layer on the violet-grey ramp, drawn from the running mean on both engines, with a key that uses the same colours and theme; per-pavement exposure against the same street without greenery, shown as a range and tagged "Simulated" (A-013)
+- [x] End-to-end test: the bare street settles, trees are added, and the comparison appears (`tests/e2e/smoke.spec.ts`, with `?averaging=0.25` to finish in time)
 
 ### Found and fixed along the way
 
 - Copying the neighbour's populations into the tracer outlet fed their non-equilibrium part back and blew up with τ near ½; the outlet now takes the equilibrium at the neighbour's previous concentration and velocity.
 - A trial CODASC run with a single street put fumes on the windward wall: the vortex turned the wrong way (see P1, D-019). Behind an upwind street the leeward wall came out close to the wind tunnel in trial runs; the committed numbers will come from the Colab job.
+- Right next to each lane the fumes field shows grid-scale ripples: a point source in a cell with very little diffusion. In the screenshots they sit within a few cells of the lanes; whether they reach the pavement zone is still to be checked. Spreading each source over a few cells would remove them.
 - In the same trials the lowest taps on wall B read several times the measured value: a corner eddy at the foot of the windward wall holds fumes from the nearest lane, and a 2D model mixes it out too slowly. To be reported with the results, not tuned away.
 
 ### Decisions

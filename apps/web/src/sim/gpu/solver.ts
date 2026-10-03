@@ -44,7 +44,9 @@ export class GpuSolver {
   readonly fieldsBuffer: GPUBuffer;
   readonly meanBuffer: GPUBuffer;
   readonly solidBuffer: GPUBuffer;
-  private readonly auxBuffer: GPUBuffer;
+  /** Drag and tracer source per node, interleaved; bound to the step and compose passes. */
+  readonly auxBuffer: GPUBuffer;
+  private readonly aux: Float32Array;
   private readonly paramBuffer: GPUBuffer;
   private readonly checkpointBuffer: GPUBuffer;
   private checkpointTime = 0;
@@ -108,12 +110,12 @@ export class GpuSolver {
     ];
 
     device.queue.writeBuffer(this.solidBuffer, 0, Uint32Array.from(domain.solid));
-    const aux = new Float32Array(2 * this.n);
+    this.aux = new Float32Array(2 * this.n);
     for (let k = 0; k < this.n; k++) {
-      aux[2 * k] = params.drag?.[k] ?? 0;
-      aux[2 * k + 1] = params.tracer?.source[k] ?? 0;
+      this.aux[2 * k] = params.drag?.[k] ?? 0;
+      this.aux[2 * k + 1] = params.tracer?.source[k] ?? 0;
     }
-    device.queue.writeBuffer(this.auxBuffer, 0, aux);
+    device.queue.writeBuffer(this.auxBuffer, 0, this.aux);
     const inlet = new Float32Array(Math.max(4, domain.ny));
     if (params.inletU) inlet.set(Array.from(params.inletU));
     device.queue.writeBuffer(this.inletBuffer, 0, inlet);
@@ -135,6 +137,17 @@ export class GpuSolver {
     if (params.inletU) inlet.set(Array.from(params.inletU));
     this.device.queue.writeBuffer(this.inletBuffer, 0, inlet);
     this.writeParams();
+  }
+
+  /** Replace the porous drag (lambda per node, 1/cell), e.g. when trees are moved. */
+  setDrag(drag: ArrayLike<number> | null): void {
+    for (let k = 0; k < this.n; k++) this.aux[2 * k] = drag?.[k] ?? 0;
+    this.device.queue.writeBuffer(this.auxBuffer, 0, this.aux);
+  }
+
+  /** Restart the running means (velocity and concentration), e.g. after the street changed. */
+  clearMean(): void {
+    this.device.queue.writeBuffer(this.meanBuffer, 0, new Float32Array(4 * this.n));
   }
 
   /** Copy the current state aside on the GPU; used after a health check passes. */

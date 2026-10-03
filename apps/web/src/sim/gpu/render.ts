@@ -1,9 +1,15 @@
 import { MAX_AGE } from '../particles';
 import type { Layers } from '../cpu/canvasRenderer';
+import { FUMES_CMAX, fumesStops, isDark } from '../fumesColor';
 import type { SimColors, ViewWindow } from '../view';
 import type { GpuSolver } from './solver';
 
-const VIEW_BYTES = 128;
+const VIEW_BYTES = 160;
+
+const wgslStops = (dark: boolean) =>
+  fumesStops(dark)
+    .map(([r, g, b]) => `vec3<f32>(${r.toFixed(4)}, ${g.toFixed(4)}, ${b.toFixed(4)})`)
+    .join(', ');
 
 const common = /* wgsl */ `
 struct View {
@@ -15,6 +21,8 @@ struct View {
   building: vec4<f32>,
   ink: vec4<f32>,
   particle: vec4<f32>,
+  green: vec4<f32>,
+  fumesOn: f32, cScale: f32, greenOn: f32, dark: f32,
 };
 struct Particle { pos: vec2<f32>, prev: vec2<f32>, age: f32, pad0: f32, pad1: f32, pad2: f32 };
 
@@ -138,6 +146,24 @@ ${common}
 @group(0) @binding(1) var<storage, read> fields: array<vec4<f32>>;
 @group(0) @binding(2) var<storage, read> solid: array<u32>;
 @group(0) @binding(4) var trail: texture_2d<f32>;
+// Running means: ux, uy, |u|, concentration (see shaders.ts).
+@group(0) @binding(5) var<storage, read> mean: array<vec4<f32>>;
+// Drag lambda and tracer source per node.
+@group(0) @binding(6) var<storage, read> aux: array<vec2<f32>>;
+
+// The violet-grey fumes ramp (theme/tokens.ts), low first; reversed in the dark theme.
+fn fumes(cplus: f32) -> vec4<f32> {
+  let light = array<vec3<f32>, 9>(${wgslStops(false)});
+  let darkStops = array<vec3<f32>, 9>(${wgslStops(true)});
+  let t = clamp(log(1.0 + max(cplus, 0.0)) / log(1.0 + ${FUMES_CMAX.toFixed(1)}), 0.0, 1.0);
+  let s = t * 8.0;
+  let i = min(i32(floor(s)), 7);
+  let f = s - f32(i);
+  var c: vec3<f32>;
+  if (V.dark > 0.5) { c = mix(darkStops[i], darkStops[i + 1], f); }
+  else { c = mix(light[i], light[i + 1], f); }
+  return vec4<f32>(c, min(0.9, 1.4 * t));
+}
 
 @vertex
 fn fullscreen(@builtin(vertex_index) v: u32) -> @builtin(position) vec4<f32> {
@@ -153,10 +179,17 @@ fn compose(@builtin(position) frag: vec4<f32>) -> @location(0) vec4<f32> {
   let k = y * u32(V.nx) + x;
   if (solid[k] != 0u) { return vec4<f32>(V.building.rgb, 1.0); }
   var c = V.background.rgb;
+  if (V.fumesOn > 0.5) {
+    let f = fumes(mean[k].w * V.cScale);
+    c = mix(c, f.rgb, f.a);
+  }
   if (V.speedOn > 0.5) {
     let u = fields[k].yz;
     let s = clamp(length(u) / (1.2 * V.uRef), 0.0, 1.0);
     c = mix(c, V.ink.rgb, 0.32 * s);
+  }
+  if (V.greenOn > 0.5 && aux[k].x > 0.0) {
+    c = mix(c, V.green.rgb, 0.45);
   }
   if (V.windOn > 0.5) {
     let t = textureLoad(trail, vec2<i32>(i32(frag.x), i32(frag.y)), 0);
@@ -312,6 +345,8 @@ export class GpuRenderer {
         { binding: 1, resource: { buffer: solver.fieldsBuffer } },
         { binding: 2, resource: { buffer: solver.solidBuffer } },
         { binding: 4, resource: this.trail.createView() },
+        { binding: 5, resource: { buffer: solver.meanBuffer } },
+        { binding: 6, resource: { buffer: solver.auxBuffer } },
       ],
     });
     this.resetParticles();
@@ -340,6 +375,8 @@ export class GpuRenderer {
     colors: SimColors,
     width: number,
     height: number,
+    /** Converts the running-mean concentration to c+; 0 hides the fumes. */
+    cScale = 0,
   ): void {
     const solver = this.solver;
     if (!solver || !this.trail || !this.advectGroup || !this.trailGroup || !this.composeGroup) {
@@ -369,6 +406,8 @@ export class GpuRenderer {
     v.set([...colors.building, 1], 20);
     v.set([...colors.ink, 1], 24);
     v.set([...colors.particle, 1], 28);
+    v.set([...colors.green, 1], 32);
+    v.set([layers.fumes && cScale > 0 ? 1 : 0, cScale, 1, isDark(colors.background) ? 1 : 0], 36);
     this.device.queue.writeBuffer(this.viewBuffer, 0, v);
 
     const enc = this.device.createCommandEncoder();

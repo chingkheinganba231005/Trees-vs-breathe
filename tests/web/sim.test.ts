@@ -4,6 +4,8 @@ import { describe, expect, it } from 'vitest';
 import type { GoldenCase } from '../../apps/web/src/sim/golden';
 import {
   avenueTrees,
+  buildGreenery,
+  DEFAULT_DESIGN,
   centralHedge,
   dragField,
   LANE_OFFSETS,
@@ -158,5 +160,45 @@ describe('greenery and traffic', () => {
     const expected = (2e-3 * 0.05 * 6) / SOURCE_TOTAL;
     expect(e.A).toBeCloseTo(expected, 4);
     expect(e.B).toBeCloseTo(expected, 4);
+  });
+});
+
+describe('greenery designs', () => {
+  it('reproduces the CODASC crown with the default settings', () => {
+    const els = buildGreenery({ ...DEFAULT_DESIGN, kind: 'trees' }, 1);
+    expect(els).toEqual(avenueTrees(1, 'dense'));
+  });
+
+  it('keeps every element between the buildings however far it is shifted', () => {
+    for (const kind of ['trees', 'hedge'] as const) {
+      for (const width of [0.33, 1, 2, 3.3]) {
+        for (const shift of [-5, -0.4, 0, 0.4, 5]) {
+          for (const crownScale of [0.5, 1.5]) {
+            const els = buildGreenery({ ...DEFAULT_DESIGN, kind, shift, crownScale }, width);
+            for (const e of els) {
+              expect(e.x0).toBeGreaterThanOrEqual(0);
+              expect(e.x1).toBeLessThanOrEqual(width + 1e-12);
+              expect(e.x1).toBeGreaterThan(e.x0);
+            }
+          }
+        }
+      }
+    }
+  });
+
+  it('merges two tree rows that grow into each other', () => {
+    expect(buildGreenery({ ...DEFAULT_DESIGN, kind: 'trees', crownScale: 1.5 }, 1.6)).toHaveLength(
+      1,
+    );
+    expect(buildGreenery({ ...DEFAULT_DESIGN, kind: 'trees' }, 2)).toHaveLength(2);
+  });
+
+  it('uses the chosen hedge height and density', () => {
+    const [h] = buildGreenery(
+      { ...DEFAULT_DESIGN, kind: 'hedge', hedgeHeightM: 1.5, hedgeLambda: 1.67 },
+      2,
+    );
+    expect(h!.z1).toBeCloseTo(1.5 / 18, 12);
+    expect(h!.lamH).toBeCloseTo(1.67 * 18, 12);
   });
 });

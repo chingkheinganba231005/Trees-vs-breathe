@@ -1,3 +1,4 @@
+import { fumesAlpha, fumesColor, fumesStops, fumesT, isDark } from '../fumesColor';
 import type { Particles } from '../particles';
 import { TRAIL } from '../particles';
 import type { SimColors, ViewWindow } from '../view';
@@ -5,12 +6,27 @@ import type { SimColors, ViewWindow } from '../view';
 export interface Layers {
   wind: boolean;
   speed: boolean;
+  /** Time-averaged traffic fumes, violet-grey. */
+  fumes: boolean;
 }
 
 const css = (c: [number, number, number], a = 1) =>
   `rgba(${Math.round(c[0] * 255)}, ${Math.round(c[1] * 255)}, ${Math.round(c[2] * 255)}, ${a})`;
 
-/** Canvas 2D drawing for the CPU engine: speed shading, buildings, and fading wind trails. */
+/** What the field image shows besides speed: running-mean fumes and the greenery. */
+export interface FieldExtras {
+  /** Running-mean concentration per node, or null before the first frame. */
+  conc: Float32Array | null;
+  /** Converts conc to c+. */
+  cScale: number;
+  /** Drag lambda per node; greenery is drawn where it is positive. */
+  drag: Float32Array | null;
+}
+
+/**
+ * Canvas 2D drawing for the CPU engine: fumes and speed shading, greenery, buildings, and
+ * fading wind trails.
+ */
 export class CanvasRenderer {
   private readonly ctx: CanvasRenderingContext2D;
   private readonly field: HTMLCanvasElement;
@@ -47,6 +63,7 @@ export class CanvasRenderer {
     uRef: number,
     particles: Particles,
     layers: Layers,
+    extras: FieldExtras = { conc: null, cScale: 0, drag: null },
   ): void {
     const { ctx, canvas, colors } = this;
     const sx = canvas.width / view.width;
@@ -55,23 +72,52 @@ export class CanvasRenderer {
     ctx.fillStyle = css(colors.background);
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    if (layers.speed) {
+    const showFumes = layers.fumes && extras.conc !== null && extras.cScale > 0;
+    if (layers.speed || showFumes || extras.drag) {
       if (!this.image || this.image.width !== view.width || this.image.height !== view.height) {
         this.field.width = view.width;
         this.field.height = view.height;
         this.image = this.fieldCtx.createImageData(view.width, view.height);
       }
       const d = this.image.data;
-      const [r, g, b] = colors.ink.map((c) => Math.round(c * 255)) as [number, number, number];
+      const stops = fumesStops(isDark(colors.background));
+      const bg = colors.background;
+      const ink = colors.ink;
+      const green = colors.green;
       for (let y = 0; y < view.height; y++) {
         for (let x = 0; x < view.width; x++) {
           const k = y * nx + view.x0 + x;
-          const s = Math.min(1, Math.hypot(ux[k]!, uy[k]!) / (1.2 * uRef));
           const o = ((view.height - 1 - y) * view.width + x) * 4;
-          d[o] = r;
-          d[o + 1] = g;
-          d[o + 2] = b;
-          d[o + 3] = solid[k] ? 0 : Math.round(80 * s);
+          if (solid[k]) {
+            d[o + 3] = 0;
+            continue;
+          }
+          let r = bg[0];
+          let g = bg[1];
+          let b = bg[2];
+          if (showFumes) {
+            const t = fumesT(extras.conc![k]! * extras.cScale);
+            const a = fumesAlpha(t);
+            const f = fumesColor(t, stops);
+            r += a * (f[0] - r);
+            g += a * (f[1] - g);
+            b += a * (f[2] - b);
+          }
+          if (layers.speed) {
+            const a = 0.32 * Math.min(1, Math.hypot(ux[k]!, uy[k]!) / (1.2 * uRef));
+            r += a * (ink[0] - r);
+            g += a * (ink[1] - g);
+            b += a * (ink[2] - b);
+          }
+          if (extras.drag && extras.drag[k]! > 0) {
+            r += 0.45 * (green[0] - r);
+            g += 0.45 * (green[1] - g);
+            b += 0.45 * (green[2] - b);
+          }
+          d[o] = Math.round(255 * r);
+          d[o + 1] = Math.round(255 * g);
+          d[o + 2] = Math.round(255 * b);
+          d[o + 3] = 255;
         }
       }
       this.fieldCtx.putImageData(this.image, 0, 0);

@@ -68,9 +68,11 @@ test('the Design screen runs the street on WebGPU without losing the device', as
   await page.addInitScript(() => localStorage.setItem('tvb-lang', 'en'));
   await page.goto('./?engine=gpu#/design');
   await expect(page.getByText('Running on')).toBeVisible();
-  await expect(page.locator('dl')).toContainText('WebGPU', { timeout: 30_000 });
+  await expect(page.getByRole('region', { name: 'Model settings' })).toContainText('WebGPU', {
+    timeout: 30_000,
+  });
   await page.waitForTimeout(8000);
-  await expect(page.locator('dl')).toContainText('WebGPU');
+  await expect(page.getByRole('region', { name: 'Model settings' })).toContainText('WebGPU');
   await expect(page.getByText('running on the CPU')).toHaveCount(0);
   expect(warnings.filter((w) => /device lost/i.test(w))).toEqual([]);
   await page.locator('canvas').screenshot({ path: 'test-results/screens/design-gpu-canvas.png' });

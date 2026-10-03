@@ -1,10 +1,17 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ExposurePanel } from '../components/ExposurePanel';
+import { FumesLegend } from '../components/FumesLegend';
+import { GreeneryControls } from '../components/GreeneryControls';
 import { Screen } from '../components/Screen';
 import { SimulatedTag } from '../components/SimulatedTag';
 import { StreetSimulation } from '../components/StreetSimulation';
 import { expectedRegime, regimeText } from '../content/regimes';
 import { useI18n } from '../i18n/context';
 import type { EngineChoice } from '../sim/engine';
+import { addReading, compare, EMPTY_EXPOSURE } from '../sim/exposure';
+import type { ExposureState } from '../sim/exposure';
+import type { GreeneryDesign } from '../sim/greenery';
+import { buildGreenery, DEFAULT_DESIGN, shiftRange } from '../sim/greenery';
 import type { SimStats } from '../sim/streetSim';
 
 const ASPECT_MIN = 0.3;
@@ -26,9 +33,39 @@ export function Design({ engine }: { engine: EngineChoice }) {
   const [aspect, setAspect] = useState(1);
   const [wind, setWind] = useState(true);
   const [speed, setSpeed] = useState(false);
+  const [fumes, setFumes] = useState(true);
+  const [design, setDesign] = useState<GreeneryDesign>(DEFAULT_DESIGN);
   const [stats, setStats] = useState<SimStats | null>(null);
-  const layers = useMemo(() => ({ wind, speed }), [wind, speed]);
-  const onStats = useCallback((s: SimStats) => setStats(s), []);
+  const [exposure, setExposure] = useState<ExposureState>(EMPTY_EXPOSURE);
+  const layers = useMemo(() => ({ wind, speed, fumes }), [wind, speed, fumes]);
+
+  // Street width in building heights, and the greenery placed in it.
+  const width = 1 / aspect;
+  const greenery = useMemo(() => buildGreenery(design, width), [design, width]);
+  const range = useMemo(
+    () => shiftRange(buildGreenery({ ...design, shift: 0 }, width), width),
+    [design, width],
+  );
+  const shapeKey = aspect.toFixed(1);
+  const designKey = `${shapeKey}|${JSON.stringify(greenery)}`;
+  const keys = useRef({ shapeKey, designKey });
+  useEffect(() => {
+    keys.current = { shapeKey, designKey };
+  });
+
+  const onStats = useCallback((s: SimStats) => {
+    setStats(s);
+    setExposure((e) => addReading(e, s, keys.current.shapeKey, keys.current.designKey));
+  }, []);
+  const onDrag = useCallback(
+    (dx: number) =>
+      setDesign((d) => ({
+        ...d,
+        shift: Math.min(Math.max(d.shift + dx, range[0]), range[1]),
+      })),
+    [range],
+  );
+  const comparison = compare(exposure, shapeKey);
   const regime = regimeText[expectedRegime(draft)];
   const num = (v: number, digits = 0) =>
     v.toLocaleString(lang === 'en' ? 'en-GB' : 'zh-HK', { maximumFractionDigits: digits });
@@ -42,11 +79,14 @@ export function Design({ engine }: { engine: EngineChoice }) {
         </div>
         <StreetSimulation
           aspect={aspect}
+          greenery={greenery}
           layers={layers}
           engine={engine}
           onStats={onStats}
+          onDrag={onDrag}
           label={t('design.simLabel')}
         />
+        {fumes && <FumesLegend />}
       </div>
 
       <div className="mt-6 grid gap-8 md:grid-cols-2">
@@ -81,6 +121,7 @@ export function Design({ engine }: { engine: EngineChoice }) {
                 [
                   ['wind', wind, setWind],
                   ['speed', speed, setSpeed],
+                  ['fumes', fumes, setFumes],
                 ] as const
               ).map(([key, on, set]) => (
                 <label
@@ -93,11 +134,13 @@ export function Design({ engine }: { engine: EngineChoice }) {
                     onChange={(e) => set(e.target.checked)}
                     className="size-4 accent-[var(--accent)]"
                   />
-                  {t(key === 'wind' ? 'layer.wind' : 'layer.speed')}
+                  {t(`layer.${key}`)}
                 </label>
               ))}
             </div>
           </fieldset>
+
+          <GreeneryControls design={design} onChange={setDesign} shiftRange={range} />
 
           <section className="mt-6 rounded-lg border border-line bg-surface p-4">
             <h2 className="text-sm font-bold text-ink-muted">{t('design.expected')}</h2>
@@ -107,46 +150,53 @@ export function Design({ engine }: { engine: EngineChoice }) {
           </section>
         </div>
 
-        <section aria-labelledby="readouts">
-          <div className="flex items-center justify-between">
-            <h2 id="readouts" className="font-bold">
-              {t('design.readouts')}
-            </h2>
-            <SimulatedTag />
-          </div>
-          <dl className="mt-2 text-sm">
-            <Readout label={t('readout.reynolds')} value={stats ? num(stats.reynolds) : '…'} />
-            <Readout
-              label={t('readout.grid')}
-              value={
-                stats ? t('readout.gridValue', { h: stats.height, cells: num(stats.cells) }) : '…'
-              }
-            />
-            <Readout label={t('readout.latticeSpeed')} value={stats ? num(stats.uRef, 3) : '…'} />
-            <Readout
-              label={t('readout.smagorinsky')}
-              value={stats ? num(stats.smagorinsky, 2) : '…'}
-            />
-            <Readout
-              label={t('readout.rate')}
-              value={stats ? t('readout.rateValue', { n: num(stats.stepsPerSecond) }) : '…'}
-              mono={false}
-            />
-            <Readout
-              label={t('readout.engine')}
-              value={stats ? t(stats.engine === 'gpu' ? 'engine.gpu' : 'engine.cpu') : '…'}
-              mono={false}
-            />
-            {stats && stats.recoveries > 0 && (
-              <Readout label={t('readout.recoveries')} value={num(stats.recoveries)} />
-            )}
-          </dl>
-          {stats?.engine === 'cpu' && <p className="mt-3 text-sm">{t(stats.note)}</p>}
-          <p className="mt-3 text-sm text-ink-muted">{t('readout.reynoldsHelp')}</p>
-          <p className="mt-6 rounded-md border border-dashed border-line px-3 py-2 text-sm text-ink-muted">
-            {t('design.next')}
-          </p>
-        </section>
+        <div>
+          <ExposurePanel
+            stats={stats}
+            comparison={comparison}
+            hasBaseline={(exposure.baselines[shapeKey]?.length ?? 0) > 0}
+          />
+          <section aria-labelledby="readouts" className="mt-6">
+            <div className="flex items-center justify-between">
+              <h2 id="readouts" className="font-bold">
+                {t('design.readouts')}
+              </h2>
+              <SimulatedTag />
+            </div>
+            <dl className="mt-2 text-sm">
+              <Readout label={t('readout.reynolds')} value={stats ? num(stats.reynolds) : '…'} />
+              <Readout
+                label={t('readout.grid')}
+                value={
+                  stats ? t('readout.gridValue', { h: stats.height, cells: num(stats.cells) }) : '…'
+                }
+              />
+              <Readout label={t('readout.latticeSpeed')} value={stats ? num(stats.uRef, 3) : '…'} />
+              <Readout
+                label={t('readout.smagorinsky')}
+                value={stats ? num(stats.smagorinsky, 2) : '…'}
+              />
+              <Readout
+                label={t('readout.rate')}
+                value={stats ? t('readout.rateValue', { n: num(stats.stepsPerSecond) }) : '…'}
+                mono={false}
+              />
+              <Readout
+                label={t('readout.engine')}
+                value={stats ? t(stats.engine === 'gpu' ? 'engine.gpu' : 'engine.cpu') : '…'}
+                mono={false}
+              />
+              {stats && stats.recoveries > 0 && (
+                <Readout label={t('readout.recoveries')} value={num(stats.recoveries)} />
+              )}
+            </dl>
+            {stats?.engine === 'cpu' && <p className="mt-3 text-sm">{t(stats.note)}</p>}
+            <p className="mt-3 text-sm text-ink-muted">{t('readout.reynoldsHelp')}</p>
+            <p className="mt-6 rounded-md border border-dashed border-line px-3 py-2 text-sm text-ink-muted">
+              {t('design.next')}
+            </p>
+          </section>
+        </div>
       </div>
     </Screen>
   );

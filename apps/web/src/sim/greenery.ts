@@ -59,6 +59,74 @@ export function avenueTrees(width: number, density: CrownDensity): GreenElement[
   ];
 }
 
+/**
+ * Hedge options from Gromke et al. (2016) via Abhijith et al. (2017, Table 3): heights 1.5 and
+ * 2.5 m, pressure-loss coefficients 1.67 and 3.34 1/m, 1.5 m wide.
+ */
+export const HEDGE_HEIGHTS_M = [1.5, 2.5] as const;
+export const HEDGE_LAMBDAS = [1.67, 3.34] as const;
+
+/** What the user chose on the Design screen. */
+export interface GreeneryDesign {
+  kind: 'none' | 'trees' | 'hedge';
+  density: CrownDensity;
+  /** Crown base above the ground, units of H; crowns reach roof height. CODASC: 1/3. */
+  crownBase: number;
+  /** Crown width as a multiple of the CODASC width. */
+  crownScale: number;
+  /** Sideways shift of the whole layout, units of H; clamped to stay in the street. */
+  shift: number;
+  hedgeHeightM: (typeof HEDGE_HEIGHTS_M)[number];
+  hedgeLambda: (typeof HEDGE_LAMBDAS)[number];
+}
+
+export const DEFAULT_DESIGN: GreeneryDesign = {
+  kind: 'none',
+  density: 'dense',
+  crownBase: 1 / 3,
+  crownScale: 1,
+  shift: 0,
+  hedgeHeightM: 2.5,
+  hedgeLambda: 3.34,
+};
+
+/** Largest and smallest shift that keep every element between the buildings. */
+export function shiftRange(elements: GreenElement[], width: number): [number, number] {
+  if (elements.length === 0) return [0, 0];
+  const lo = Math.min(...elements.map((e) => e.x0));
+  const hi = Math.max(...elements.map((e) => e.x1));
+  return [-lo, width - hi];
+}
+
+/** The elements for a design in a street `width` H wide, shifted but kept inside the street. */
+export function buildGreenery(d: GreeneryDesign, width: number): GreenElement[] {
+  let els: GreenElement[] = [];
+  if (d.kind === 'trees') {
+    els = avenueTrees(width, d.density).map((e) => {
+      const mid = 0.5 * (e.x0 + e.x1);
+      const half = 0.5 * (e.x1 - e.x0) * d.crownScale;
+      return { ...e, x0: mid - half, x1: mid + half, z0: Math.min(d.crownBase, 0.9) };
+    });
+    // Rows that grow into each other merge into one closed canopy.
+    if (els.length === 2 && els[0]!.x1 >= els[1]!.x0) {
+      els = [{ ...els[0]!, x1: els[1]!.x1 }];
+    }
+  } else if (d.kind === 'hedge') {
+    const base = centralHedge(width);
+    els = [
+      {
+        ...base,
+        z1: d.hedgeHeightM / FULL_SCALE_HEIGHT_M,
+        lamH: d.hedgeLambda * FULL_SCALE_HEIGHT_M,
+      },
+    ];
+  }
+  // Keep the layout between the buildings, then clip anything still wider than the street.
+  const [lo, hi] = shiftRange(els, width);
+  const s = Math.min(Math.max(d.shift, Math.min(lo, 0)), Math.max(hi, 0));
+  return els.map((e) => ({ ...e, x0: Math.max(0, e.x0 + s), x1: Math.min(width, e.x1 + s) }));
+}
+
 /** One hedge on the street axis, between the inner lanes (central_hedge in trees.py). */
 export function centralHedge(width: number): GreenElement {
   const h = HEDGE.heightM / FULL_SCALE_HEIGHT_M;

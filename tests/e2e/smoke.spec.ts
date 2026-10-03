@@ -44,7 +44,7 @@ test('the Design screen runs the live street on the CPU worker', async ({ page }
   test.setTimeout(60_000);
   const errors = collectErrors(page);
   await page.goto('./?engine=cpu#/design');
-  const readouts = page.locator('dl');
+  const readouts = page.getByRole('region', { name: 'Model settings' });
   await expect(readouts).toContainText('CPU worker', { timeout: 20_000 });
   await expect(readouts).toContainText('20,000');
   await expect(readouts).toContainText('time steps per second');
@@ -56,6 +56,29 @@ test('the Design screen runs the live street on the CPU worker', async ({ page }
   await page.waitForTimeout(4000);
   await page.screenshot({
     path: `test-results/screens/${testInfo.project.name}-design-live.png`,
+    fullPage: true,
+  });
+  expect(errors).toEqual([]);
+});
+
+test('trees change the fumes on the pavements against the bare street', async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(150_000);
+  const errors = collectErrors(page);
+  // A short averaging window (a quarter of a vortex turnover) so the test finishes in time.
+  await page.goto('./?engine=cpu&averaging=0.25#/design');
+  // The bare street settles first and becomes the baseline.
+  await expect(page.getByText('This is the street without greenery')).toBeVisible({
+    timeout: 60_000,
+  });
+  await page.getByRole('radio', { name: 'Avenue of trees' }).check();
+  await expect(page.getByText('Crown density')).toBeVisible();
+  await expect(page.getByText('against the same street without greenery').first()).toBeVisible({
+    timeout: 90_000,
+  });
+  await page.screenshot({
+    path: `test-results/screens/${testInfo.project.name}-design-trees.png`,
     fullPage: true,
   });
   expect(errors).toEqual([]);

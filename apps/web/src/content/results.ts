@@ -123,3 +123,7 @@ export interface StabilityResult extends Provenance {
     peak_speed_over_uref: number | null;
   }[];
 }
+
+export interface CalibrationResult extends Provenance {
+  schmidt: number | null;
+}
