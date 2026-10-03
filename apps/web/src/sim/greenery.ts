@@ -274,6 +274,47 @@ export function lineSources(
  * A is the leeward pavement, B the windward one (pavement_exposure in trees.py).
  * c+ = C u_H H / Q with u_H the inflow speed at roof height.
  */
+/**
+ * Mean wind speed over each pavement's breathing zone (the zone of pavementExposure), as a share
+ * of the inflow speed at roof height. `ux` and `uy` hold one value per node at `stride` and
+ * `offset` (GPU fields: rho, ux, uy, tau per node).
+ */
+export function pavementSpeed(
+  g: CanyonGeometry,
+  field: ArrayLike<number>,
+  stride: number,
+  offsetX: number,
+  offsetY: number,
+  uRef: number,
+  fieldY: ArrayLike<number> = field,
+): { A: number; B: number } {
+  const nx = canyonNx(g);
+  const [x0, x1] = streetColumns(g);
+  const w = PAVEMENT_WIDTH * g.height;
+  let a = 0;
+  let na = 0;
+  let b = 0;
+  let nb = 0;
+  for (let y = 0; y < g.top; y++) {
+    const zc = y + 0.5;
+    if (zc < BREATHING[0] * g.height || zc > BREATHING[1] * g.height) continue;
+    for (let x = x0; x < x1; x++) {
+      const xc = x + 0.5;
+      const k = (y * nx + x) * stride;
+      const speed = Math.hypot(field[k + offsetX]!, fieldY[k + offsetY]!);
+      if (xc <= x0 + w) {
+        a += speed;
+        na += 1;
+      }
+      if (xc >= x1 - w) {
+        b += speed;
+        nb += 1;
+      }
+    }
+  }
+  return { A: a / Math.max(1, na) / uRef, B: b / Math.max(1, nb) / uRef };
+}
+
 export function pavementExposure(
   g: CanyonGeometry,
   conc: ArrayLike<number>,

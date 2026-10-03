@@ -42,10 +42,14 @@ export function presetByKey(key: string | null): StreetPreset | null {
 const POINTS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'] as const;
 export type CompassPoint = (typeof POINTS)[number];
 
+/** The nearest of the eight compass points to a bearing in degrees. */
+export function compassPoint(bearing: number): CompassPoint {
+  return POINTS[Math.round((((bearing % 360) + 360) % 360) / 45) % 8]!;
+}
+
 /** The two compass points a street axis runs between, e.g. 117 degrees runs SE and NW. */
 export function streetEnds(bearing: number): [CompassPoint, CompassPoint] {
-  const at = (b: number) => POINTS[Math.round((((b % 360) + 360) % 360) / 45) % 8]!;
-  return [at(bearing), at(bearing + 180)];
+  return [compassPoint(bearing), compassPoint(bearing + 180)];
 }
 
 /** Typical roadside tree near a street (results/streets/trees.json, assumption A-014). */

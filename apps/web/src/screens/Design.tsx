@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ExposurePanel } from '../components/ExposurePanel';
 import { FumesLegend } from '../components/FumesLegend';
 import { GreeneryControls } from '../components/GreeneryControls';
+import { HeatControls } from '../components/HeatControls';
+import { HeatPanel } from '../components/HeatPanel';
 import { RecordedRun } from '../components/RecordedRun';
 import { Screen } from '../components/Screen';
 import { SimulatedTag } from '../components/SimulatedTag';
@@ -17,6 +19,7 @@ import {
   crownTop,
   DEFAULT_DESIGN,
   FULL_SCALE_HEIGHT_M,
+  PAVEMENT_WIDTH,
   shiftRange,
 } from '../sim/greenery';
 import type { StreetScale } from '../sim/greenery';
@@ -27,6 +30,9 @@ import { localTree, presetByKey } from '../content/presets';
 import { streetRun } from '../content/streetRuns';
 import type { StreetPreset } from '../content/presets';
 import { useHashParam } from '../lib/router';
+import { PERSON_HEIGHT_M } from '../sun/canyon';
+import { hourWeather, pavementHeat, shadeCrowns } from '../sun/heat';
+import { weatherPresets } from '../sun/weather';
 
 // The shallowest street the regime study checked (results/street/regimes.json); the deepest
 // depends on the engine's grid (checkedAspectMax).
@@ -116,6 +122,27 @@ function DesignScreen({ engine, preset }: { engine: EngineChoice; preset: Street
     [range],
   );
   const comparison = compare(exposure, shapeKey);
+
+  // Sun and heat (BRIEF.md 6): the street in metres at the shape the live view shows.
+  const days = weatherPresets();
+  const [dayKey, setDayKey] = useState('very_hot');
+  const [hour, setHour] = useState(13);
+  const [axis, setAxis] = useState(preset ? preset.bearing_deg : 0);
+  const day = days.find((d) => d.key === dayKey) ?? days[0] ?? null;
+  const weather = useMemo(() => (day ? hourWeather(day, hour) : null), [day, hour]);
+  const street2d = useMemo(
+    () => ({
+      heightM: scale.heightM,
+      widthM: scale.heightM * width,
+      axisDeg: axis,
+      crowns: shadeCrowns(greenery, scale.heightM, design.density),
+    }),
+    [scale.heightM, width, axis, greenery, design.density],
+  );
+  const zoneM = PAVEMENT_WIDTH * scale.heightM;
+  const heat = weather
+    ? pavementHeat(street2d, weather, zoneM, stats?.wind ?? null, PERSON_HEIGHT_M)
+    : null;
   const recorded = streetRun(preset?.key ?? null);
   const presetName = preset ? (lang === 'en' ? preset.label_en : preset.label_tc) : '';
   const regime = regimeText[expectedRegime(shown)];
@@ -214,6 +241,18 @@ function DesignScreen({ engine, preset }: { engine: EngineChoice; preset: Street
 
           <GreeneryControls design={design} onChange={setDesign} shiftRange={range} scale={scale} />
 
+          {days.length > 0 && (
+            <HeatControls
+              days={days}
+              dayKey={day?.key ?? dayKey}
+              onDay={setDayKey}
+              hour={hour}
+              onHour={setHour}
+              axis={axis}
+              onAxis={preset ? null : setAxis}
+            />
+          )}
+
           <section className="mt-6 rounded-lg border border-line bg-surface p-4">
             <h2 className="text-sm font-bold text-ink-muted">{t('design.expected')}</h2>
             <p className="mt-1 text-lg font-bold">{t(regime.name)}</p>
@@ -228,6 +267,9 @@ function DesignScreen({ engine, preset }: { engine: EngineChoice; preset: Street
             comparison={comparison}
             hasBaseline={(exposure.baselines[shapeKey]?.length ?? 0) > 0}
           />
+          {weather && heat && (
+            <HeatPanel street={street2d} weather={weather} heat={heat} zoneM={zoneM} hour={hour} />
+          )}
           <section aria-labelledby="readouts" className="mt-6">
             <div className="flex items-center justify-between">
               <h2 id="readouts" className="font-bold">

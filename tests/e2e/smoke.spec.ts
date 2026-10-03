@@ -85,6 +85,27 @@ test('trees change the fumes on the pavements against the bare street', async ({
   expect(errors).toEqual([]);
 });
 
+test('Design shows heat on the pavements and the sun moves with the hour', async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(150_000);
+  const errors = collectErrors(page);
+  await page.goto('./?engine=cpu&averaging=0.25&speed=4#/design');
+  const heat = page.locator('section[aria-labelledby="heat"]');
+  await expect(heat).toBeVisible();
+  // UTCI needs the pavement wind, which appears once its running mean has settled.
+  await expect(heat.getByText(/heat stress|thermal stress|cold stress/).first()).toBeVisible({
+    timeout: 120_000,
+  });
+  await expect(heat.getByText(/°C/).first()).toBeVisible();
+  // At 19:00 the sun has set on the very hot day (22 August).
+  await page.locator('#hour').fill('19');
+  await expect(heat.getByText('The sun is down.')).toBeVisible();
+  await heat.scrollIntoViewIfNeeded();
+  await heat.screenshot({ path: `test-results/screens/${testInfo.project.name}-design-heat.png` });
+  expect(errors).toEqual([]);
+});
+
 test('the fumes picture does not blank while a tree is dragged', async ({ page }) => {
   test.setTimeout(60_000);
   // The CPU engine draws to a 2D canvas, so its pixels can be counted.

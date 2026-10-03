@@ -9,7 +9,12 @@ import {
   viewsSide,
   viewsUp,
 } from '../../apps/web/src/sun/canyon';
-import { CROWN_TRANSMISSIVITY, pavementHeat, windAt10m } from '../../apps/web/src/sun/heat';
+import {
+  CROWN_TRANSMISSIVITY,
+  hourWeather,
+  pavementHeat,
+  windAt10m,
+} from '../../apps/web/src/sun/heat';
 import type { WeatherDay } from '../../apps/web/src/sun/weather';
 import {
   airTemperature,
@@ -141,9 +146,10 @@ describe('pavement heat', () => {
 
   it('waits for the solver wind, then gives UTCI on both pavements', () => {
     const s = street(36, 30, 0);
-    expect(pavementHeat(s, DAY, 13, 2.7, null, 1.1).A).toBeNull();
-    const h = pavementHeat(s, DAY, 13, 2.7, { A: 0.2, B: 0.3 }, 1.1);
-    expect(h.A!.utci).toBeGreaterThan(h.ta - 5);
+    const w = hourWeather(DAY, 13);
+    expect(pavementHeat(s, w, 2.7, null, 1.1).A).toBeNull();
+    const h = pavementHeat(s, w, 2.7, { A: 0.2, B: 0.3 }, 1.1);
+    expect(h.A!.utci).toBeGreaterThan(w.ta - 5);
     expect(h.B!.wind10).toBeGreaterThanOrEqual(0.5);
   });
 });

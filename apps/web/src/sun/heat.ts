@@ -1,5 +1,5 @@
 import type { GreenElement } from '../sim/greenery';
-import type { Radiant, ShadeCrown, Street2D } from './canyon';
+import type { Radiant, ShadeCrown, Sky, Street2D } from './canyon';
 import { meanRadiant, surfaces } from './canyon';
 import { splitGlobal } from './irradiance';
 import { sunPosition } from './position';
@@ -46,12 +46,33 @@ export interface PavementHeat extends Radiant {
   windClamped: boolean;
 }
 
-export interface HeatState {
+/** The weather and sun at one local hour of a preset day. */
+export interface HourWeather {
   ta: number;
   rh: number;
   ghi: number;
-  elevation: number;
-  azimuth: number;
+  /** The sky as the radiation model takes it. */
+  sky: Sky;
+  /** Wind above the roofs, m/s. */
+  roofWind: number;
+}
+
+export function hourWeather(day: WeatherDay, hour: number): HourWeather {
+  const sun = sunPosition(hkTime(day.date, hour), HKO.latitude, HKO.longitude);
+  const ghi = globalIrradiance(day, hour);
+  const split = splitGlobal(ghi, 90 - sun.elevation, dayOfYear(day.date));
+  const ta = airTemperature(day, hour);
+  const rh = humidity(day, hour);
+  return {
+    ta,
+    rh,
+    ghi,
+    sky: { elevation: sun.elevation, azimuth: sun.azimuth, dni: split.dni, dhi: split.dhi, ta, rh },
+    roofWind: roofWind(day),
+  };
+}
+
+export interface HeatState {
   A: PavementHeat | null;
   B: PavementHeat | null;
   /** Share of the street floor in direct sun. */
@@ -74,47 +95,27 @@ export function shadeCrowns(
 }
 
 /**
- * Heat on the two pavements at a local hour: Tmrt from the street's radiation, wind from the
- * solver (pedestrian speed over the roof speed, null until it has averaged), UTCI from both.
- * People stand in the middle of each pavement zone, `zoneM` metres wide.
+ * Heat on the two pavements: Tmrt from the street's radiation, wind from the solver (pedestrian
+ * speed over the roof speed, null until it has averaged), UTCI from both. People stand in the
+ * middle of each pavement zone, `zoneM` metres wide, `personHeight` metres up.
  */
 export function pavementHeat(
   street: Street2D,
-  day: WeatherDay,
-  hour: number,
+  w: HourWeather,
   zoneM: number,
   windRatio: { A: number; B: number } | null,
   personHeight: number,
 ): HeatState {
-  const utc = hkTime(day.date, hour);
-  const sun = sunPosition(utc, HKO.latitude, HKO.longitude);
-  const ghi = globalIrradiance(day, hour);
-  const split = splitGlobal(ghi, 90 - sun.elevation, dayOfYear(day.date));
-  const ta = airTemperature(day, hour);
-  const rh = humidity(day, hour);
-  const sky = {
-    elevation: sun.elevation,
-    azimuth: sun.azimuth,
-    dni: split.dni,
-    dhi: split.dhi,
-    ta,
-    rh,
-  };
-  const surf = surfaces(street, sky);
+  const surf = surfaces(street, w.sky);
   const at = (x: number, ratio: number | undefined): PavementHeat | null => {
     if (ratio === undefined) return null;
-    const r = meanRadiant(street, sky, x, surf);
-    const raw = windAt10m(ratio * roofWind(day), personHeight);
+    const r = meanRadiant(street, w.sky, x, surf);
+    const raw = windAt10m(ratio * w.roofWind, personHeight);
     const wind10 = Math.min(WIND_RANGE[1], Math.max(WIND_RANGE[0], raw));
-    const u = utci(ta, r.tmrt, wind10, rh);
+    const u = utci(w.ta, r.tmrt, wind10, w.rh);
     return { ...r, utci: u, category: utciCategory(u), wind10, windClamped: wind10 !== raw };
   };
   return {
-    ta,
-    rh,
-    ghi,
-    elevation: sun.elevation,
-    azimuth: sun.azimuth,
     A: at(zoneM / 2, windRatio?.A),
     B: at(street.widthM - zoneM / 2, windRatio?.B),
     floorSunlit: surf.sunlit.ground,

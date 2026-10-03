@@ -3,7 +3,14 @@ import type { CalibrationResult, RegimesResult } from '../content/results';
 import type { Layers } from './cpu/canvasRenderer';
 import type { SolverParams } from './cpu/solver';
 import type { GreenElement } from './greenery';
-import { dragField, laneOffsets, lineSources, pavementExposure, SOURCE_TOTAL } from './greenery';
+import {
+  dragField,
+  laneOffsets,
+  lineSources,
+  pavementExposure,
+  pavementSpeed,
+  SOURCE_TOTAL,
+} from './greenery';
 import { CanvasRenderer } from './cpu/canvasRenderer';
 import type { FromWorker, ToWorker } from './cpu/protocol';
 import type { Engine, EngineChoice } from './engine';
@@ -146,6 +153,11 @@ export interface SimStats {
   settleSteps: number;
   /** Number of greenery elements in the street. */
   greenCount: number;
+  /**
+   * Running mean of the wind speed over each pavement's breathing zone, as a share of the inflow
+   * speed at roof height; null until it has averaged for one time constant.
+   */
+  wind: { A: number; B: number } | null;
 }
 
 export interface StreetSimOptions {
@@ -230,8 +242,38 @@ abstract class BaseSim {
   /** Steps averaged into the display mean since the street was built; it never restarts. */
   protected displaySteps = 0;
   protected exposure: { A: number; B: number } | null = null;
+  /** Running mean of the pavement wind and the steps it has averaged (see SimStats.wind). */
+  protected windMean: { A: number; B: number } | null = null;
+  protected windSteps = 0;
+  /** Lattice time of the last wind sample. */
+  protected windAt = 0;
   /** Decides how many lattice steps each frame runs, the same in simulated time on every device. */
   protected readonly clock = new StepClock();
+
+  protected resetWind(): void {
+    this.windMean = null;
+    this.windSteps = 0;
+  }
+
+  /**
+   * Fold a sample of the instantaneous pavement wind into its running mean, weighted by the
+   * lattice steps since the last sample with the time constant of the other means.
+   */
+  protected sampleWind(now: { A: number; B: number }, time: number): void {
+    if (!this.windMean) {
+      this.windMean = { ...now };
+      this.windAt = time;
+      return;
+    }
+    const steps = Math.max(0, time - this.windAt);
+    this.windAt = time;
+    this.windSteps += steps;
+    const w = 1 - Math.pow(1 - 1 / this.averaging, steps);
+    this.windMean = {
+      A: this.windMean.A + w * (now.A - this.windMean.A),
+      B: this.windMean.B + w * (now.B - this.windMean.B),
+    };
+  }
 
   constructor(opts: StreetSimOptions) {
     this.opts = opts;
@@ -294,6 +336,7 @@ abstract class BaseSim {
     this.generation += 1;
     this.meanSteps = 0;
     this.exposure = null;
+    this.resetWind();
     this.applyDrag(dragField(this.geometry, this.solid, greenery));
     this.report();
   }
@@ -338,6 +381,7 @@ abstract class BaseSim {
       recoveries: this.recoveries,
       note,
       exposure: this.exposure,
+      wind: this.windSteps >= this.averaging ? this.windMean : null,
       meanSteps: this.meanSteps,
       settleSteps: SETTLE_CONSTANTS * this.averaging,
       greenCount: this.greenery.length,
@@ -385,6 +429,7 @@ class GpuStreetSim extends BaseSim implements StreetSim {
     this.displaySteps = 0;
     this.generation += 1;
     this.exposure = null;
+    this.resetWind();
     // Starting from rest would send a pressure pulse through the domain (cases.uniform_start).
     const start = uniformStart(this.flow.uRef, domain.solid);
     this.solver.setState(start.rho, start.ux, start.uy);
@@ -458,9 +503,11 @@ class GpuStreetSim extends BaseSim implements StreetSim {
       }
       if (isHealthy(maxSpeed)) {
         this.solver.saveCheckpoint();
+        const sampledAt = this.solver.time;
         const mean = await this.solver.readMean();
         // The means restarted while the copy was in flight; it belongs to the old design.
         if (generation !== this.generation) return;
+        this.sampleWind(pavementSpeed(this.geometry, f, 4, 1, 2, this.flow.uRef), sampledAt);
         this.exposure = exposureFrom(
           this.geometry,
           mean,
@@ -544,6 +591,7 @@ class CpuStreetSim extends BaseSim implements StreetSim {
     this.meanSteps = 0;
     this.displaySteps = 0;
     this.exposure = null;
+    this.resetWind();
     this.display = null;
     const solid = solidAt(this.geometry, domain.solid);
     if (this.particles) this.particles.setView(this.view, solid);
@@ -616,6 +664,10 @@ class CpuStreetSim extends BaseSim implements StreetSim {
     this.framesSinceExposure += 1;
     if (this.framesSinceExposure >= 30) {
       this.framesSinceExposure = 0;
+      this.sampleWind(
+        pavementSpeed(this.geometry, msg.ux, 1, 0, 0, this.flow.uRef, msg.uy),
+        msg.time,
+      );
       this.exposure = exposureFrom(
         this.geometry,
         msg.conc,

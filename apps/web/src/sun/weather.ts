@@ -43,12 +43,21 @@ export function dayOfYear(date: string): number {
   return Math.round((Date.UTC(y, m - 1, d) - Date.UTC(y, 0, 1)) / 86_400_000) + 1;
 }
 
+const sunrises = new Map<string, number>();
+
 /** Local hour of sunrise, to the minute, from the solar position. */
 export function sunrise(date: string): number {
+  const known = sunrises.get(date);
+  if (known !== undefined) return known;
+  let found = 6;
   for (let m = 3 * 60; m < 12 * 60; m++) {
-    if (sunPosition(hkTime(date, m / 60), HKO.latitude, HKO.longitude).elevation > 0) return m / 60;
+    if (sunPosition(hkTime(date, m / 60), HKO.latitude, HKO.longitude).elevation > 0) {
+      found = m / 60;
+      break;
+    }
   }
-  return 6;
+  sunrises.set(date, found);
+  return found;
 }
 
 /**
@@ -84,13 +93,20 @@ export function globalIrradiance(day: WeatherDay, hour: number): number {
     const el = sunPosition(hkTime(day.date, h), HKO.latitude, HKO.longitude).elevation;
     return Math.max(0, Math.sin((el * Math.PI) / 180));
   };
-  let sum = 0;
-  const step = 1 / 60;
-  for (let h = 0; h < 24; h += step) sum += shape(h + step / 2) * step * 3600;
+  let sum = daySums.get(day.date);
+  if (sum === undefined) {
+    sum = 0;
+    const step = 1 / 60;
+    for (let h = 0; h < 24; h += step) sum += shape(h + step / 2) * step * 3600;
+    daySums.set(day.date, sum);
+  }
   const e0 = extraterrestrial(dayOfYear(day.date));
   if (sum <= 0) return 0;
   return ((day.gsr_mj_m2 * 1e6) / (e0 * sum)) * e0 * shape(hour);
 }
+
+/** Integral of sin(elevation) over each day, seconds; the same for every call on a date. */
+const daySums = new Map<string, number>();
 
 /** Daily mean wind at King's Park, m/s, taken as the wind above the roofs (assumption A-023). */
 export function roofWind(day: WeatherDay): number {

@@ -11,4 +11,8 @@ export const leftOutKeys: readonly StringKey[] = [
   'leftOut.traffic',
   'leftOut.reynolds',
   'leftOut.daily',
+  'leftOut.utciWind',
+  'leftOut.surfaceStorage',
+  'leftOut.clouds',
+  'leftOut.crownDiffuse',
 ];
