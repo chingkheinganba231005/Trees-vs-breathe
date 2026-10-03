@@ -408,5 +408,7 @@
   "tradeOff.tableFumes": "Fumes, %",
   "design.toTradeOff": "See the trade-off for this street",
   "design.sentLayout": "A design from the Trade-off screen. Change any greenery control to go back to your own design.",
-  "tradeOff.fieldLegend": "c⁺ from the field model"
+  "tradeOff.fieldLegend": "c⁺ from the field model",
+  "leftOut.windSpeed": "Wind speed in the fumes: the model runs one Reynolds number whatever the wind, and with dense crowns the fumes on the pavements still change with it (How we know)",
+  "leftOut.filling": "Escape of fumes along the street: in a 2D section a street closed off by dense crowns fills with fumes very slowly, so its readings can still be rising when a run ends"
 }

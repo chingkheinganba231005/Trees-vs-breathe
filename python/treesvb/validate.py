@@ -10,9 +10,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import re as regex
 import sys
 
 from .results import REPO, RESULTS
+
+APP = REPO / "apps" / "web" / "src"
 
 DOC = REPO / "docs" / "validation.md"
 
@@ -455,25 +458,120 @@ def render() -> str:
             "",
         ]
 
+    lines += ai_sections(load)
     lines += [
         "## Still to come",
         "",
-        "2D against 3D (phase 4), sun and heat (phase 3), and the AI's accuracy (phase 4).",
+        "2D against 3D (phase 4).",
         "",
         "## What the model leaves out",
         "",
-        "- 3D effects such as junctions, short streets and wind along the street",
-        "- NO-NO2-O3 chemistry (the fumes are a passive tracer)",
-        "- Pollution caught by leaves (deposition)",
-        "- Cooling by evaporation from leaves",
-        "- Crowns that move in the wind (each crown is a fixed porous block)",
-        "- Buoyancy from sun-heated walls",
-        "- Turbulence from moving traffic",
-        "- Real-scale Reynolds numbers",
-        "- Traffic changing over the day",
+        "The same list as the app's How we know screen (`apps/web/src/content/leftOut.ts`).",
+        "",
+        *[f"- {item}" for item in left_out()],
         "",
     ]
     return "\n".join(lines)
+
+
+def left_out() -> list[str]:
+    """The app's list of what the model leaves out, in English, in the app's order."""
+    keys = regex.findall(r"'(leftOut\.[A-Za-z0-9]+)'", (APP / "content" / "leftOut.ts").read_text())
+    strings = json.loads((APP / "i18n" / "en.json").read_text())
+    return [strings[k] for k in keys]
+
+
+def _scores_row(label: str, s: dict) -> str:
+    return (
+        f"| {label} | {s['n']} | {s['r2']:.3f} | {_pct(s['median_relative_error'], 1)} | "
+        f"{s['fac2']:.3f} |"
+    )
+
+
+def ai_sections(load) -> list[str]:
+    """Section 4: the dataset and the surrogate's scores, once they exist."""
+    out = ["## 4. The AI", ""]
+    d = load("dataset/summary.json")
+    body = []
+    if d:
+        run = d["plan"]["run"]
+        body = [
+            f"{d['train_runs']} training runs; {run['spin_up']} steps of spin-up and "
+            f"{run['average']} averaged per run; "
+            f"{d['cell_updates_per_second'] / 1e9:.2f} billion cell updates per second.",
+            "",
+            "| Block | Runs | Healthy | Trees | Hedge | Bare | Still filling (trees) |",
+            "| --- | --- | --- | --- | --- | --- | --- |",
+            *[
+                f"| {k} | {c['runs']} | {c['healthy']} | {c['trees']} | {c['hedge']} | "
+                f"{c['none']} | {c['still_filling']['trees']} |"
+                for k, c in d["blocks"].items()
+            ],
+            "",
+            "How much the pavement averages still move between the halves of a run (median and "
+            f"90th percentile of the half difference over the sum): exposure "
+            f"{_pct(d['noise']['exposure']['median'], 1)} and "
+            f"{_pct(d['noise']['exposure']['p90'], 1)}, wind "
+            f"{_pct(d['noise']['wind']['median'], 1)} and {_pct(d['noise']['wind']['p90'], 1)}."
+            if d.get("noise")
+            else "",
+        ]
+    out += _section("Training data", d, body, target=False)
+
+    m = load("surrogate/metrics.json")
+    body = []
+    if m:
+        t = m["targets"]
+        body = [
+            f"Targets: R² at least {t['r2']}, median relative error at most "
+            f"{_pct(t['median_relative_error'], 0)}, FAC2 at least {t['fac2']}, on pavement "
+            f"exposure in the test block. Met: {'yes' if m['meets_targets'] else '**no**'}.",
+            "",
+            "| Set and quantity | Runs | R² | Median relative error | FAC2 |",
+            "| --- | --- | --- | --- | --- |",
+        ]
+        for name, label in (("test", "Test"), ("ood", "Out of distribution")):
+            s = m["scalar"][name]
+            body += [
+                _scores_row(f"{label}: pavement exposure", s["exposure"]),
+                _scores_row(f"{label}: fumes against the bare street, leeward", s["ratio_A"]),
+                _scores_row(f"{label}: fumes against the bare street, windward", s["ratio_B"]),
+                _scores_row(f"{label}: pavement wind, leeward", s["wind_A"]),
+                _scores_row(f"{label}: pavement wind, windward", s["wind_B"]),
+            ]
+        s = m["scalar"]["test"]
+        body += [
+            "",
+            "The solver's own averages limit these scores: a perfect model would show a median "
+            f"relative error of about {_pct(s['noise_floor']['exposure'], 1)} on exposure and "
+            f"{_pct(s['noise_floor']['wind'], 1)} on wind against the test labels (half "
+            "difference over the sum of the two halves of each run). The test labels fall "
+            "within the ensemble's two standard deviations in "
+            f"{_pct(s['within_two_spreads_A'], 0)} (leeward) and "
+            f"{_pct(s['within_two_spreads_B'], 0)} (windward) of runs. The guard accepts "
+            f"{_pct(s['guard_accepts'], 0)} of the test designs and "
+            f"{_pct(m['scalar']['ood']['guard_accepts'], 0)} of the out-of-distribution ones.",
+            "",
+            "| Field model | Runs | R² of log(1 + c⁺) | R² of wind speed |",
+            "| --- | --- | --- | --- |",
+            *[
+                f"| {label} | {m['field'][k]['runs']} | {m['field'][k]['r2_log1p_cplus']:.3f} | "
+                f"{m['field'][k]['r2_speed']:.3f} |"
+                for k, label in (("test", "Test"), ("ood", "Out of distribution"))
+            ],
+            "",
+            "| Model file | Size |",
+            "| --- | --- |",
+            *[
+                f"| `{name}` | {v['bytes'] / 1024 / 1024:.2f} MB |"
+                for name, v in m["models"].items()
+            ],
+        ]
+    # The verdict is the brief's accuracy targets (BRIEF.md 7.3), not the file's own pass flag,
+    # which only checks the model sizes.
+    verdict = {**m, "passed": m["meets_targets"]} if m else None
+    out += _section("Surrogate accuracy against the BRIEF.md 7.3 targets", verdict, body)
+    return out
 
 
 def main(argv: list[str] | None = None) -> int:

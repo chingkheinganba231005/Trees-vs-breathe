@@ -408,5 +408,7 @@
   "tradeOff.tableFumes": "廢氣，%",
   "design.toTradeOff": "查看這條街道的取捨",
   "design.sentLayout": "這是來自「取捨」頁的設計。調整任何綠化控制即可回到你自己的設計。",
-  "tradeOff.fieldLegend": "場模型的 c⁺"
+  "tradeOff.fieldLegend": "場模型的 c⁺",
+  "leftOut.windSpeed": "廢氣與風速的關係：模型無論風速如何都以同一雷諾數運算，而在茂密樹冠下行人路的廢氣仍會隨它改變（見「我們如何知道」）",
+  "leftOut.filling": "廢氣沿街道散走：在二維剖面中，被茂密樹冠封閉的街道積聚廢氣很慢，運算結束時讀數可能仍在上升"
 }

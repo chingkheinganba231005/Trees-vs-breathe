@@ -15,4 +15,6 @@ export const leftOutKeys: readonly StringKey[] = [
   'leftOut.surfaceStorage',
   'leftOut.clouds',
   'leftOut.crownDiffuse',
+  'leftOut.windSpeed',
+  'leftOut.filling',
 ];
