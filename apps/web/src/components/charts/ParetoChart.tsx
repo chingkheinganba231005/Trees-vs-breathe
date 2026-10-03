@@ -31,7 +31,7 @@ interface Props {
 
 const W = 340;
 const H = 280;
-const M = { top: 14, right: 14, bottom: 42, left: 48 };
+const M = { top: 14, right: 14, bottom: 42, left: 62 };
 
 /** Round step for about five ticks over [lo, hi], the ticks, and the decimals they need. */
 function ticks(lo: number, hi: number): { values: number[]; digits: number } {
