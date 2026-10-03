@@ -131,9 +131,11 @@ Goal: porous trees and hedges in the street, traffic fumes as a passive tracer, 
 ### Evidence
 
 - [x] CODASC loader (`python -m treesvb.codasc fetch` with checksums) and the comparison study (`python -m treesvb.trees`)
-- [ ] CODASC comparison results (Colab job `01_reference_2d`)
-- [ ] Direction checks: trees raise and a central hedge lowers leeward pavement exposure (Colab job; code and smoke run ready)
-- [ ] Reynolds sensitivity: pavement exposure changes by less than 10% when Re doubles (Colab job)
+- [x] CODASC comparison results (Colab job `01_reference_2d`, run 20261003T050408Z, 24 cells per H): meets the urban criteria over all ten cases; the windward wall near the ground and the wide street with trees do not agree (analysis in `docs/codasc.md`)
+- [x] Direction checks: trees raise and a central hedge lowers leeward pavement exposure; both pass
+- [ ] Reynolds sensitivity: pavement exposure changes by less than 10% when Re doubles. Misses at 24 cells per H (analysis in `docs/codasc.md`); repeated at 48 in the follow-up run
+- [ ] Follow-up Colab run: every study at 24 and 48 cells per H, a calibration per grid, run lengths scaled to the grid, and a settling measure per run
+- [x] Deep streets at 48 cells per H: H/W 2 and 3 pass (`results/street/regimes_h48.json`); the Design slider goes to 3 on the WebGPU engine
 - [x] Colab notebook `01_reference_2d.ipynb`, smoke-tested on CPU
 
 ### App
@@ -150,6 +152,7 @@ Goal: porous trees and hedges in the street, traffic fumes as a passive tracer, 
 - Right next to each lane the fumes field shows grid-scale ripples: a point source in a cell with very little diffusion. In the screenshots they sit within a few cells of the lanes. In a trial run (scratch, not a committed result) spreading each source over three cells left the wall values practically unchanged, so the sources stay as they are.
 - In the same trials the lowest taps on wall B read several times the measured value: a corner eddy at the foot of the windward wall holds fumes from the nearest lane, and a 2D model mixes it out too slowly. To be reported with the results, not tuned away.
 - Dragging the greenery stuttered on a desktop (reported by the user on 2026-10-03). Every slider event rebuilt the drag field, uploaded all of it and a zero-filled copy of the running means to the GPU, so a drag sent several megabytes per event. Changes are now applied at most once per frame, only the rows that changed are uploaded, and the means are cleared on the GPU. A browser check that counted uploads for a burst of slider events confirmed one small upload per frame (scratch measurement; the numbers are in the commit message).
+- The first CODASC run showed that the resolution study compared grids at unequal physical time: run lengths were fixed in steps, so twice the grid meant half the flow-through times. Run lengths now scale with the grid, and each run reports how far its average still moves (`settling`).
 - When greenery is added or moved, the flow carries on from its current state, like planting into a street where the wind already blows; only the running means restart. Changing the street shape rebuilds the grid and restarts everything.
 
 ### Decisions
@@ -164,3 +167,5 @@ Goal: porous trees and hedges in the street, traffic fumes as a passive tracer, 
 ### Exit
 
 The CODASC comparison table is generated, and the direction checks pass or come with a written analysis.
+
+Met on 2026-10-03: the table is in `docs/validation.md` and both direction checks pass. The Reynolds check and the resolution question stay open in the follow-up run; neither blocks phase 3.

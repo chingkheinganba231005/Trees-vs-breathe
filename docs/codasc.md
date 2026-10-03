@@ -42,6 +42,29 @@ A 2D model can only represent wind across the street (90°), so the comparison u
 
 These choices are also listed in `docs/assumptions.md`.
 
+## Results of the first comparison
+
+Colab run `20261003T050408Z` on an A100 at 24 cells per building height, the CPU engine's grid. The tables are in `docs/validation.md`, section 3; this section says what they show. Numbers are left to those tables so they cannot drift from the results.
+
+### What holds
+
+- Over all ten cases together the model meets the urban criteria of Hanna and Chang (2012).
+- On the leeward wall (A) of the W/H 1 street the model is close to the tunnel at every tap, with and without trees.
+- Both direction checks pass: the avenue of trees raises the leeward pavement's exposure, and the hedge in the middle lowers it.
+- At 48 cells per building height, streets with H/W 2 and 3 hold two stacked vortices with the upper one turning with the wind above, as Liu, Barth and Leung (2004) report. The app now offers H/W 3 on the WebGPU engine, which runs at that grid; the CPU engine stays at H/W 2.
+
+### What does not
+
+1. **The windward wall (B) near the ground.** At the two lowest taps the model is several times too high in every W/H 1 case, and too low further up. In a 2D section the small eddy in the corner at the foot of the windward wall is a closed recirculation, so fumes from the nearest lane leave it only by diffusion. In the tunnel the street has ends and the flow is three-dimensional and unsteady, which probably flushes the corner. On a grid twice as fine the excess shrinks but stays large. The app's windward pavement sits in this corner, so the exposure panel asks the user to treat its level with care.
+2. **The calibration ends at the edge of its range.** NMSE falls all the way to the smallest Sc_t tried. The windward-foot excess dominates the error of the tree-free case, and more turbulent mixing drains the corner, so the calibration is compensating for a structural error; it also lowers wall B further up. Going below the range the CODASC literature reports for RANS (0.2 to 0.6, Gromke and Ruck 2012, p. 43) would tune the one free parameter against that error, so the range stays as it is.
+3. **The wide street (W/H 2) with trees.** Two of the four tree cases put far more on the leeward wall than the tunnel, while the other two are close, and the difference follows neither crown nor stand density. In several of these runs the total tracer in the domain was still rising during the average (`tracer_total_drift` in `results/trees/codasc.json`), so they may not have settled. The next run measures settling directly.
+4. **Reynolds sensitivity misses its target.** Doubling Re moves the windward pavement of the tree-free street (the same corner) and the leeward pavement of the tree street by more than the 10% the brief asks for.
+5. **Grid resolution.** On a grid twice as fine the tree-free case moves much closer to the tunnel and the tree case moves away from it on wall A. That comparison was unfair: run lengths were fixed in steps, so the finer grid covered only half the flow-through times. Run lengths now scale with the grid (`trees.Run.at`), and every run reports how much its average still moves between the first and second half of the averaging window (`settling`).
+
+### What follows
+
+A second Colab run repeats every study at 24 and at 48 cells per building height, each grid with its own calibration, equal flow-through times and the settling measure. The 48-cell results are the ones that describe the WebGPU engine; the app picks the Schmidt number calibrated for its engine's grid (`liveSchmidt` in `apps/web/src/sim/streetSim.ts`) and uses the 24-cell value until the 48-cell one exists.
+
 ## Sources
 
 - Gromke, C. (2008). _Einfluss von Bäumen auf die Durchlüftung von innerstädtischen Straßenschluchten_. Dissertation, Universität Karlsruhe (TH), Institut für Hydromechanik, Heft 2008/2. Universitätsverlag Karlsruhe 2009, ISBN 978-3-86644-339-6. Licence CC BY-NC-ND 2.0 DE. https://publikationen.bibliothek.kit.edu/1000010154/688205, accessed 2026-10-02.
