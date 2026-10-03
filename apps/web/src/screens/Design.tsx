@@ -162,6 +162,9 @@ function DesignScreen({ engine, preset, customStreet }: { engine: EngineChoice; 
     }),
     [scale.heightM, width, axis, greenery],
   );
+  const locale = lang === 'en' ? 'en-GB' : 'zh-HK';
+  const num = (v: number, digits = 0) =>
+    v.toLocaleString(locale, { maximumFractionDigits: digits });
   const busHeadroomM = 4.4;
   const pavementMinM = customStreet
     ? Math.min(customStreet.pavementLeftM, customStreet.pavementRightM)
@@ -226,9 +229,6 @@ function DesignScreen({ engine, preset, customStreet }: { engine: EngineChoice; 
   const recorded = streetRun(preset?.key ?? null);
   const presetName = preset ? (lang === 'en' ? preset.label_en : preset.label_tc) : '';
   const regime = regimeText[expectedRegime(shown)];
-  const locale = lang === 'en' ? 'en-GB' : 'zh-HK';
-  const num = (v: number, digits = 0) =>
-    v.toLocaleString(locale, { maximumFractionDigits: digits });
 
   return (
     <Screen title={t('design.title')} intro={t('design.intro')}>
