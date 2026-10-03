@@ -410,5 +410,22 @@
   "design.sentLayout": "A design from the Trade-off screen. Change any greenery control to go back to your own design.",
   "tradeOff.fieldLegend": "c⁺ from the field model",
   "leftOut.windSpeed": "Wind speed in the fumes: the model runs one Reynolds number whatever the wind, and with dense crowns the fumes on the pavements still change with it (How we know)",
-  "leftOut.filling": "Escape of fumes along the street: in a 2D section a street closed off by dense crowns fills with fumes very slowly, so its readings can still be rising when a run ends"
+  "leftOut.filling": "Escape of fumes along the street: in a 2D section a street closed off by dense crowns fills with fumes very slowly, so its readings can still be rising when a run ends",
+  "hwk.aiHeading": "The AI",
+  "hwk.aiIntro": "A surrogate trained on the live solver's own runs answers in milliseconds, so the Trade-off screen can sweep thousands of designs. It is scored against solver runs it never saw.",
+  "hwk.aiTitle": "How close the AI comes to the solver",
+  "hwk.aiQuestion": "On designs held back from training, how well does the AI predict the fumes on the pavements that the solver computes?",
+  "hwk.aiR2": "R², pavement fumes",
+  "hwk.aiMedian": "Median error",
+  "hwk.aiFac2": "Within a factor of two",
+  "hwk.aiNoise": "Solver's own noise",
+  "hwk.aiNoiseNote": "a perfect model's median error",
+  "hwk.aiTarget": "target at least {v}",
+  "hwk.aiTargetMax": "target at most {v}",
+  "hwk.aiOod": "Streets deeper than the slider allows (out of distribution): R² {r2}, median error {median}, within a factor of two {fac2}. The guard sends {guard} of them to the AI; the rest it refers to the physics.",
+  "hwk.aiParity": "Pavement fumes c⁺: AI against solver, test designs",
+  "hwk.aiParityX": "Solver c⁺",
+  "hwk.aiParityY": "AI c⁺",
+  "hwk.aiParityLine": "Equal",
+  "hwk.aiParityRuns": "Test designs, both pavements"
 }

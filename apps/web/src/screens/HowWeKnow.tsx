@@ -26,6 +26,7 @@ import type {
   ReynoldsResult,
   StabilityResult,
 } from '../content/results';
+import { surrogateMetrics } from '../content/surrogate';
 import { useI18n } from '../i18n/context';
 import { LIVE_FLOW } from '../sim/streetSim';
 
@@ -722,6 +723,89 @@ function CollisionCard() {
   );
 }
 
+function AiCard() {
+  const { t, lang } = useI18n();
+  const locale = lang === 'en' ? 'en-GB' : 'zh-HK';
+  const m = surrogateMetrics();
+  const pct = (v: number) =>
+    v.toLocaleString(locale, { style: 'percent', maximumFractionDigits: 1 });
+  const dec = (v: number) => v.toLocaleString(locale, { maximumFractionDigits: 3 });
+  // The card's verdict is the brief's accuracy targets, not the file's model-size check.
+  const verdict = m ? { ...m, passed: m.meets_targets } : null;
+  const test = m?.scalar.test;
+  const pairs =
+    test?.parity.true.flatMap((tr, i) =>
+      [0, 1].map((k) => [Math.log10(tr[k]!), Math.log10(test.parity.pred[i]![k]!)] as const),
+    ) ?? [];
+  const lo = pairs.length ? Math.floor(Math.min(...pairs.flat())) : 0;
+  const hi = pairs.length ? Math.ceil(Math.max(...pairs.flat())) : 1;
+  const decades = Array.from({ length: hi - lo + 1 }, (_, i) => lo + i);
+  return (
+    <EvidenceCard title={t('hwk.aiTitle')} question={t('hwk.aiQuestion')} result={verdict}>
+      {m && test && (
+        <>
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <StatTile
+              label={t('hwk.aiR2')}
+              value={dec(test.exposure.r2)}
+              note={t('hwk.aiTarget', { v: dec(m.targets.r2) })}
+            />
+            <StatTile
+              label={t('hwk.aiMedian')}
+              value={pct(test.exposure.median_relative_error)}
+              note={t('hwk.aiTargetMax', { v: pct(m.targets.median_relative_error) })}
+            />
+            <StatTile
+              label={t('hwk.aiFac2')}
+              value={dec(test.exposure.fac2)}
+              note={t('hwk.aiTarget', { v: dec(m.targets.fac2) })}
+            />
+            <StatTile
+              label={t('hwk.aiNoise')}
+              value={pct(test.noise_floor.exposure)}
+              note={t('hwk.aiNoiseNote')}
+            />
+          </div>
+          <p className="mt-3 text-sm">
+            {t('hwk.aiOod', {
+              r2: dec(m.scalar.ood.exposure.r2),
+              median: pct(m.scalar.ood.exposure.median_relative_error),
+              fac2: dec(m.scalar.ood.exposure.fac2),
+              guard: pct(m.scalar.ood.guard_accepts),
+            })}
+          </p>
+          <LineChart
+            title={t('hwk.aiParity')}
+            xLabel={t('hwk.aiParityX')}
+            yLabel={t('hwk.aiParityY')}
+            xDomain={[lo, hi]}
+            yDomain={[lo, hi]}
+            xTicks={decades}
+            yTicks={decades}
+            series={[
+              {
+                id: 'equal',
+                label: t('hwk.aiParityLine'),
+                points: [
+                  [lo, lo],
+                  [hi, hi],
+                ],
+                kind: 'line',
+              },
+              { id: 'runs', label: t('hwk.aiParityRuns'), points: pairs, kind: 'markers' },
+            ]}
+            format={(v) => (10 ** v).toLocaleString(locale, { maximumSignificantDigits: 2 })}
+            table={{
+              columns: [t('hwk.aiParityX'), t('hwk.aiParityY')],
+              rows: pairs.map(([x, y]) => [10 ** x, 10 ** y]),
+            }}
+          />
+        </>
+      )}
+    </EvidenceCard>
+  );
+}
+
 export function HowWeKnow() {
   const { t } = useI18n();
   return (
@@ -748,6 +832,13 @@ export function HowWeKnow() {
         <h2 className="text-xl font-bold">{t('hwk.heatHeading')}</h2>
         <p className="mt-1 text-ink-muted">{t('hwk.heatIntro')}</p>
         <HeatCards />
+      </section>
+      <section className="mt-12">
+        <h2 className="text-xl font-bold">{t('hwk.aiHeading')}</h2>
+        <p className="mt-1 text-ink-muted">{t('hwk.aiIntro')}</p>
+        <div className="mt-4">
+          <AiCard />
+        </div>
       </section>
       <section className="mt-12">
         <h2 className="text-xl font-bold">{t('howWeKnow.leftOutTitle')}</h2>

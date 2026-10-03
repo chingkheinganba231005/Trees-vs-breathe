@@ -410,5 +410,22 @@
   "design.sentLayout": "這是來自「取捨」頁的設計。調整任何綠化控制即可回到你自己的設計。",
   "tradeOff.fieldLegend": "場模型的 c⁺",
   "leftOut.windSpeed": "廢氣與風速的關係：模型無論風速如何都以同一雷諾數運算，而在茂密樹冠下行人路的廢氣仍會隨它改變（見「我們如何知道」）",
-  "leftOut.filling": "廢氣沿街道散走：在二維剖面中，被茂密樹冠封閉的街道積聚廢氣很慢，運算結束時讀數可能仍在上升"
+  "leftOut.filling": "廢氣沿街道散走：在二維剖面中，被茂密樹冠封閉的街道積聚廢氣很慢，運算結束時讀數可能仍在上升",
+  "hwk.aiHeading": "人工智能",
+  "hwk.aiIntro": "以即時模擬自身的運算訓練的代理模型可在數毫秒內作答，讓「取捨」頁能掃描數以千計的設計。它以從未見過的模擬運算評分。",
+  "hwk.aiTitle": "人工智能與模擬有多接近",
+  "hwk.aiQuestion": "對於訓練時保留的設計，人工智能對模擬所算出的行人路廢氣預測得多準？",
+  "hwk.aiR2": "R²，行人路廢氣",
+  "hwk.aiMedian": "誤差中位數",
+  "hwk.aiFac2": "兩倍範圍內的比例",
+  "hwk.aiNoise": "模擬本身的波動",
+  "hwk.aiNoiseNote": "完美模型的誤差中位數",
+  "hwk.aiTarget": "目標至少 {v}",
+  "hwk.aiTargetMax": "目標至多 {v}",
+  "hwk.aiOod": "比滑桿所允許更深的街道（訓練範圍以外）：R² {r2}，誤差中位數 {median}，兩倍範圍內 {fac2}。守門機制把其中 {guard} 交給人工智能，其餘轉交物理模擬。",
+  "hwk.aiParity": "行人路廢氣 c⁺：人工智能與模擬，測試設計",
+  "hwk.aiParityX": "模擬 c⁺",
+  "hwk.aiParityY": "人工智能 c⁺",
+  "hwk.aiParityLine": "相等",
+  "hwk.aiParityRuns": "測試設計，兩邊行人路"
 }
