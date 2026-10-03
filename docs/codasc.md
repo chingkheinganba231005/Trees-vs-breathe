@@ -73,11 +73,11 @@ Colab run `20261003T055628Z` (commit `1484bd9`) repeated every study at 24 and a
 
 ### What follows
 
-1. A collision with more margin near a relaxation time of ½: a regularised BGK collision is the first candidate, as it also removes the odd-even mode found in phase 1. It has to go through all four implementations and the goldens.
-2. Averaging windows sized from the settling measure.
-3. The comparison again at 24 and 48 cells.
+1. A collision with more margin near a relaxation time of ½. Done: the regularised BGK collision runs in all four implementations (`docs/solver.md`, D-028), and on a stress test where plain BGK fails it holds.
+2. Averaging windows four times longer (D-029), and the settling measure reported again.
+3. The comparison again at 24 and 48 cells, in the Colab run prepared in `colab/01_reference_2d.ipynb`, together with Wing Lok Street at its measured shape.
 
-Until then the live app runs at 24 cells on every device (`docs/progress.md`, D-024): every CODASC case ran stably there, and the stability study of the live street was done there.
+Until then the live app runs at 24 cells on every device (`docs/progress.md`, D-024), and the numbers above are from the BGK runs.
 
 ## Sources
 

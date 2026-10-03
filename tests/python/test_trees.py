@@ -170,7 +170,7 @@ def test_codasc_case_list_matches_the_checksums() -> None:
 def test_run_length_scales_with_the_grid() -> None:
     """A finer grid needs proportionally more steps to cover the same flow-through times."""
     fine = trees.FULL.at(48)
-    assert (fine.spin_up, fine.average, fine.every, fine.height) == (80_000, 160_000, 200, 48)
+    assert (fine.spin_up, fine.average, fine.every, fine.height) == (80_000, 640_000, 200, 48)
     assert trees.FULL.at(24) == trees.FULL
     odd = trees.QUICK.at(17)
     assert odd.spin_up % odd.every == 0 and odd.average % odd.every == 0
@@ -181,3 +181,49 @@ def test_street_run_reports_how_far_it_settled() -> None:
     assert sim["healthy"]
     assert sim["steps"] == trees.QUICK.spin_up + trees.QUICK.average
     assert 0.0 <= sim["settling"] < 2.0
+
+
+def test_a_case_two_studies_share_runs_once() -> None:
+    first = trees.simulate_street(1, [], 12, 0.7, trees.QUICK)
+    assert trees.simulate_street(1.0, (), 12, 0.7, trees.QUICK) is first
+
+
+# Measured streets ------------------------------------------------------------------------------
+
+
+def test_breathing_zone_keeps_its_size_in_metres() -> None:
+    assert trees.zone_in_metres(trees.FULL_SCALE_HEIGHT_M) == trees.CODASC_ZONE
+    z = trees.zone_in_metres(48.88)
+    assert z.width * 48.88 == pytest.approx(2.7)
+    assert (z.z0 * 48.88, z.z1 * 48.88) == pytest.approx((0.9, 2.7))
+
+
+def test_lanes_close_in_only_in_narrow_streets() -> None:
+    assert trees.lane_offsets(1.0) == trees.SOURCE_OFFSETS
+    assert trees.lane_offsets(2.0) == trees.SOURCE_OFFSETS
+    assert trees.lane_offsets(0.25) == pytest.approx([o / 4 for o in trees.SOURCE_OFFSETS])
+
+
+def test_breathing_zone_must_cover_a_cell() -> None:
+    g = cases.canyon_geometry(8, 1.0)
+    with pytest.raises(ValueError, match="breathing zone"):
+        trees.pavement_exposure(g, np.ones((g.top, g.nx)), trees.Zone(0.01, 0.0, 0.01))
+
+
+def test_measured_street_designs_are_sized_in_metres() -> None:
+    from treesvb import streetruns
+
+    width, height_m = 0.225, 48.88
+    d = streetruns.designs(width, height_m, {"height_m": 10.0, "spread_m": 5.0})
+    assert d["none"] == []
+    (row,) = d["trees"]  # a narrow street holds one central row
+    assert 0.5 * (row.x0 + row.x1) == pytest.approx(0.5 * width)
+    assert (row.x1 - row.x0) * height_m == pytest.approx(5.0)
+    assert (row.z0 * height_m, row.z1 * height_m) == pytest.approx((10 / 3, 10.0))
+    # CODASC's dense crown per metre: lambda H 24 at 18 m.
+    assert row.lam_h * 18.0 / height_m == pytest.approx(24.0)
+    (hedge,) = d["hedge"]
+    assert (hedge.x1 - hedge.x0) * height_m == pytest.approx(1.5)
+    assert hedge.z1 * height_m == pytest.approx(2.5)
+    wide = streetruns.designs(2.0, 18.0, {"height_m": 10.0, "spread_m": 5.0})["trees"]
+    assert len(wide) == 2

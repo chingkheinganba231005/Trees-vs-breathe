@@ -1,22 +1,25 @@
 # %% [markdown]
-# # 01 · Reference 2D: trees, hedges and the CODASC wind tunnel
+# # 01 · Reference 2D: trees, hedges, the CODASC wind tunnel and Wing Lok Street
 #
-# Runs the phase 2 studies of `python -m treesvb.trees` on an A100 (BRIEF.md section 10), once
-# per grid in `HEIGHTS`:
+# Runs on an A100 (BRIEF.md section 10), with the regularised collision:
 #
-# 1. **calibrate**: the turbulent Schmidt number, on the tree-free CODASC street only;
-# 2. **codasc**: the ten cross-wind CODASC cases against the wind-tunnel data (FB, NMSE, FAC2);
-# 3. **directions**: do trees raise and a hedge lower the exposure on the pavements?
-# 4. **reynolds**: does pavement exposure move when the Reynolds number doubles?
-# 5. **resolution**: two cases again on a grid twice as fine.
+# 1. **At 24 cells per building height** (the CPU engine's grid), the five studies of
+#    `python -m treesvb.trees`: calibrate the turbulent Schmidt number on the tree-free CODASC
+#    street; compare the ten cross-wind CODASC cases with the tunnel (FB, NMSE, FAC2); check that
+#    trees raise and a hedge lowers the leeward pavement's exposure; check the Reynolds number;
+#    and repeat two cases on a grid twice as fine.
+# 2. **At 48 cells** (the WebGPU engine's grid), the same studies except the grid check.
+# 3. **Wing Lok Street at its measured shape** (H/W 4.4), at `STREET_HEIGHT` cells per building
+#    height, with no greenery, local trees and a hedge (`python -m treesvb.streetruns`).
+# 4. **Deep streets**: the vortex structure at H/W 2 and 3 on 48 cells.
 #
-# Optionally (`DEEP_STREETS`), the vortex structure at H/W 2 and 3 on 48 cells per building
-# height. About 45 minutes on an A100 for grids of 24 and 48 cells. Everything is simulated; the
-# wind-tunnel data are fetched from the CODASC site and checked against the checksums in the
-# repository.
+# Averaging windows are four times those of run 20261003T055628Z, whose halves still differed.
+# About 1.5 hours on an A100. Everything is simulated; the wind-tunnel data are fetched from the
+# CODASC site and checked against the checksums in the repository.
 #
 # **How to run:** Runtime → Change runtime type → A100 GPU, then Runtime → Run all. Keep this
-# tab open: the last cell downloads one zip, which is what you send back.
+# tab open: the last cell downloads one zip, which is what you send back. If the runtime stops
+# early, the finished results are in the run folder on Drive.
 #
 # CI runs the same notebook on CPU with `TVB_SMOKE=1`: a coarse grid, a few hundred steps, and
 # only the studies that need no wind-tunnel files.
@@ -31,12 +34,14 @@
 REPO_URL = "https://github.com/chingkheinganba231005/Trees-vs-breathe.git"
 REPO_REF = "claude/relaxed-lamport-aefen3"  # branch, tag or commit; the manifest records the commit
 NOTEBOOK = "01_reference_2d"
-# Grids in cells per building height: 24 is the CPU engine's, 48 the WebGPU engine's. Each grid
-# gets its own calibration; the resolution study adds a run at twice the grid. Results at 24 keep
-# plain names, others get a suffix (codasc_h48.json).
-HEIGHTS = [24, 48]
-# H/W 2 and 3 at 48 cells; run 20261003T050408Z did this (results/street/regimes_h48.json).
-DEEP_STREETS = False
+# Grids in cells per building height: 24 is the CPU engine's, 48 the WebGPU engine's. Results at
+# 24 keep plain names, at 48 they get a suffix (codasc_h48.json).
+LIVE, FINE = 24, 48
+# Wing Lok Street is 4.4 times taller than wide: 96 cells per building height give 22 across it.
+STREET = "wing_lok"
+STREET_HEIGHT = 96
+# H/W 2 and 3 at 48 cells (results/street/regimes_h48.json).
+DEEP_STREETS = True
 JAX_PIN = "jax[cuda12]==0.10.2"  # the version pinned in python/pyproject.toml
 
 # %% [markdown]
@@ -120,25 +125,32 @@ if not SMOKE:
 # %% [markdown]
 # ## Run the studies
 #
-# Results go to the run folder under `trees/`. Each study prints pass or FAIL with its time.
+# Results go to the run folder under `trees/`, `streets/` and `street/`. Each study prints pass
+# or FAIL with its time. Wing Lok Street runs straight after the calibration at 48 cells, whose
+# Schmidt number it uses, so it is done before the longer comparisons.
 
 # %%
-from treesvb import trees
+from treesvb import street, streetruns, trees
 
-
-def suffix(height: int) -> str:
-    return "" if height == 24 else f"_h{height}"
-
-
+out = ["--out", str(run.path)]
 if SMOKE:
-    args = ["directions", "--quick", "--schmidt", "0.7", "--out", str(run.path)]
-    status = trees.main(args)
+    status = trees.main(["directions", "--quick", "--schmidt", "0.7", *out])
+    status |= streetruns.main([STREET, "--quick", "--schmidt", "0.7", *out])
 else:
     status = 0
-    for h in HEIGHTS:
-        tag = ["--tag", suffix(h)[1:]] if suffix(h) else []
-        print(f"--- {h} cells per building height", flush=True)
-        status |= trees.main(["all", "--height", str(h), "--out", str(run.path), *tag])
+    print(f"--- {LIVE} cells per building height", flush=True)
+    status |= trees.main(["all", "--height", str(LIVE), *out])
+    fine = ["--height", str(FINE), "--tag", f"h{FINE}", *out]
+    print(f"--- {FINE} cells: calibration", flush=True)
+    status |= trees.main(["calibrate", *fine])
+    print(f"--- {STREET} at {STREET_HEIGHT} cells", flush=True)
+    calibration = f"trees/calibration_h{FINE}.json"
+    status |= streetruns.main(
+        [STREET, "--height", str(STREET_HEIGHT), "--calibration", calibration, *out]
+    )
+    for study in ["codasc", "directions", "reynolds"]:
+        print(f"--- {FINE} cells: {study}", flush=True)
+        status |= trees.main([study, *fine])
 print(
     "exit status", status, "(1 means a study did not meet its criterion; files are still written)"
 )
@@ -151,14 +163,12 @@ print(
 # short version, so the step stays tested).
 
 # %%
-from treesvb import street
-
 if SMOKE or DEEP_STREETS:
-    deep_args = ["regimes", "--tag", "h48", "--out", str(run.path)]
+    deep_args = ["regimes", "--tag", f"h{FINE}", *out]
     if SMOKE:
         deep_args += ["--quick", "--aspects", "2"]
     else:
-        deep_args += ["--height", "48", "--aspects", "2", "3"]
+        deep_args += ["--height", str(FINE), "--aspects", "2", "3"]
     print("exit status", street.main(deep_args))
 
 # %% [markdown]
@@ -169,16 +179,22 @@ if SMOKE or DEEP_STREETS:
 
 # %%
 studies = ["calibration", "codasc", "directions", "reynolds", "resolution"]
-names = ["directions"] if SMOKE else [f"{n}{suffix(h)}" for h in HEIGHTS for n in studies]
+if SMOKE:
+    names = ["directions"]
+else:
+    names = [*studies, *(f"{n}_h{FINE}" for n in studies if n != "resolution")]
 outputs = {f"trees/{n}.json": f"results/trees/{n}.json" for n in names}
+outputs[f"streets/run_{STREET}.json"] = f"results/streets/run_{STREET}.json"
 if DEEP_STREETS and not SMOKE:
-    outputs["street/regimes_h48.json"] = "results/street/regimes_h48.json"
+    outputs[f"street/regimes_h{FINE}.json"] = f"results/street/regimes_h{FINE}.json"
 manifest = colab.write_manifest(
     run,
     repo=REPO,
     parameters={
         "repo_ref": REPO_REF,
-        "heights": HEIGHTS,
+        "heights": [LIVE, FINE],
+        "street": STREET,
+        "street_height": STREET_HEIGHT,
         "deep_streets": DEEP_STREETS,
         "smoke": SMOKE,
         "jax_pin": JAX_PIN,

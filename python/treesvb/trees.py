@@ -73,6 +73,31 @@ BREATHING = (0.05, 0.15)
 
 
 @dataclass(frozen=True)
+class Zone:
+    """Pavement breathing zone in units of H: width from each wall, bottom and top."""
+
+    width: float
+    z0: float
+    z1: float
+
+
+CODASC_ZONE = Zone(PAVEMENT_WIDTH, *BREATHING)
+
+
+def zone_in_metres(height_m: float) -> Zone:
+    """A-010's zone kept at its full-scale size (2.7 m wide, 0.9-2.7 m high) in a street
+    `height_m` tall, rather than at its proportions of H (docs/assumptions.md A-016)."""
+    s = FULL_SCALE_HEIGHT_M / height_m
+    return Zone(PAVEMENT_WIDTH * s, BREATHING[0] * s, BREATHING[1] * s)
+
+
+def lane_offsets(width: float) -> tuple[float, ...]:
+    """CODASC's lanes in a street `width` H wide: its positions at W >= H, closing in with the
+    width in narrower streets (A-012; laneOffsets in apps/web/src/sim/greenery.ts)."""
+    return tuple(o * min(1.0, width) for o in SOURCE_OFFSETS)
+
+
+@dataclass(frozen=True)
 class Run:
     """Run length in steps for a grid of `height` cells per building height.
 
@@ -92,7 +117,9 @@ class Run:
         return Run(steps(self.spin_up), steps(self.average), self.every, height)
 
 
-FULL = Run(spin_up=40_000, average=80_000, every=200, height=24)
+#: The second Colab run averaged 80 000 steps and the halves of that window still differed by
+#: 12-150% (docs/codasc.md); four times the window halves the scatter if it falls as 1/sqrt(T).
+FULL = Run(spin_up=40_000, average=320_000, every=200, height=24)
 QUICK = Run(spin_up=3_000, average=2_000, every=100, height=12)
 
 
@@ -147,10 +174,17 @@ def central_hedge(aspect: int) -> list[cases.Crown]:
     return [cases.Crown(mid - half, mid + half, 0.0, h, lam_h)]
 
 
-def build(aspect: int, crowns, height: int, schmidt: float, reynolds: float = REYNOLDS):
+def build(
+    aspect: float,
+    crowns,
+    height: int,
+    schmidt: float,
+    reynolds: float = REYNOLDS,
+    offsets: tuple[float, ...] = SOURCE_OFFSETS,
+):
     """A street of width `aspect` H with the CODASC sources, inflow and the given crowns."""
     g = cases.canyon_geometry(height, 1.0 / aspect)
-    src = cases.line_sources(g, SOURCE_OFFSETS, SOURCE_TOTAL)
+    src = cases.line_sources(g, offsets, SOURCE_TOTAL)
     c = cases.canyon(
         g,
         u_ref=U_H,
@@ -164,15 +198,19 @@ def build(aspect: int, crowns, height: int, schmidt: float, reynolds: float = RE
     return g, c
 
 
-def pavement_exposure(g: cases.CanyonGeometry, cplus: np.ndarray) -> dict[str, float]:
+def pavement_exposure(
+    g: cases.CanyonGeometry, cplus: np.ndarray, zone: Zone = CODASC_ZONE
+) -> dict[str, float]:
     """Mean c+ in the breathing zone over each pavement: A is the leeward side."""
     x0, x1 = g.street
     xc = np.arange(g.nx) + 0.5
     zc = np.arange(g.top) + 0.5
-    rows = (zc >= BREATHING[0] * g.height) & (zc <= BREATHING[1] * g.height)
-    width = PAVEMENT_WIDTH * g.height
+    rows = (zc >= zone.z0 * g.height) & (zc <= zone.z1 * g.height)
+    width = zone.width * g.height
     a = (xc >= x0) & (xc <= x0 + width)
     b = (xc <= x1) & (xc >= x1 - width)
+    if not (rows.any() and a.any() and b.any()):
+        raise ValueError("the breathing zone covers no cell centre on this grid")
     return {
         "A": float(cplus[np.ix_(rows, a)].mean()),
         "B": float(cplus[np.ix_(rows, b)].mean()),
@@ -202,19 +240,43 @@ def simulate(case: codasc.Case, height: int, schmidt: float, run: Run, reynolds=
     return simulate_street(case.aspect, crowns_for(case), height, schmidt, run, reynolds)
 
 
+#: Runs already done in this process. The solver is deterministic on given hardware (the second
+#: Colab run repeated the first to the last digit), so a case that two studies share runs once.
+_RUNS: dict = {}
+
+
 def simulate_street(
-    aspect: int, crowns, height: int, schmidt: float, run: Run, reynolds=REYNOLDS
+    aspect: float,
+    crowns,
+    height: int,
+    schmidt: float,
+    run: Run,
+    reynolds=REYNOLDS,
+    *,
+    offsets: tuple[float, ...] = SOURCE_OFFSETS,
+    zone: Zone = CODASC_ZONE,
+    fields: bool = False,
 ) -> dict:
     """Spin up, then average the concentration; c+ at the taps, on the pavements, in the street.
 
     The average is also kept for its first and second halves: `settling` is the largest relative
     difference between them on the two pavements and over the street, so a run that has not
-    reached a steady state shows it.
+    reached a steady state shows it. With `fields`, the result also holds the mean c+ and mean
+    velocity over the whole grid as arrays under "fields" (not JSON; the caller samples them).
     """
+    key = (float(aspect), tuple(crowns), height, schmidt, run, reynolds, offsets, zone, fields)
+    if key not in _RUNS:
+        _RUNS[key] = _simulate_street(
+            aspect, crowns, height, schmidt, run, reynolds, offsets, zone, fields
+        )
+    return _RUNS[key]
+
+
+def _simulate_street(aspect, crowns, height, schmidt, run, reynolds, offsets, zone, fields):
     from .solver2d.jax_solver import JaxSolver
 
     run = run.at(height)
-    g, c = build(aspect, crowns, height, schmidt, reynolds)
+    g, c = build(aspect, crowns, height, schmidt, reynolds, offsets)
     s = JaxSolver(c.domain, c.params, np.float32)
     s.set_state(*cases.uniform_start(c))
     t0 = time.time()
@@ -222,12 +284,17 @@ def simulate_street(
     healthy = s.healthy()
     halves = [np.zeros((g.top, g.nx)), np.zeros((g.top, g.nx))]
     counts = [0, 0]
+    flow = [np.zeros((g.top, g.nx)), np.zeros((g.top, g.nx))]
     tracer_totals = []
     while healthy and s.time < run.spin_up + run.average:
         s.step(run.every)
         half = int(s.time - run.spin_up > run.average // 2)
         halves[half] += s.concentration()
         counts[half] += 1
+        if fields:
+            _, ux, uy = s.macros()
+            flow[0] += ux
+            flow[1] += uy
         if sum(counts) % 50 == 0:
             healthy = s.healthy()
             tracer_totals.append(s.total_tracer())
@@ -240,16 +307,19 @@ def simulate_street(
     street = cplus[: g.height, x0:x1]
 
     def summary(field: np.ndarray) -> dict[str, float]:
-        return {**pavement_exposure(g, field), "street": float(field[: g.height, x0:x1].mean())}
+        return {
+            **pavement_exposure(g, field, zone),
+            "street": float(field[: g.height, x0:x1].mean()),
+        }
 
     first, second = (summary(h / n * scale) for h, n in zip(halves, counts, strict=True))
     settling = max(abs(second[k] - first[k]) / (0.5 * (second[k] + first[k])) for k in first)
-    return {
+    out = {
         "healthy": True,
         "steps": s.time,
         "wall_time_s": round(time.time() - t0, 1),
         "model": {k: [round(float(v), 4) for v in walls[k]] for k in "AB"},
-        "pavement": {k: round(v, 4) for k, v in pavement_exposure(g, cplus).items()},
+        "pavement": {k: round(v, 4) for k, v in pavement_exposure(g, cplus, zone).items()},
         "settling": round(float(settling), 4),
         # The tracer in the domain should level off once the average starts.
         "tracer_total_drift": float(
@@ -263,6 +333,10 @@ def simulate_street(
             "values": [round(float(v), 3) for v in street.reshape(-1)],
         },
     }
+    if fields:
+        n = sum(counts)
+        out["fields"] = {"cplus": cplus, "ux": flow[0] / n, "uy": flow[1] / n, "geometry": g}
+    return out
 
 
 def measured(case: codasc.Case) -> dict[str, list[float]]:
