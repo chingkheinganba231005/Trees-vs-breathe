@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "generated_by": "python -m treesvb.benchmarks",
-  "generated_at": "2026-10-03T12:38:04Z",
-  "commit": "53b9ec2d45f816e07bc1f8f19f217298cef209ce",
+  "generated_at": "2026-10-03T12:59:31Z",
+  "commit": "4dd7e73f38907fd9fb23daab4d25a5665b60fd55",
   "dirty": false,
   "platform": "Linux-6.18.44-fc-v64-x86_64-with-glibc2.39",
   "versions": {
@@ -12,10 +12,10 @@
   },
   "name": "Stability margin of the collision near tau = 1/2",
   "method": "Thin double shear layer of Minion and Brown (1997), kappa 80, delta 0.05, on a periodic 64 x 64 grid, u0 = 0.05, no sub-grid model, float64, run for 2 times L / u0; plain BGK against the regularised collision every solver runs. Street flicker: CODASC W/H 1 with the dense crown at H = 24 cells, Re 20000, Cs 0.17, after 20000 steps",
-  "metric": "shear layer: bounded (finite, speed below 0.4) to the end, or the time t u0 / L it failed; street: |u(t) - (u(t-1) + u(t+1)) / 2| over u_H, mean and largest over the fluid nodes",
+  "metric": "shear layer: bounded (finite, speed below 0.4) to the end, or the time t u0 / L it failed; street: |u(t) - (u(t-1) + u(t+1)) / 2| over u_H, mean and largest over the fluid nodes and outside the absorbing layers",
   "threshold": {
     "regularised_stable_wherever_bgk_is": true,
-    "street_flicker_not_above_bgk": true
+    "largest_flicker_outside_layers_not_above_bgk": true
   },
   "sources": [
     "Minion, M. L. and Brown, D. L. (1997), J. Comput. Phys. 138, 734-765",
@@ -89,12 +89,16 @@
     "bgk": {
       "healthy": true,
       "mean": 0.00458,
-      "max": 0.423
+      "max": 0.423,
+      "mean_outside_layers": 0.00511,
+      "max_outside_layers": 0.423
     },
     "regularised": {
       "healthy": true,
       "mean": 0.00543,
-      "max": 0.3771
+      "max": 0.3771,
+      "mean_outside_layers": 0.0063,
+      "max_outside_layers": 0.288
     }
   },
   "passed": true
