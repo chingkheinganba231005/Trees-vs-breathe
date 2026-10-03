@@ -271,12 +271,13 @@ Goal: a surrogate of the live solver that answers in milliseconds, so the app ca
 
 ### App
 
-- [ ] `onnxruntime-web`, pinned and its licence recorded: WebGPU first, wasm as fallback
-- [ ] Out-of-distribution guard: inside the training box and near enough to training samples, or "Outside what the AI was trained on — run the physics" with the live solver offered
-- [ ] Trade-off screen: Pareto chart of heat against fumes over a sweep, the user's design marked, any point's field from the U-Net, a table view
-- [ ] "Design for me": NSGA-II on the surrogate with the presets "coolest without dirtier air", "cleanest air" and "balanced", and the knee
-- [ ] "Check with physics": the live solver runs the picks, predicted beside simulated
-- [ ] Works offline: the models ship with the app
+- [x] `onnxruntime-web` 1.30.0, pinned, licences recorded: WebGPU first where the browser has it, wasm otherwise or if WebGPU fails; loaded only on the Trade-off screen (3.7 MB gzipped for wasm, 6.7 MB for WebGPU)
+- [x] Out-of-distribution guard: inside the training box and near enough to training samples, or "Outside what the AI was trained on — run the physics"; in the search a design outside loses to any inside
+- [x] Trade-off screen: Pareto chart of heat against fumes over a sweep, the bare street and the user's design (sent from Design) marked, any point's field from the U-Net, a table view; checked end to end in Chromium with stand-in models from the CPU smoke run (their numbers mean nothing)
+- [x] "Design for me": NSGA-II on the surrogate (checked on ZDT1) with the presets "coolest without dirtier air", "cleanest air" and "balanced" (the knee)
+- [x] "Check with physics": the CPU solver runs the chosen design in a worker for the dataset's run length, predicted beside simulated (D-036); "Open in Design" runs it live
+- [ ] Works offline: the models and onnxruntime ship with the app and nothing calls a server; caching them for use without a network comes with the PWA in P6
+- [ ] With the trained models: look at the Pareto fronts on the three streets, and check the picks with physics
 
 ### Decisions
 
