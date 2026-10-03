@@ -43,3 +43,17 @@ export function useRoute(): string {
     () => '/',
   );
 }
+
+/** A query parameter of the hash route, e.g. street in #/design?street=wing_lok. */
+export function hashParam(hash: string, name: string): string | null {
+  const query = hash.split('?')[1];
+  return query ? new URLSearchParams(query).get(name) : null;
+}
+
+export function useHashParam(name: string): string | null {
+  return useSyncExternalStore(
+    subscribe,
+    () => hashParam(window.location.hash, name),
+    () => null,
+  );
+}

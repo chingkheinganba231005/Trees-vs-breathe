@@ -11,10 +11,13 @@ import type { EngineChoice } from '../sim/engine';
 import { addReading, compare, EMPTY_EXPOSURE } from '../sim/exposure';
 import type { ExposureState } from '../sim/exposure';
 import type { GreeneryDesign } from '../sim/greenery';
-import { buildGreenery, DEFAULT_DESIGN, shiftRange } from '../sim/greenery';
+import { buildGreenery, DEFAULT_DESIGN, FULL_SCALE_HEIGHT_M, shiftRange } from '../sim/greenery';
 import type { SimStats } from '../sim/streetSim';
 import { PLAYBACK_RATE } from '../sim/clock';
 import { checkedAspectMax } from '../sim/streetSim';
+import { presetByKey } from '../content/presets';
+import type { StreetPreset } from '../content/presets';
+import { useHashParam } from '../lib/router';
 
 // The shallowest street the regime study checked (results/street/regimes.json); the deepest
 // depends on the engine's grid (checkedAspectMax).
@@ -29,11 +32,19 @@ function Readout({ label, value, mono = true }: { label: string; value: string; 
   );
 }
 
+/** The Design screen; a street preset (#/design?street=...) sets the starting shape. */
 export function Design({ engine }: { engine: EngineChoice }) {
+  const preset = presetByKey(useHashParam('street'));
+  // A different preset starts the screen afresh from its shape.
+  return <DesignScreen key={preset?.key ?? ''} engine={engine} preset={preset} />;
+}
+
+function DesignScreen({ engine, preset }: { engine: EngineChoice; preset: StreetPreset | null }) {
   const { t, lang } = useI18n();
+  const start = preset ? Math.round(preset.aspect_h_over_w.median * 10) / 10 : 1;
   // The slider moves freely; the solver rebuilds when the value settles.
-  const [draft, setDraft] = useState(1);
-  const [aspect, setAspect] = useState(1);
+  const [draft, setDraft] = useState(start);
+  const [aspect, setAspect] = useState(start);
   const [wind, setWind] = useState(true);
   const [speed, setSpeed] = useState(false);
   const [fumes, setFumes] = useState(true);
@@ -81,6 +92,25 @@ export function Design({ engine }: { engine: EngineChoice }) {
   return (
     <Screen title={t('design.title')} intro={t('design.intro')}>
       <div className="mt-8">
+        {preset && (
+          <div className="mb-3 rounded-md border border-line px-3 py-2 text-sm" role="note">
+            <p>
+              {preset.aspect_h_over_w.median > aspectMax
+                ? t('design.presetClamped', {
+                    name: lang === 'en' ? preset.label_en : preset.label_tc,
+                    ratio: num(preset.aspect_h_over_w.median, 1),
+                    max: num(aspectMax, 1),
+                  })
+                : t('design.presetNote', {
+                    name: lang === 'en' ? preset.label_en : preset.label_tc,
+                    ratio: num(preset.aspect_h_over_w.median, 1),
+                  })}
+            </p>
+            <p className="mt-1 text-ink-muted">
+              {t('design.presetScale', { h: num(FULL_SCALE_HEIGHT_M) })}
+            </p>
+          </div>
+        )}
         <div className="mb-2 flex items-center justify-between text-sm text-ink-muted">
           <span aria-hidden="true">{t('design.windArrow')} →</span>
           <SimulatedTag />

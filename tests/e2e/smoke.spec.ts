@@ -85,6 +85,21 @@ test('trees change the fumes on the pavements against the bare street', async ({
   expect(errors).toEqual([]);
 });
 
+test('a measured street opens in Design with its shape', async ({ page }) => {
+  const errors = collectErrors(page);
+  await page.goto('./?engine=cpu#/street');
+  await expect(page.getByRole('heading', { name: 'Nathan Road, Mong Kok' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Wing Lok Street, Sheung Wan' })).toBeVisible();
+  await expect(page.getByText('Deeper than the live model has been checked for')).toBeVisible();
+  await page
+    .getByRole('article', { name: 'Nathan Road, Mong Kok' })
+    .getByRole('link', { name: 'Open in Design' })
+    .click();
+  await expect(page.getByText('Street shape from Nathan Road, Mong Kok')).toBeVisible();
+  await expect(page.locator('output[for="aspect"]')).toHaveText(/^1\.\d$/);
+  expect(errors).toEqual([]);
+});
+
 test('the solver engine follows ?engine=cpu', async ({ page }) => {
   await page.goto('./?engine=cpu#/');
   await expect(page.getByText('Solver engine: CPU worker')).toBeVisible();

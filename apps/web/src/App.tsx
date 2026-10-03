@@ -9,13 +9,14 @@ import { NotFound } from './screens/NotFound';
 import { Placeholder } from './screens/Placeholder';
 import { Present } from './screens/Present';
 import { Start } from './screens/Start';
+import { Street } from './screens/Street';
 
 function screenFor(route: string, engine: EngineChoice) {
   switch (route) {
     case '/':
       return <Start />;
     case '/street':
-      return <Placeholder title="street.title" intro="street.intro" phase={3} />;
+      return <Street />;
     case '/design':
       return <Design engine={engine} />;
     case '/trade-off':
