@@ -6,6 +6,7 @@ export const leftOutKeys: readonly StringKey[] = [
   'leftOut.chemistry',
   'leftOut.deposition',
   'leftOut.evaporation',
+  'leftOut.sway',
   'leftOut.buoyancy',
   'leftOut.traffic',
   'leftOut.reynolds',

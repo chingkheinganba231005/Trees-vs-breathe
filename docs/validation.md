@@ -271,6 +271,7 @@ Not yet computed.
 - NO-NO2-O3 chemistry (the fumes are a passive tracer)
 - Pollution caught by leaves (deposition)
 - Cooling by evaporation from leaves
+- Crowns that move in the wind (each crown is a fixed porous block)
 - Buoyancy from sun-heated walls
 - Turbulence from moving traffic
 - Real-scale Reynolds numbers

@@ -53,6 +53,7 @@
   "leftOut.chemistry": "NO–NO₂–O₃ chemistry (the fumes are a passive tracer)",
   "leftOut.deposition": "Pollution caught by leaves (deposition)",
   "leftOut.evaporation": "Cooling by evaporation from leaves",
+  "leftOut.sway": "Crowns that move in the wind (each crown is a fixed porous block)",
   "leftOut.buoyancy": "Buoyancy from sun-heated walls",
   "leftOut.traffic": "Turbulence from moving traffic",
   "leftOut.reynolds": "Real-scale Reynolds numbers",

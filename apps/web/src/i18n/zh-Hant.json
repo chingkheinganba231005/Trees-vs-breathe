@@ -53,6 +53,7 @@
   "leftOut.chemistry": "NO–NO₂–O₃ 化學反應（廢氣視為被動示蹤物）",
   "leftOut.deposition": "葉片吸附的污染物（沉降）",
   "leftOut.evaporation": "葉片蒸散造成的降溫",
+  "leftOut.sway": "樹冠隨風擺動（每個樹冠都是固定的多孔區塊）",
   "leftOut.buoyancy": "受陽光加熱的牆面所產生的浮力",
   "leftOut.traffic": "行駛車輛造成的湍流",
   "leftOut.reynolds": "真實尺度的雷諾數",
