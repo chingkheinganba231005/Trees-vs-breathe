@@ -5,6 +5,9 @@ import { Screen } from '../components/Screen';
 import { leftOutKeys } from '../content/leftOut';
 import { result } from '../content/results';
 import type {
+  CollisionMarginResult,
+  SunPositionResult,
+  UtciResult,
   AgreementResult,
   BrowserAgreementResult,
   CavityResult,
@@ -653,6 +656,68 @@ function WallChart({
   );
 }
 
+function HeatCards() {
+  const { t, lang } = useI18n();
+  const locale = lang === 'en' ? 'en-GB' : 'zh-HK';
+  const deg = (v: number) => `${v.toLocaleString(locale, { maximumFractionDigits: 3 })}°`;
+  const sun = result<SunPositionResult>('sun/position.json');
+  const utci = result<UtciResult>('sun/utci.json');
+  return (
+    <div className="mt-4 grid gap-4 md:grid-cols-2">
+      <EvidenceCard title={t('hwk.sunTitle')} question={t('hwk.sunQuestion')} result={sun}>
+        {sun && (
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <StatTile label={t('hwk.sunElevation')} value={deg(sun.worst_elevation_deg)} />
+            <StatTile label={t('hwk.sunAzimuth')} value={deg(sun.worst_azimuth_deg)} />
+          </div>
+        )}
+      </EvidenceCard>
+      <EvidenceCard title={t('hwk.utciTitle')} question={t('hwk.utciQuestion')} result={utci}>
+        {utci && (
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <StatTile
+              label={t('hwk.utciDiff')}
+              value={`${utci.worst_abs_diff_c.toExponential(0)} °C`}
+            />
+            <StatTile
+              label={t('hwk.utciCategories')}
+              value={`${utci.categories_matching.toLocaleString(locale)} / ${utci.cases.toLocaleString(locale)}`}
+            />
+          </div>
+        )}
+      </EvidenceCard>
+    </div>
+  );
+}
+
+function CollisionCard() {
+  const { t, lang } = useI18n();
+  const locale = lang === 'en' ? 'en-GB' : 'zh-HK';
+  const r = result<CollisionMarginResult>('benchmarks/collision_margin.json');
+  const pct = (v: number) =>
+    v.toLocaleString(locale, { style: 'percent', maximumFractionDigits: 1 });
+  return (
+    <EvidenceCard title={t('hwk.collisionTitle')} question={t('hwk.collisionQuestion')} result={r}>
+      {r && (
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <StatTile
+            label={t('hwk.collisionShear')}
+            value={t('hwk.collisionCounts', {
+              bgk: r.rows.filter((x) => x.bgk.stable).length,
+              reg: r.rows.filter((x) => x.regularised.stable).length,
+              n: r.rows.length,
+            })}
+          />
+          <StatTile
+            label={t('hwk.collisionFlicker')}
+            value={`${pct(r.street_flicker.bgk.max)} → ${pct(r.street_flicker.regularised.max)}`}
+          />
+        </div>
+      )}
+    </EvidenceCard>
+  );
+}
+
 export function HowWeKnow() {
   const { t } = useI18n();
   return (
@@ -666,11 +731,19 @@ export function HowWeKnow() {
         <h2 className="text-xl font-bold">{t('hwk.streetHeading')}</h2>
         <p className="mt-1 text-ink-muted">{t('hwk.streetIntro')}</p>
         <StreetCards />
+        <div className="mt-4">
+          <CollisionCard />
+        </div>
       </section>
       <section className="mt-12">
         <h2 className="text-xl font-bold">{t('hwk.greenHeading')}</h2>
         <p className="mt-1 text-ink-muted">{t('hwk.greenIntro')}</p>
         <GreenCards />
+      </section>
+      <section className="mt-12">
+        <h2 className="text-xl font-bold">{t('hwk.heatHeading')}</h2>
+        <p className="mt-1 text-ink-muted">{t('hwk.heatIntro')}</p>
+        <HeatCards />
       </section>
       <section className="mt-12">
         <h2 className="text-xl font-bold">{t('howWeKnow.leftOutTitle')}</h2>

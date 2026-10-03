@@ -200,3 +200,28 @@ export interface DirectionsResult extends Provenance {
     passed: boolean;
   }[];
 }
+
+export interface SunPositionResult extends Provenance {
+  cases: number;
+  worst_elevation_deg: number;
+  worst_apparent_elevation_deg: number;
+  worst_azimuth_deg: number;
+}
+
+export interface UtciResult extends Provenance {
+  cases: number;
+  worst_abs_diff_c: number;
+  categories_matching: number;
+}
+
+export interface CollisionMarginResult extends Provenance {
+  rows: {
+    reynolds: number;
+    bgk: { stable: boolean };
+    regularised: { stable: boolean };
+  }[];
+  street_flicker: {
+    bgk: { mean: number; max: number };
+    regularised: { mean: number; max: number };
+  };
+}
