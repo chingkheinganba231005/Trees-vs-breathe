@@ -139,12 +139,17 @@ def test_batched_run_matches_the_solver_run_by_run():
 def test_smoke_run_writes_blocks_and_a_summary(tmp_path):
     progress = dataset.run(tmp_path / "run", dataset.SMOKE, 0.5, budget_s=0, max_blocks=1)
     assert set(progress["blocks"]) == {"test", "ood", "train_000"}
+    assert progress["blocks"]["test"]["runs"] == dataset.SMOKE.batch * len(
+        dataset.SMOKE.test_aspects
+    )
     blocks = dataset.load(tmp_path / "run")
     train = blocks["train_000"]
     n = dataset.SMOKE.batch * len(dataset.SMOKE.aspects)
     assert train["fields"].shape == (n, 4, dataset.FIELD_ROWS, dataset.FIELD_COLS)
     assert train["fields"].dtype == np.float16
     assert train["exposure"].shape == (n, 2, 2)
+    assert train["retained"].shape == (n, 2)
+    assert (train["retained"] <= 1.01).all()  # the street cannot keep more than was released
     assert (np.sort(train["index"]) == np.arange(n)).all()
     # Resuming finds the finished blocks and runs nothing again.
     again = dataset.run(tmp_path / "run", dataset.SMOKE, 0.5, budget_s=0, max_blocks=1)

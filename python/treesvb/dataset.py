@@ -21,6 +21,11 @@ a time budget is spent; a block that finished is saved at once, so an interrupte
 finished blocks and can be resumed. The first block is the test set and the second the
 out-of-distribution set at H/W beyond the slider (D-031); the training blocks follow.
 
+A street fills with fumes slowly when its crowns close it off: it keeps nearly everything
+released until its concentration has built up. Every run therefore records the street's fume
+content at the start, middle and end of its averaging window; a run whose street still kept more
+than FILLING of the fumes released in the second half had not settled, and is flagged.
+
 Per run the dataset keeps
 - c+ and wind speed in the breathing band (0.05-0.15 H, A-010), per column across the street,
   for each half of the averaging window: any pavement width can be read from it, and the two
@@ -86,6 +91,9 @@ HEDGE_RANGES = {
 #: Initial disturbance of the velocity, as a share of the inflow speed. It makes the two bare
 #: runs in each batch independent; the street flow forgets it during the spin-up.
 DISTURBANCE = 0.01
+#: A run is still filling if the street kept more than this share of the fumes released in the
+#: second half of its averaging window (a settled street keeps none on average).
+FILLING = 0.1
 #: A run counts as healthy if its populations are finite and its speed stays below this.
 SPEED_LIMIT = 0.4
 
@@ -94,6 +102,7 @@ SPEED_LIMIT = 0.4
 class Plan:
     height: int  # cells per building height
     aspects: tuple[float, ...]
+    test_aspects: tuple[float, ...]
     ood_aspects: tuple[float, ...]
     trees: int  # tree designs per street shape and block
     hedges: int  # hedge designs per street shape and block
@@ -106,21 +115,25 @@ class Plan:
         return self.trees + self.hedges + self.bare
 
 
-#: The A100 plan (D-033): batches of 32 per street shape, 576 runs per block.
+#: The A100 plan (D-033): batches of 32 per street shape, 576 runs per training block. The
+#: spin-up covers the slowest fill measured so far: a W/H 1 street with dense crowns along both
+#: kerbs keeps nearly all its fumes for 50 000 steps and levels off near 100 000.
 FULL = Plan(
     height=24,
     aspects=ASPECTS,
+    test_aspects=ASPECTS[::2],
     ood_aspects=OOD_ASPECTS,
     trees=20,
     hedges=10,
     bare=2,
-    run=trees.Run(spin_up=24_000, average=96_000, every=48, height=24),
+    run=trees.Run(spin_up=96_000, average=96_000, every=48, height=24),
     seed=20261003,
 )
 #: CI's plan: a coarse grid and a few hundred steps, so the pipeline runs on CPU in minutes.
 SMOKE = Plan(
     height=8,
     aspects=(0.5, 1.0, 2.0),
+    test_aspects=(0.5, 2.0),
     ood_aspects=(3.0,),
     trees=2,
     hedges=1,
@@ -291,19 +304,20 @@ def _program(spin_up: int, half: int, every: int):
             return state, acc + jnp.stack([c, ux, uy, jnp.sqrt(ux * ux + uy * uy)])
 
         def total(g):
-            return jnp.where(fluid, g, 0.0).sum()
+            return jnp.stack([jnp.where(m, g, 0.0).sum() for m in (fluid, cfg["street_mask"])])
 
         g0 = jnp.zeros((core.Q5, *f0.shape[1:]), f0.dtype)
         state = advance(spin_up, (f0, g0))
         zero = jnp.zeros((4, *f0.shape[1:]), f0.dtype)
         t0 = total(state[1])
         state, first = jax.lax.fori_loop(0, half, sample, (state, zero))
+        t1 = total(state[1])
         state, second = jax.lax.fori_loop(0, half, sample, (state, zero))
         f = state[0]
         _, ux, uy = core.macros(jnp, core.stream(jnp, f, cfg), cfg)
         top = jnp.where(fluid, jnp.sqrt(ux * ux + uy * uy), 0.0).max()
         healthy = jnp.isfinite(f).all() & (top < SPEED_LIMIT)
-        return first, second, jnp.stack([t0, total(state[1])]), healthy
+        return first, second, jnp.stack([t0, t1, total(state[1])]), healthy
 
     prog = jax.jit(jax.vmap(one, in_axes=(0, 0, None)))
     _PROGRAMS[key] = prog
@@ -380,6 +394,10 @@ def run_batch(designs: list[Design], schmidt: float, plan: Plan, seeds: list[int
     case = live_case(g, schmidt)
     cfg = core.make_config(case.domain, case.params, jnp, np.float32)
     cfg.pop("drag")
+    x0, x1 = g.street
+    mask = np.zeros((g.top, g.nx), bool)
+    mask[:h, x0:x1] = True
+    cfg["street_mask"] = jnp.asarray(mask)
     drags = np.stack([cases.crown_drag(g, elements(d, width_h)) for d in designs])
     r = plan.run.at(h)
     half = r.average // r.every // 2
@@ -387,9 +405,7 @@ def run_batch(designs: list[Design], schmidt: float, plan: Plan, seeds: list[int
         jnp.asarray(drags, jnp.float32), jnp.asarray(initial_states(case, seeds)), cfg
     )
     first, second = np.asarray(first) / half, np.asarray(second) / half
-    totals, healthy = np.asarray(totals), np.asarray(healthy)
-
-    x0, x1 = g.street
+    totals, healthy = np.asarray(totals), np.asarray(healthy)  # totals: (n, time, [domain, street])
     scale = np.array([U_REF * h / SOURCE_TOTAL, 1 / U_REF, 1 / U_REF, 1 / U_REF])
     # channels c+, u_x, u_y, speed -> the stored order c+, speed, u_x, u_y
     order = [0, 3, 1, 2]
@@ -400,13 +416,17 @@ def run_batch(designs: list[Design], schmidt: float, plan: Plan, seeds: list[int
     fields = to_street_grid(mean).astype(np.float16)
     pav = pavements(band, g.width, h, trees.PAVEMENT_WIDTH)  # (n, half, 2, side)
     with np.errstate(divide="ignore", invalid="ignore"):
-        drift = (totals[:, 1] - totals[:, 0]) / totals[:, 1]
+        drift = (totals[:, 2, 0] - totals[:, 0, 0]) / totals[:, 2, 0]
+    # Share of the fumes released during each half of the window that stayed in the street:
+    # near zero once the street has filled, near one while it is still filling.
+    retained = np.diff(totals[:, :, 1], axis=1) / (SOURCE_TOTAL * half * r.every)
     blocks = [elements(d, width_h) for d in designs]
     return {
         "aspect_grid": np.full(len(designs), g.aspect),
         "width_cells": np.full(len(designs), g.width),
         "healthy": healthy & np.isfinite(halves).all(axis=(1, 2, 3, 4)),
         "drift": drift,
+        "retained": retained,
         "exposure": pav[:, :, 0],  # c+ on pavements A and B, per half
         "wind": pav[:, :, 1],  # speed / u_ref on pavements A and B, per half
         "band": band,
@@ -479,7 +499,7 @@ def run_block(
 def block_names(plan: Plan, count: int) -> list[tuple[str, tuple[float, ...], int]]:
     """(file stem, street shapes, seed) of the test block, the out-of-distribution block and
     `count` training blocks, in the order they run."""
-    out = [("test", plan.aspects, plan.seed + 1), ("ood", plan.ood_aspects, plan.seed + 2)]
+    out = [("test", plan.test_aspects, plan.seed + 1), ("ood", plan.ood_aspects, plan.seed + 2)]
     out += [(f"train_{k:03d}", plan.aspects, plan.seed + 100 + k) for k in range(count)]
     return out
 
@@ -592,10 +612,12 @@ def summary(out: Path) -> dict:
     counts = {}
     for stem, data in blocks.items():
         kind = data["kind"]
+        filling = data["healthy"] & (data["retained"][:, 1] > FILLING)
         counts[stem] = {
             "runs": len(kind),
             "healthy": int(data["healthy"].sum()),
             **{k: int((kind == i).sum()) for i, k in enumerate(KINDS)},
+            "still_filling": {k: int((filling & (kind == i)).sum()) for i, k in enumerate(KINDS)},
         }
     batches = [b for blk in progress["blocks"].values() for b in blk["batches"]]
     seconds = sum(b["seconds"] for b in batches)

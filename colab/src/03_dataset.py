@@ -5,19 +5,22 @@
 # with the app's settings, for one design: trees or a hedge, of any size, density and place,
 # in a street with H/W on one of the Design slider's positions (`python -m treesvb.dataset`).
 #
-# The designs come in blocks of 576 runs, one batch of 32 per street shape; each block is a
-# Latin hypercube over the design inputs. The test block runs first, then the
-# out-of-distribution block (H/W 2.2, 2.5 and 3, beyond the slider), then training blocks until
-# `BUDGET_MIN` minutes have passed. Every finished block is saved to Drive at once.
+# The designs come in blocks, one batch of 32 per street shape (20 with trees, 10 with a hedge,
+# 2 bare streets); each block is a Latin hypercube over the design inputs. The test block (9 of
+# the 18 shapes) runs first, then the out-of-distribution block (H/W 2.2, 2.5 and 3, beyond the
+# slider), then training blocks of 576 runs until `BUDGET_MIN` minutes have passed. Every
+# finished block is saved to Drive at once. Each run takes 96 000 steps to fill the street with
+# fumes and averages the next 96 000.
 #
 # The dataset stays on Drive; the notebook `04_train_surrogate` reads it from there. What comes
 # back to the repository is a summary (counts, timings, the bare street at every shape, how much
 # the averages still move) and the manifest with the checksum of every block.
 #
-# **How to run:** Runtime → Change runtime type → A100 GPU, then Runtime → Run all. About two
-# hours. Keep this tab open: the last cell downloads one zip, which is what you send back. If
-# the runtime stops early, set `RESUME` to the run folder's name (printed below, also on Drive
-# under `trees-vs-breath/runs/03_dataset/`) and run all again: finished blocks are kept.
+# **How to run:** Runtime → Change runtime type → A100 GPU, then Runtime → Run all. About three
+# hours; lower `BUDGET_MIN` for a shorter run with fewer training blocks. Keep this tab open:
+# the last cell downloads one zip, which is what you send back. If the runtime stops early, set
+# `RESUME` to the run folder's name (printed below, also on Drive under
+# `trees-vs-breath/runs/03_dataset/`) and run all again: finished blocks are kept.
 #
 # CI runs the same notebook on CPU with `TVB_SMOKE=1`: a coarse grid, three street shapes, a few
 # hundred steps.
@@ -34,7 +37,7 @@ REPO_REF = "claude/relaxed-lamport-aefen3"  # branch, tag or commit; the manifes
 NOTEBOOK = "03_dataset"
 # No new training block starts after this many minutes (the test and out-of-distribution
 # blocks and at least one training block always run).
-BUDGET_MIN = 100
+BUDGET_MIN = 150
 # To continue an interrupted run, the name of its folder, e.g. "20261003T120000Z".
 RESUME = ""
 JAX_PIN = "jax[cuda12]==0.10.2"  # the version pinned in python/pyproject.toml
