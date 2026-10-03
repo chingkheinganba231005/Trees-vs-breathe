@@ -214,6 +214,13 @@ export interface UtciResult extends Provenance {
   categories_matching: number;
 }
 
+export interface StreetFlicker {
+  mean: number;
+  max: number;
+  mean_outside_layers: number;
+  max_outside_layers: number;
+}
+
 export interface CollisionMarginResult extends Provenance {
   rows: {
     reynolds: number;
@@ -221,7 +228,7 @@ export interface CollisionMarginResult extends Provenance {
     regularised: { stable: boolean };
   }[];
   street_flicker: {
-    bgk: { mean: number; max: number };
-    regularised: { mean: number; max: number };
+    bgk: StreetFlicker;
+    regularised: StreetFlicker;
   };
 }

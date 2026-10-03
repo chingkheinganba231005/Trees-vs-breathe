@@ -346,9 +346,10 @@
   "hwk.collisionQuestion": "At very low viscosity the standard collision step can blow up. Does the one we use hold where the standard one fails, and does it keep the street calm?",
   "hwk.collisionShear": "Runs that stayed stable in a demanding test (standard → ours)",
   "hwk.collisionCounts": "{bgk} → {reg} of {n}",
-  "hwk.collisionFlicker": "Largest step-to-step flicker in the street, share of the wind speed (standard → ours)",
+  "hwk.collisionFlicker": "Largest step-to-step flicker in the street, outside the absorbing layers, share of the wind speed (standard → ours)",
   "heat.vsBare": "Shade from the greenery: UTCI {d} °C, radiant temperature {r} °C (same wind)",
   "green.rows": "Where the trees stand",
   "green.rowsKerbs": "Along both kerbs",
-  "green.rowsTunnel": "As in the wind tunnel"
+  "green.rowsTunnel": "As in the wind tunnel",
+  "hwk.collisionFlickerMean": "Average step-to-step flicker there (standard → ours)"
 }

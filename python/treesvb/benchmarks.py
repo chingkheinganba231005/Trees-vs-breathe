@@ -411,11 +411,15 @@ def _street_flicker(height: int, regularise: bool) -> dict:
         s.step(1)
         u.append(s.macros()[1])
     fluid = c.domain.fluid
-    p2 = np.abs(u[1] - 0.5 * (u[0] + u[2]))[fluid] / trees.U_H
+    # The absorbing layers run plain BGK in both cases, so the street is read outside them too.
+    outside = fluid & (core.sponge_field(c.domain, c.params.sponge) == 0)
+    p2 = np.abs(u[1] - 0.5 * (u[0] + u[2])) / trees.U_H
     return {
         "healthy": s.healthy(),
-        "mean": round(float(p2.mean()), 5),
-        "max": round(float(p2.max()), 4),
+        "mean": round(float(p2[fluid].mean()), 5),
+        "max": round(float(p2[fluid].max()), 4),
+        "mean_outside_layers": round(float(p2[outside].mean()), 5),
+        "max_outside_layers": round(float(p2[outside].max()), 4),
     }
 
 
@@ -441,9 +445,8 @@ def collision_margin(quick: bool) -> dict:
         name: _street_flicker(height, reg) for name, reg in (("bgk", False), ("regularised", True))
     }
     ok = all(r["regularised"]["stable"] or not r["bgk"]["stable"] for r in rows)
-    calm = (
-        flicker["regularised"]["healthy"] and flicker["regularised"]["max"] <= flicker["bgk"]["max"]
-    )
+    reg, bgk = flicker["regularised"], flicker["bgk"]
+    calm = reg["healthy"] and reg["max_outside_layers"] <= bgk["max_outside_layers"]
     return {
         "name": "Stability margin of the collision near tau = 1/2",
         "method": (
@@ -456,11 +459,11 @@ def collision_margin(quick: bool) -> dict:
         "metric": (
             "shear layer: bounded (finite, speed below 0.4) to the end, or the time t u0 / L it "
             "failed; street: |u(t) - (u(t-1) + u(t+1)) / 2| over u_H, mean and largest over the "
-            "fluid nodes"
+            "fluid nodes and outside the absorbing layers"
         ),
         "threshold": {
             "regularised_stable_wherever_bgk_is": True,
-            "street_flicker_not_above_bgk": True,
+            "largest_flicker_outside_layers_not_above_bgk": True,
         },
         "sources": [
             "Minion, M. L. and Brown, D. L. (1997), J. Comput. Phys. 138, 734-765",

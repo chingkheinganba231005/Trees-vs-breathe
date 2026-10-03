@@ -346,9 +346,10 @@
   "hwk.collisionQuestion": "黏度很低時，標準的碰撞步驟可能失控。我們採用的步驟能否在標準步驟失敗的地方保持穩定，並令街道內的氣流保持平穩？",
   "hwk.collisionShear": "在嚴格測試中保持穩定的次數（標準 → 我們的）",
   "hwk.collisionCounts": "{bgk} → {reg}（共 {n}）",
-  "hwk.collisionFlicker": "街道內每步之間最大的閃動，佔風速的比例（標準 → 我們的）",
+  "hwk.collisionFlicker": "吸收層以外，街道內每步之間最大的閃動，佔風速的比例（標準 → 我們的）",
   "heat.vsBare": "綠化的遮蔭：UTCI {d}°C，輻射溫度 {r}°C（相同風速）",
   "green.rows": "樹木位置",
   "green.rowsKerbs": "沿兩邊路緣",
-  "green.rowsTunnel": "按風洞實驗"
+  "green.rowsTunnel": "按風洞實驗",
+  "hwk.collisionFlickerMean": "該範圍內每步之間的平均閃動（標準 → 我們的）"
 }

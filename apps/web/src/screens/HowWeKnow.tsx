@@ -710,7 +710,11 @@ function CollisionCard() {
           />
           <StatTile
             label={t('hwk.collisionFlicker')}
-            value={`${pct(r.street_flicker.bgk.max)} → ${pct(r.street_flicker.regularised.max)}`}
+            value={`${pct(r.street_flicker.bgk.max_outside_layers)} → ${pct(r.street_flicker.regularised.max_outside_layers)}`}
+          />
+          <StatTile
+            label={t('hwk.collisionFlickerMean')}
+            value={`${pct(r.street_flicker.bgk.mean_outside_layers)} → ${pct(r.street_flicker.regularised.mean_outside_layers)}`}
           />
         </div>
       )}
