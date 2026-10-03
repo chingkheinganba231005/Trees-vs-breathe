@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "generated_by": "python -m treesvb.street",
-  "generated_at": "2026-10-03T02:40:35Z",
-  "commit": "c4f2efd312735e41a6348dce1ffeddf2b6c2667a",
+  "generated_at": "2026-10-03T13:44:24Z",
+  "commit": "0c5029975cda883c54b0f5876507006fd9144890",
   "dirty": false,
   "platform": "Linux-6.18.44-fc-v64-x86_64-with-glibc2.39",
   "versions": {
@@ -19,7 +19,7 @@
       "tau0": 0.5018,
       "steps_run": 40000,
       "stable": true,
-      "peak_speed_over_uref": 2.875087559223175
+      "peak_speed_over_uref": 2.8890734910964966
     },
     {
       "reynolds": 2000.0,
@@ -27,47 +27,47 @@
       "tau0": 0.5018,
       "steps_run": 40000,
       "stable": true,
-      "peak_speed_over_uref": 2.9129141569137573
+      "peak_speed_over_uref": 2.972058951854706
     },
     {
       "reynolds": 5000.0,
       "smagorinsky": 0.1,
       "tau0": 0.50072,
-      "steps_run": 40000,
-      "stable": true,
-      "peak_speed_over_uref": 3.223593831062317
-    },
-    {
-      "reynolds": 5000.0,
-      "smagorinsky": 0.17,
-      "tau0": 0.50072,
-      "steps_run": 40000,
-      "stable": true,
-      "peak_speed_over_uref": 3.0186957120895386
-    },
-    {
-      "reynolds": 10000.0,
-      "smagorinsky": 0.1,
-      "tau0": 0.50036,
       "steps_run": 28000,
       "stable": false,
       "peak_speed_over_uref": null
     },
     {
+      "reynolds": 5000.0,
+      "smagorinsky": 0.17,
+      "tau0": 0.50072,
+      "steps_run": 40000,
+      "stable": true,
+      "peak_speed_over_uref": 3.7876835465431213
+    },
+    {
+      "reynolds": 10000.0,
+      "smagorinsky": 0.1,
+      "tau0": 0.50036,
+      "steps_run": 30000,
+      "stable": false,
+      "peak_speed_over_uref": null
+    },
+    {
       "reynolds": 10000.0,
       "smagorinsky": 0.17,
       "tau0": 0.50036,
       "steps_run": 40000,
       "stable": true,
-      "peak_speed_over_uref": 3.0855143070220947
+      "peak_speed_over_uref": 3.270605504512787
     },
     {
       "reynolds": 20000.0,
       "smagorinsky": 0.1,
       "tau0": 0.50018,
-      "steps_run": 26000,
-      "stable": false,
-      "peak_speed_over_uref": null
+      "steps_run": 40000,
+      "stable": true,
+      "peak_speed_over_uref": 4.673475921154022
     },
     {
       "reynolds": 20000.0,
@@ -75,15 +75,15 @@
       "tau0": 0.50018,
       "steps_run": 40000,
       "stable": true,
-      "peak_speed_over_uref": 3.132871091365814
+      "peak_speed_over_uref": 3.3172935247421265
     },
     {
       "reynolds": 50000.0,
       "smagorinsky": 0.1,
       "tau0": 0.500072,
-      "steps_run": 34000,
-      "stable": false,
-      "peak_speed_over_uref": null
+      "steps_run": 40000,
+      "stable": true,
+      "peak_speed_over_uref": 4.094390273094177
     },
     {
       "reynolds": 50000.0,
@@ -91,7 +91,7 @@
       "tau0": 0.500072,
       "steps_run": 40000,
       "stable": true,
-      "peak_speed_over_uref": 2.991034686565399
+      "peak_speed_over_uref": 3.5004922747612
     }
   ],
   "live_setting": {
