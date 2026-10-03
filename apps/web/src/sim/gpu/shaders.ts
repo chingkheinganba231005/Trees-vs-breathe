@@ -171,17 +171,23 @@ ${loads}
   let e7 = ${W[7].toFixed(9)} * rho * (1.0 - 3.0 * a + 4.5 * a * a - usq);
   let e8 = ${W[8].toFixed(9)} * rho * (1.0 - 3.0 * b + 4.5 * b * b - usq);
 
+  // Non-equilibrium momentum flux, sum_i c_i c_i (f_i - feq_i).
+  let diag = (f5 - e5) + (f6 - e6) + (f7 - e7) + (f8 - e8);
+  let pxx = (f1 - e1) + (f3 - e3) + diag;
+  let pyy = (f2 - e2) + (f4 - e4) + diag;
+  let pxy = (f5 - e5) - (f6 - e6) + (f7 - e7) - (f8 - e8);
   var tau = P.tau0;
   if (P.cs > 0.0) {
-    // Non-equilibrium flux with the Guo force contribution removed (see core.py).
-    let pxx = (f1 - e1) + (f3 - e3) + (f5 - e5) + (f6 - e6) + (f7 - e7) + (f8 - e8) + fx * ux;
-    let pyy = (f2 - e2) + (f4 - e4) + (f5 - e5) + (f6 - e6) + (f7 - e7) + (f8 - e8) + fy * uy;
-    let pxy = (f5 - e5) - (f6 - e6) + (f7 - e7) - (f8 - e8) + 0.5 * (fx * uy + fy * ux);
-    let q = sqrt(pxx * pxx + pyy * pyy + 2.0 * pxy * pxy);
+    // The flux with the Guo force contribution removed (see core.py).
+    let sxx = pxx + fx * ux;
+    let syy = pyy + fy * uy;
+    let sxy = pxy + 0.5 * (fx * uy + fy * ux);
+    let q = sqrt(sxx * sxx + syy * syy + 2.0 * sxy * sxy);
     tau = 0.5 * (P.tau0 + sqrt(P.tau0 * P.tau0 + ${(18 * Math.SQRT2).toFixed(9)} * P.cs * P.cs * q / rho));
   }
   let om = 1.0 / tau;
   let pre = 1.0 - 0.5 * om;
+  let keep = 1.0 - om;
   let w0 = ${W[0].toFixed(9)};
   let w1 = ${W[1].toFixed(9)};
   let w5 = ${W[5].toFixed(9)};
@@ -195,18 +201,26 @@ ${loads}
   let s7 = pre * w5 * ((3.0 * (-1.0 - ux) + 9.0 * a) * fx + (3.0 * (-1.0 - uy) + 9.0 * a) * fy);
   let s8 = pre * w5 * ((3.0 * (1.0 - ux) - 9.0 * b) * fx + (3.0 * (-1.0 - uy) + 9.0 * b) * fy);
 
+  // Regularised non-equilibrium parts w_i [3 c_i . m + 9/2 (c_i c_i - I/3) : P], m = -F/2
+  // (core.regularised_neq).
+  let mx = -1.5 * fx;
+  let my = -1.5 * fy;
+  let tr = 3.0 * (pxx + pyy);
+  let ax = 3.0 * pxx - 1.5 * pyy;
+  let ay = 3.0 * pyy - 1.5 * pxx;
+
   // Absorbing layers: f_eq(1, u) - f_eq(rho, u) = (1 - rho) / rho f_eq(rho, u).
-  let sp = sponge(x, y) * (1.0 - rho) / rho;
+  let sp = 1.0 + sponge(x, y) * (1.0 - rho) / rho;
   var out: array<f32, 9>;
-  out[0] = f0 - om * (f0 - e0) + s0 + sp * e0;
-  out[1] = f1 - om * (f1 - e1) + s1 + sp * e1;
-  out[2] = f2 - om * (f2 - e2) + s2 + sp * e2;
-  out[3] = f3 - om * (f3 - e3) + s3 + sp * e3;
-  out[4] = f4 - om * (f4 - e4) + s4 + sp * e4;
-  out[5] = f5 - om * (f5 - e5) + s5 + sp * e5;
-  out[6] = f6 - om * (f6 - e6) + s6 + sp * e6;
-  out[7] = f7 - om * (f7 - e7) + s7 + sp * e7;
-  out[8] = f8 - om * (f8 - e8) + s8 + sp * e8;
+  out[0] = sp * e0 - 0.5 * keep * w0 * tr + s0;
+  out[1] = sp * e1 + keep * w1 * (mx + ax) + s1;
+  out[2] = sp * e2 + keep * w1 * (my + ay) + s2;
+  out[3] = sp * e3 + keep * w1 * (-mx + ax) + s3;
+  out[4] = sp * e4 + keep * w1 * (-my + ay) + s4;
+  out[5] = sp * e5 + keep * w5 * (mx + my + tr + 9.0 * pxy) + s5;
+  out[6] = sp * e6 + keep * w5 * (-mx + my + tr - 9.0 * pxy) + s6;
+  out[7] = sp * e7 + keep * w5 * (-mx - my + tr + 9.0 * pxy) + s7;
+  out[8] = sp * e8 + keep * w5 * (mx - my + tr - 9.0 * pxy) + s8;
   write(k, out);
   fields[k] = vec4<f32>(rho, ux, uy, tau);
 

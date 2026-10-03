@@ -200,17 +200,44 @@ def body_force(xp, rho, ux, uy, cfg):
     return rho * (cfg["gx"] - drag * ux), rho * (cfg["gy"] - drag * uy)
 
 
-def relaxation_time(xp, f, feq, rho, ux, uy, fx, fy, cfg):
-    """Smagorinsky relaxation time; equals tau0 exactly when cs = 0."""
+def flux(xp, f, feq):
+    """Non-equilibrium momentum flux P = sum_i c_i c_i (f_i - feq_i): (Pxx, Pyy, Pxy)."""
     fneq = f - feq
+    return _moment(fneq, CX * CX), _moment(fneq, CY * CY), _moment(fneq, CX * CY)
+
+
+def relaxation_time(xp, p, rho, ux, uy, fx, fy, cfg):
+    """Smagorinsky relaxation time from the flux `p`; equals tau0 exactly when cs = 0."""
     # The Guo forcing leaves -(F u + u F) / 2 in the non-equilibrium flux; adding it back makes
     # the flux measure the strain rate alone (tests/python/test_solver2d.py).
-    pxx = _moment(fneq, CX * CX) + fx * ux
-    pyy = _moment(fneq, CY * CY) + fy * uy
-    pxy = _moment(fneq, CX * CY) + 0.5 * (fx * uy + fy * ux)
+    pxx = p[0] + fx * ux
+    pyy = p[1] + fy * uy
+    pxy = p[2] + 0.5 * (fx * uy + fy * ux)
     q = xp.sqrt(pxx * pxx + pyy * pyy + 2.0 * pxy * pxy)
     tau0, cs = cfg["tau0"], cfg["cs"]
     return 0.5 * (tau0 + xp.sqrt(tau0 * tau0 + SQRT2_18 * cs * cs * q / rho))
+
+
+def regularised_neq(xp, p, fx, fy):
+    """The non-equilibrium part rebuilt from its first and second moments, shape (9, ...).
+
+    w_i [3 c_i . m + 9/2 (c_i c_i - I/3) : P], with m = sum c_i (f_i - feq_i) = -F / 2 under the
+    Guo forcing and P the flux of `flux`. Keeping only these moments drops the higher ones, which
+    BGK relaxes at the same rate as the stress and which carry the odd-even ripple and the growth
+    near tau = 1/2 (Latt and Chopard 2006). The first two moments are those of f - feq, so mass,
+    momentum and stress match the BGK step exactly.
+    """
+    pxx, pyy, pxy = p
+    out = []
+    for i in range(Q):
+        cx, cy = int(CX[i]), int(CY[i])
+        m = _lin(cx, -0.5 * fx, cy, -0.5 * fy)
+        q = (cx * cx - 1 / 3) * pxx + (cy * cy - 1 / 3) * pyy
+        if cx * cy:
+            q = q + 2.0 * cx * cy * pxy
+        term = 4.5 * q if m is None else 3.0 * m + 4.5 * q
+        out.append(W[i] * term)
+    return xp.stack(out)
 
 
 def guo_source(xp, tau, ux, uy, fx, fy):
@@ -226,20 +253,27 @@ def guo_source(xp, tau, ux, uy, fx, fy):
     return xp.stack(out)
 
 
-def step(xp, f_post, cfg):
+def step(xp, f_post, cfg, regularise: bool = True):
     """One time step; returns (new post-collision state, relaxation time field)."""
-    post, tau, _, _ = flow_step(xp, f_post, cfg)
+    post, tau, _, _ = flow_step(xp, f_post, cfg, regularise)
     return post, tau
 
 
-def flow_step(xp, f_post, cfg):
-    """One flow step; also returns the velocity the collision used, which the tracer needs."""
+def flow_step(xp, f_post, cfg, regularise: bool = True):
+    """One flow step; also returns the velocity the collision used, which the tracer needs.
+
+    `regularise=False` gives plain BGK, kept only for the collision benchmark
+    (benchmarks.collision_margin); every solver runs the regularised collision.
+    """
     f = stream(xp, f_post, cfg)
     rho, ux, uy = macros(xp, f, cfg)
     fx, fy = body_force(xp, rho, ux, uy, cfg)
     feq = equilibrium(xp, rho, ux, uy)
-    tau = relaxation_time(xp, f, feq, rho, ux, uy, fx, fy, cfg)
-    post = f - (f - feq) / tau + guo_source(xp, tau, ux, uy, fx, fy)
+    p = flux(xp, f, feq)
+    tau = relaxation_time(xp, p, rho, ux, uy, fx, fy, cfg)
+    neq = regularised_neq(xp, p, fx, fy) if regularise else f - feq
+    post = feq + (1.0 - 1.0 / tau) * neq
+    post = post + guo_source(xp, tau, ux, uy, fx, fy)
     # Absorbing layers: f_eq(1, u) - f_eq(rho, u) = (1 - rho) / rho f_eq(rho, u).
     post = post + (cfg["sigma"] * (1.0 - rho) / rho) * feq
     post = xp.where(cfg["fluid"], post, f)

@@ -7,8 +7,11 @@ One step, identical in every implementation (docs/solver.md):
 3. Relaxation time: tau0, or with the Smagorinsky model (Hou et al. 1994)
    tau = (tau0 + sqrt(tau0^2 + 18 sqrt(2) Cs^2 sqrt(P:P) / rho)) / 2,
    where P is the non-equilibrium momentum flux corrected for the force.
-4. BGK collision with the Guo forcing term:
-   f_post = f - (f - feq) / tau + (1 - 1 / (2 tau)) w_i [3 (c_i - u) + 9 (c_i . u) c_i] . F
+4. Regularised BGK collision (Latt and Chopard 2006) with the Guo forcing term:
+   f_post = feq + (1 - 1 / tau) f1 + (1 - 1 / (2 tau)) w_i [3 (c_i - u) + 9 (c_i . u) c_i] . F,
+   where f1 = w_i [3 c_i . m + 9/2 (c_i c_i - I/3) : P] keeps only the first and second
+   moments of f - feq: m = -F / 2 and P, the non-equilibrium momentum flux. Plain BGK uses
+   f - feq itself; dropping the higher moments gives the step its margin near tau = 1/2.
 5. Absorbing layers relax the density towards 1 near open boundaries:
    f_post += sigma (1 - rho) / rho f_eq(rho, u)   (Xu and Sagaut 2013).
 6. Non-fluid nodes keep their value; the inlet column is set to the equilibrium at the inlet
@@ -63,12 +66,16 @@ class Params:
 
 
 class NumpySolver:
-    def __init__(self, domain: Domain, params: Params, dtype=np.float64):
+    def __init__(self, domain: Domain, params: Params, dtype=np.float64, regularise: bool = True):
         if domain.left == "inlet" and (params.inlet_u is None or len(params.inlet_u) != domain.ny):
             raise ValueError("a left inlet needs params.inlet_u with one value per row")
         self.domain = domain
         self.params = params
         self.dtype = np.dtype(dtype)
+        #: False runs plain BGK, for the collision benchmark only.
+        self.regularise = regularise
+        if not regularise and params.tracer is not None:
+            raise ValueError("plain BGK is kept for the flow-only collision benchmark")
         self.cfg = core.make_config(domain, params, np, self.dtype)
         self.fluid = domain.fluid
         self.f_post = core.initial_state(np, self.cfg, self.dtype)
@@ -85,7 +92,7 @@ class NumpySolver:
     def step(self, n: int = 1) -> None:
         for _ in range(n):
             if self.g_post is None:
-                self.f_post, tau = core.step(np, self.f_post, self.cfg)
+                self.f_post, tau = core.step(np, self.f_post, self.cfg, self.regularise)
             else:
                 (self.f_post, self.g_post), tau = core.coupled_step(
                     np, (self.f_post, self.g_post), self.cfg

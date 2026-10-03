@@ -35,9 +35,11 @@ The molecular viscosity is ν₀ = (τ₀ − ½)/3. A case fixes the Reynolds n
 
    where Π = Σ c c (f − f^eq) + ½(F u + u F) is the non-equilibrium momentum flux with the forcing contribution removed. This solves ν = ν₀ + C_s² |S| for the local strain rate |S| = √(2 S:S), using Π = −2ρ c_s² τ S. Hou et al.'s printed closed form has ν₀ where τ₀ belongs and a different prefactor, so the formula here is derived afresh and checked numerically: in uniform shear the solver's eddy viscosity must match C_s²|S| (`results/benchmarks/smagorinsky_shear.json`), and in a force-driven box without strain the corrected Π must vanish (`results/benchmarks/force_stress.json`).
 
-4. **Collision (BGK) with the Guo forcing term.**
+4. **Regularised BGK collision with the Guo forcing term** (Latt and Chopard 2006).
 
-   f_post = f − (f − f^eq)/τ + (1 − 1/(2τ)) w_i [3(c_i − u) + 9(c_i·u) c_i] · F
+   f_post = f^eq + (1 − 1/τ) f^(1) + (1 − 1/(2τ)) w_i [3(c_i − u) + 9(c_i·u) c_i] · F
+
+   where f^(1) = w_i [3 c_i · m + 9/2 (c_i c_i − I/3) : Π] keeps only the first and second moments of f − f^eq: m = Σ c (f − f^eq) = −F/2 under the Guo forcing, and Π = Σ c c (f − f^eq) without the force correction. Plain BGK relaxes f − f^eq itself, so the post-collision mass, momentum and stress are the same in both (`tests/python/test_solver2d.py`); what the regularised step drops are the higher moments, which BGK carries along at the rate of the stress. Near τ = ½ those grow from step to step, which is how the 48-cell street blew up, and they also carried the odd-even ripple found in phase 1. On the thin double shear layer of Minion and Brown (1997) with no sub-grid model, plain BGK fails at every Reynolds number tried and the regularised collision at none (`results/benchmarks/collision_margin.json`). Plain BGK stays in `core.flow_step` only for that benchmark.
 
 5. **Absorbing layers.** Near open boundaries the density is relaxed towards 1:
 

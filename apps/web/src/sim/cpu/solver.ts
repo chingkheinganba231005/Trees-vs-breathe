@@ -237,25 +237,45 @@ export class CpuSolver {
       const e7 = W5 * rho * (1 - 3 * a + 4.5 * a * a - usq);
       const e8 = W5 * rho * (1 - 3 * b + 4.5 * b * b - usq);
 
+      // Non-equilibrium momentum flux, sum_i c_i c_i (f_i - feq_i).
+      const d5 = f5 - e5;
+      const d6 = f6 - e6;
+      const d7 = f7 - e7;
+      const d8 = f8 - e8;
+      const diag = d5 + d6 + d7 + d8;
+      const pxx = f1 - e1 + (f3 - e3) + diag;
+      const pyy = f2 - e2 + (f4 - e4) + diag;
+      const pxy = d5 - d6 + d7 - d8;
+
       let tau = tau0;
       if (cs > 0) {
-        const d1 = f1 - e1;
-        const d2 = f2 - e2;
-        const d3 = f3 - e3;
-        const d4 = f4 - e4;
-        const d5 = f5 - e5;
-        const d6 = f6 - e6;
-        const d7 = f7 - e7;
-        const d8 = f8 - e8;
-        // Non-equilibrium flux with the Guo force contribution removed (see core.py).
-        const pxx = d1 + d3 + d5 + d6 + d7 + d8 + fx * ux;
-        const pyy = d2 + d4 + d5 + d6 + d7 + d8 + fy * uy;
-        const pxy = d5 - d6 + d7 - d8 + 0.5 * (fx * uy + fy * ux);
-        const q = Math.sqrt(pxx * pxx + pyy * pyy + 2 * pxy * pxy);
+        // The flux with the Guo force contribution removed (see core.py).
+        const sxx = pxx + fx * ux;
+        const syy = pyy + fy * uy;
+        const sxy = pxy + 0.5 * (fx * uy + fy * ux);
+        const q = Math.sqrt(sxx * sxx + syy * syy + 2 * sxy * sxy);
         tau = 0.5 * (tau0 + Math.sqrt(tau0 * tau0 + (smag * q) / rho));
       }
       const omega = 1 / tau;
       const pre = 1 - 0.5 * omega;
+      const keep = 1 - omega;
+
+      // Regularised non-equilibrium parts w_i [3 c_i . m + 9/2 (c_i c_i - I/3) : P], m = -F/2
+      // (core.regularised_neq).
+      const mx = -1.5 * fx;
+      const my = -1.5 * fy;
+      const tr = 3 * (pxx + pyy);
+      const r0 = -0.5 * keep * W0 * tr;
+      const ax = 3 * pxx - 1.5 * pyy;
+      const ay = 3 * pyy - 1.5 * pxx;
+      const r1 = keep * W1 * (mx + ax);
+      const r2 = keep * W1 * (my + ay);
+      const r3 = keep * W1 * (-mx + ax);
+      const r4 = keep * W1 * (-my + ay);
+      const r5 = keep * W5 * (mx + my + tr + 9 * pxy);
+      const r6 = keep * W5 * (-mx + my + tr - 9 * pxy);
+      const r7 = keep * W5 * (-mx - my + tr + 9 * pxy);
+      const r8 = keep * W5 * (mx - my + tr - 9 * pxy);
 
       // Guo source terms, one per direction: w_i [3 (c_i - u) + 9 (c_i . u) c_i] . F
       let s0 = 0;
@@ -280,16 +300,16 @@ export class CpuSolver {
       }
 
       // Absorbing layers: f_eq(1, u) - f_eq(rho, u) = (1 - rho) / rho f_eq(rho, u).
-      const sp = (sigma[k]! * (1 - rho)) / rho;
-      fNext[k] = f0 - omega * (f0 - e0) + s0 + sp * e0;
-      fNext[n + k] = f1 - omega * (f1 - e1) + s1 + sp * e1;
-      fNext[n2 + k] = f2 - omega * (f2 - e2) + s2 + sp * e2;
-      fNext[n3 + k] = f3 - omega * (f3 - e3) + s3 + sp * e3;
-      fNext[n4 + k] = f4 - omega * (f4 - e4) + s4 + sp * e4;
-      fNext[n5 + k] = f5 - omega * (f5 - e5) + s5 + sp * e5;
-      fNext[n6 + k] = f6 - omega * (f6 - e6) + s6 + sp * e6;
-      fNext[n7 + k] = f7 - omega * (f7 - e7) + s7 + sp * e7;
-      fNext[n8 + k] = f8 - omega * (f8 - e8) + s8 + sp * e8;
+      const sp = 1 + (sigma[k]! * (1 - rho)) / rho;
+      fNext[k] = sp * e0 + r0 + s0;
+      fNext[n + k] = sp * e1 + r1 + s1;
+      fNext[n2 + k] = sp * e2 + r2 + s2;
+      fNext[n3 + k] = sp * e3 + r3 + s3;
+      fNext[n4 + k] = sp * e4 + r4 + s4;
+      fNext[n5 + k] = sp * e5 + r5 + s5;
+      fNext[n6 + k] = sp * e6 + r6 + s6;
+      fNext[n7 + k] = sp * e7 + r7 + s7;
+      fNext[n8 + k] = sp * e8 + r8 + s8;
 
       if (gNext && source) {
         const c = g0 + g1 + g2 + g3 + g4;

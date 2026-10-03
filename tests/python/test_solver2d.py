@@ -189,6 +189,36 @@ def test_force_correction_of_stress() -> None:
     assert force_stress(quick=True)["ratio"] < 1e-8
 
 
+def test_regularised_collision_matches_bgk_moments() -> None:
+    """Mass, momentum and stress after collision are BGK's; only higher moments are dropped."""
+    rng = np.random.default_rng(3)
+    ny, nx = 5, 6
+    d = Domain(nx, ny, left="periodic", right="periodic", bottom="periodic", top="periodic")
+    cfg = core.make_config(d, Params(tau0=0.52, smagorinsky=0.17, gravity=(2e-5, -1e-5)))
+    f = core.equilibrium(np, np.ones((ny, nx)), np.full((ny, nx), 0.04), np.zeros((ny, nx)))
+    f = f * (1.0 + rng.normal(0.0, 0.02, f.shape))
+    rho, ux, uy = core.macros(np, f, cfg)
+    fx, fy = core.body_force(np, rho, ux, uy, cfg)
+    feq = core.equilibrium(np, rho, ux, uy)
+    p = core.flux(np, f, feq)
+    tau = core.relaxation_time(np, p, rho, ux, uy, fx, fy, cfg)
+    source = core.guo_source(np, tau, ux, uy, fx, fy)
+    bgk = f - (f - feq) / tau + source
+    reg = feq + (1.0 - 1.0 / tau) * core.regularised_neq(np, p, fx, fy) + source
+    for coef in (np.ones(Q), CX, CY, CX * CX, CY * CY, CX * CY):
+        assert np.allclose(np.tensordot(coef, reg, 1), np.tensordot(coef, bgk, 1), atol=1e-14)
+    third = CX * CX * CY
+    assert not np.allclose(np.tensordot(third, reg, 1), np.tensordot(third, bgk, 1), atol=1e-8)
+
+
+def test_regularised_collision_outlasts_bgk() -> None:
+    from treesvb.benchmarks import collision_margin
+
+    r = collision_margin(quick=True)
+    assert r["passed"]
+    assert any(not row["bgk"]["stable"] and row["regularised"]["stable"] for row in r["rows"])
+
+
 def test_canyon_runs_and_stays_healthy() -> None:
     c = cases.canyon(cases.canyon_geometry(8, 1.0))
     s = NumpySolver(c.domain, c.params)

@@ -370,6 +370,63 @@ def tracer_pulse(quick: bool) -> dict:
     }
 
 
+def _shear_layer_survives(n: int, reynolds: float, regularise: bool, times: float) -> float | None:
+    """Run the double shear layer; None if it stays bounded, else the time t U / L it failed."""
+    from .solver2d import Domain, Params
+
+    u0 = 0.05
+    d = Domain(n, n, bottom="periodic", top="periodic")
+    s = NumpySolver(d, Params(tau0=0.5 + 3.0 * u0 * n / reynolds), regularise=regularise)
+    y, x = (np.mgrid[0:n, 0:n] + 0.5) / n
+    k, delta = 80.0, 0.05
+    ux = u0 * np.where(y <= 0.5, np.tanh(k * (y - 0.25)), np.tanh(k * (0.75 - y)))
+    uy = u0 * delta * np.sin(2.0 * np.pi * (x + 0.25))
+    s.set_state(np.ones((n, n)), ux, uy)
+    steps = round(times * n / u0)
+    chunk = max(1, steps // 40)
+    while s.time < steps:
+        s.step(chunk)
+        if not s.healthy():
+            return round(s.time * u0 / n, 3)
+    return None
+
+
+def collision_margin(quick: bool) -> dict:
+    """The regularised collision must stay bounded wherever plain BGK does, and say how far beyond.
+
+    The thin double shear layer of Minion and Brown (1997) rolls up into vortices with steep
+    gradients; with no sub-grid model and a viscosity near zero it is under-resolved on purpose, the
+    situation of the street near tau = 1/2.
+    """
+    n = 32 if quick else 64
+    times = 2.0
+    rows = []
+    for re in (1e4, 3e4, 1e5, 1e6, 1e7):
+        row = {"reynolds": re, "tau0": round(0.5 + 3.0 * 0.05 * n / re, 8)}
+        for name, reg in (("bgk", False), ("regularised", True)):
+            failed = _shear_layer_survives(n, re, reg, times)
+            row[name] = {"stable": failed is None, "failed_at": failed}
+        rows.append(row)
+    ok = all(r["regularised"]["stable"] or not r["bgk"]["stable"] for r in rows)
+    return {
+        "name": "Stability margin of the collision near tau = 1/2",
+        "method": (
+            f"Thin double shear layer of Minion and Brown (1997), kappa 80, delta 0.05, on a "
+            f"periodic {n} x {n} grid, u0 = 0.05, no sub-grid model, float64, run for {times:g} "
+            "times L / u0; plain BGK against the regularised collision every solver runs"
+        ),
+        "metric": "bounded (finite, speed below 0.4) to the end, or the time t u0 / L it failed",
+        "threshold": {"regularised_stable_wherever_bgk_is": True},
+        "sources": [
+            "Minion, M. L. and Brown, D. L. (1997), J. Comput. Phys. 138, 734-765",
+            "Latt, J. and Chopard, B. (2006), Math. Comput. Simul. 72, 165-168",
+        ],
+        "grid": n,
+        "rows": rows,
+        "passed": ok,
+    }
+
+
 BENCHMARKS: dict[str, Callable[[bool], dict]] = {
     "poiseuille": poiseuille,
     "cavity_re100": lambda q: cavity(100, 64 if q else 128, q),
@@ -381,6 +438,7 @@ BENCHMARKS: dict[str, Callable[[bool], dict]] = {
     "porous_lambda": porous_lambda,
     "tracer_conservation": tracer_conservation,
     "tracer_pulse": tracer_pulse,
+    "collision_margin": collision_margin,
 }
 QUICK_SKIP = {"cavity_re1000"}
 
