@@ -277,5 +277,18 @@
   "green.sizeLocalNote": "根據這條街附近的政府樹木記錄估算：路政署路旁樹的樹幹尺寸，以及漁農自然護理署為相同樹幹尺寸的樹木量度的高度和樹冠。",
   "street.treesNone": "路政署記錄中，這段街道沒有樹木。",
   "street.treesSome": "路政署記錄中，這段街道有 {n} 棵樹。",
-  "street.treeTypical": "附近典型的路旁樹約 {h} 米高，樹冠寬約 {s} 米（根據政府樹木記錄估算）。"
+  "street.treeTypical": "附近典型的路旁樹約 {h} 米高，樹冠寬約 {s} 米（根據政府樹木記錄估算）。",
+  "recorded.title": "按實測形狀的記錄結果：{name}，H/W {ratio}",
+  "recorded.intro": "上方的即時畫面無法按這條街的真實形狀計算，所以我們在較細的網格上（每個樓高 {h} 格，街寬 {w} 格）運行了一次，並記錄了平均值。每幅圖顯示街內的平均廢氣和周圍的平均風。",
+  "recorded.none": "沒有綠化",
+  "recorded.trees": "本地路旁樹",
+  "recorded.hedge": "路中綠籬",
+  "recorded.legend": "記錄結果的平均廢氣（c⁺，模擬）：",
+  "recorded.key": "箭頭：平均風向。虛線框：每邊行人路的呼吸高度範圍。綠色：樹冠或綠籬。",
+  "recorded.design": "設計",
+  "recorded.settling": "仍在變動",
+  "recorded.method": "樹木：典型的本地路旁樹，高 {tree} 米，樹冠闊 {spread} 米，枝葉茂密。綠籬：高 {hh} 米，闊 {hw} 米。呼吸高度範圍：離每邊牆 {zw} 米以內，離地 {z0}–{z1} 米。讀數下的百分比是與沒有綠化時的比較。",
+  "recorded.settlingHelp": "「仍在變動」是記錄的前半段與後半段平均值之間的差距。兩個設計之間比這更小的差別並不可靠。",
+  "recorded.source": "於 {date} 在 Colab 記錄（提交 {commit}）。模擬結果，並非實測。",
+  "design.presetRecorded": "下方即時畫面之後，附有在較細網格上按實測形狀運行的記錄結果。"
 }

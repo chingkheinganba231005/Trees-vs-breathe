@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ExposurePanel } from '../components/ExposurePanel';
 import { FumesLegend } from '../components/FumesLegend';
 import { GreeneryControls } from '../components/GreeneryControls';
+import { RecordedRun } from '../components/RecordedRun';
 import { Screen } from '../components/Screen';
 import { SimulatedTag } from '../components/SimulatedTag';
 import { StreetSimulation } from '../components/StreetSimulation';
@@ -23,6 +24,7 @@ import type { SimStats } from '../sim/streetSim';
 import { PLAYBACK_RATE } from '../sim/clock';
 import { checkedAspectMax } from '../sim/streetSim';
 import { localTree, presetByKey } from '../content/presets';
+import { streetRun } from '../content/streetRuns';
 import type { StreetPreset } from '../content/presets';
 import { useHashParam } from '../lib/router';
 
@@ -114,6 +116,8 @@ function DesignScreen({ engine, preset }: { engine: EngineChoice; preset: Street
     [range],
   );
   const comparison = compare(exposure, shapeKey);
+  const recorded = streetRun(preset?.key ?? null);
+  const presetName = preset ? (lang === 'en' ? preset.label_en : preset.label_tc) : '';
   const regime = regimeText[expectedRegime(shown)];
   const locale = lang === 'en' ? 'en-GB' : 'zh-HK';
   const num = (v: number, digits = 0) =>
@@ -127,14 +131,15 @@ function DesignScreen({ engine, preset }: { engine: EngineChoice; preset: Street
             <p>
               {preset.aspect_h_over_w.median > aspectMax
                 ? t('design.presetClamped', {
-                    name: lang === 'en' ? preset.label_en : preset.label_tc,
+                    name: presetName,
                     ratio: num(preset.aspect_h_over_w.median, 1),
                     max: num(aspectMax, 1),
                   })
                 : t('design.presetNote', {
-                    name: lang === 'en' ? preset.label_en : preset.label_tc,
+                    name: presetName,
                     ratio: num(preset.aspect_h_over_w.median, 1),
                   })}
+              {recorded && ` ${t('design.presetRecorded')}`}
             </p>
             <p className="mt-1 text-ink-muted">{t('design.presetScale')}</p>
           </div>
@@ -153,6 +158,7 @@ function DesignScreen({ engine, preset }: { engine: EngineChoice; preset: Street
           label={t('design.simLabel')}
         />
         {fumes && <FumesLegend />}
+        {recorded && <RecordedRun run={recorded} name={presetName} />}
       </div>
 
       <div className="mt-6 grid gap-8 md:grid-cols-2">

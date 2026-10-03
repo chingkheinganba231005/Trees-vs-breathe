@@ -9,16 +9,30 @@ import { parseColor } from './view';
  */
 export const FUMES_CMAX = 100;
 
-/** Position on the ramp, 0..1, for a normalised concentration c+. */
-export function fumesT(cplus: number): number {
+/** Position on the ramp, 0..1, for a normalised concentration c+, on a log scale up to cmax. */
+export function fumesT(cplus: number, cmax = FUMES_CMAX): number {
   if (!(cplus > 0)) return 0;
-  return Math.min(1, Math.log1p(cplus) / Math.log1p(FUMES_CMAX));
+  return Math.min(1, Math.log1p(cplus) / Math.log1p(cmax));
 }
 
 /** Ramp stops as 0..1 RGB, low concentration first, for the given theme. */
 export function fumesStops(dark: boolean): [number, number, number][] {
   const stops = fumesRamp.map((c) => parseColor(c));
   return dark ? stops.reverse() : stops;
+}
+
+/**
+ * Key ticks at 0, steps of 1-3-10 and the top, for a log scale up to cmax. A step tick sits no
+ * further than 80% along the key, so its label clears the top label on a phone.
+ */
+export function legendTicks(cmax: number): number[] {
+  const ticks = [0];
+  for (let p = 1; p < cmax; p *= 10) {
+    for (const m of [1, 3]) {
+      if (m * p >= 3 && Math.log1p(m * p) / Math.log1p(cmax) <= 0.8) ticks.push(m * p);
+    }
+  }
+  return [...ticks, cmax];
 }
 
 /** Opacity of the fumes layer at ramp position t. */
