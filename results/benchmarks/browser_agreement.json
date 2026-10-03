@@ -1,0 +1,93 @@
+{
+  "schema": 1,
+  "generated_by": "npx playwright test --project=webgpu (RECORD_RESULTS=1)",
+  "generated_at": "2026-10-03T02:55:07Z",
+  "commit": "da97a58cbd127e10efdecded970aff9ba1a5d895",
+  "dirty": false,
+  "versions": {
+    "node": "22.22.0",
+    "@playwright/test": "1.56.1",
+    "chromium": "141.0.7390.37"
+  },
+  "name": "Browser solvers (CPU worker and WGSL) against the Python reference",
+  "method": "Golden cases from python -m treesvb.golden run in headless Chromium; the GPU kernel runs on a SwiftShader WebGPU adapter. Fields compared after the stated number of steps.",
+  "metric": "largest velocity difference as a fraction of the reference speed; for tracer cases also the largest concentration difference as a fraction of the peak concentration",
+  "threshold": {
+    "max_abs_diff_over_uref_below": 0.005
+  },
+  "adapter": "google swiftshader",
+  "rows": [
+    {
+      "name": "canyon",
+      "description": "Inlet, pressure outlet, free-slip top, buildings, absorbing layers",
+      "cells": 2520,
+      "steps": 300,
+      "cpuError": 0.000016032778244363943,
+      "cpuMs": 82.5,
+      "gpuError": 0.000050836182613027414,
+      "gpuMs": 1759.5
+    },
+    {
+      "name": "canyon_deep",
+      "description": "Deep street, H/W = 2",
+      "cells": 2610,
+      "steps": 300,
+      "cpuError": 0.000004858956605593295,
+      "cpuMs": 89.89999999990687,
+      "gpuError": 0.00004959459121475773,
+      "gpuMs": 1653
+    },
+    {
+      "name": "cavity",
+      "description": "Moving lid, bounce-back walls",
+      "cells": 256,
+      "steps": 400,
+      "cpuError": 6.64091487183327e-7,
+      "cpuMs": 5.400000000372529,
+      "gpuError": 0.000004475365570216772,
+      "gpuMs": 879.2999999998137
+    },
+    {
+      "name": "couette_smag",
+      "description": "Smagorinsky in uniform shear",
+      "cells": 40,
+      "steps": 200,
+      "cpuError": 0.0000016018753902502514,
+      "cpuMs": 0.6999999997206032,
+      "gpuError": 0.000025596592963198633,
+      "gpuMs": 777.5
+    },
+    {
+      "name": "poiseuille",
+      "description": "Body force with Guo forcing",
+      "cells": 48,
+      "steps": 600,
+      "cpuError": 5.468513603057445e-7,
+      "cpuMs": 13.200000000186265,
+      "gpuError": 0.000003848991191879314,
+      "gpuMs": 881.7000000001863
+    },
+    {
+      "name": "poiseuille_smag",
+      "description": "Body force with the Smagorinsky model",
+      "cells": 48,
+      "steps": 600,
+      "cpuError": 0.0000017136335668521685,
+      "cpuMs": 6.800000000279397,
+      "gpuError": 0.00001945079364268354,
+      "gpuMs": 785.1999999997206
+    },
+    {
+      "name": "street_trees",
+      "description": "Power-law inflow, a porous crown, line sources and the D2Q5 tracer",
+      "cells": 2520,
+      "steps": 300,
+      "cpuError": 0.0000040487069824513,
+      "cpuMs": 133,
+      "gpuError": 0.00004542642553756471,
+      "gpuMs": 1611.5
+    }
+  ],
+  "worst": 0.000050836182613027414,
+  "passed": true
+}

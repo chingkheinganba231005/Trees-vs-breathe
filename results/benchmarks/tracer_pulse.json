@@ -1,0 +1,52 @@
+{
+  "schema": 1,
+  "generated_by": "python -m treesvb.benchmarks",
+  "generated_at": "2026-10-02T19:21:52Z",
+  "commit": "2377612a6e3a03664e11dfe80b8c9a643f96921c",
+  "dirty": false,
+  "platform": "Linux-6.18.44-fc-v51-x86_64-with-glibc2.39",
+  "versions": {
+    "python": "3.11.15",
+    "numpy": "2.4.6",
+    "jax": "0.10.2"
+  },
+  "name": "Tracer pulse against the exact advection-diffusion solution",
+  "method": "128 x 128 periodic box, uniform flow, Gaussian pulse, D2Q5 BGK, float64",
+  "metric": "relative L2 error of the concentration field",
+  "threshold": {
+    "rel_l2_below": 0.03
+  },
+  "rows": [
+    {
+      "diffusivity": 0.02,
+      "velocity": [
+        0.0,
+        0.0
+      ],
+      "steps": 512,
+      "rel_l2": 0.004715373345502764,
+      "mass_change": 4.8960835385969403e-14
+    },
+    {
+      "diffusivity": 0.02,
+      "velocity": [
+        0.05,
+        0.02
+      ],
+      "steps": 512,
+      "rel_l2": 0.006929195851870762,
+      "mass_change": 4.8627768478581856e-14
+    },
+    {
+      "diffusivity": 0.005,
+      "velocity": [
+        0.05,
+        0.02
+      ],
+      "steps": 512,
+      "rel_l2": 0.015586940110763876,
+      "mass_change": 5.284661597215745e-14
+    }
+  ],
+  "passed": true
+}

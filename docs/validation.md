@@ -151,14 +151,14 @@ GPU adapter: google swiftshader.
 | Case | Cells | Steps | CPU worker | WebGPU |
 | --- | --- | --- | --- | --- |
 | canyon | 2520 | 300 | 0.0016% | 0.0051% |
-| canyon_deep | 2340 | 300 | 0.0008% | 0.0078% |
+| canyon_deep | 2610 | 300 | 0.0005% | 0.0050% |
 | cavity | 256 | 400 | 0.0001% | 0.0004% |
 | couette_smag | 40 | 200 | 0.0002% | 0.0026% |
 | poiseuille | 48 | 600 | 0.0001% | 0.0004% |
 | poiseuille_smag | 48 | 600 | 0.0002% | 0.0019% |
 | street_trees | 2520 | 300 | 0.0004% | 0.0045% |
 
-_Source: `results/benchmarks/browser_agreement.json`, generated 2026-10-02T19:22:37Z by `npx playwright test --project=webgpu (RECORD_RESULTS=1)` at commit `341a7e1`._
+_Source: `results/benchmarks/browser_agreement.json`, generated 2026-10-03T02:55:07Z by `npx playwright test --project=webgpu (RECORD_RESULTS=1)` at commit `da97a58`._
 
 ## 2. Street physics
 
@@ -168,20 +168,11 @@ Verdict: not yet computed.
 
 Not yet computed.
 
-### A street upwind of the studied street
+### Streets upwind of the studied street
 
-Verdict: meets the target.
+Verdict: not yet computed.
 
-Method: Street H/W = 1, H = 24 cells, Re 20000, Cs 0.17; the studied street alone (one street in the row) and behind one upwind street of equal width; 30000 steps of spin-up, velocities averaged over 30000 steps.
-
-| Streets in the row | Strongest vortex | Top of the street ÷ u_ref |
-| --- | --- | --- |
-| 1 | anticlockwise | -0.51 |
-| 2 | clockwise | +0.08 |
-
-With a single street, the vortex shed from the first block's upwind edge stays over the street and turns its mean vortex the wrong way; the studied street therefore sits behind one upwind street (docs/solver.md).
-
-_Source: `results/street/upwind.json`, generated 2026-10-02T19:36:55Z by `python -m treesvb.street` at commit `2377612`._
+Not yet computed.
 
 ### Absorbing layers against trapped sound
 
@@ -200,9 +191,24 @@ _Source: `results/street/sponge.json`, generated 2026-10-02T19:31:59Z by `python
 
 ### Stability of the street solver
 
-Verdict: not yet computed.
+Verdict: meets the target.
 
-Not yet computed.
+Method: Street canyon H = 24 cells, H/W = 1, 40000 steps from uniform flow, absorbing layers on; unstable means NaN or a speed of 0.4 lattice units.
+
+| Reynolds number | Cs | Result |
+| --- | --- | --- |
+| 2000 | 0.1 | stable |
+| 2000 | 0.17 | stable |
+| 5000 | 0.1 | stable |
+| 5000 | 0.17 | stable |
+| 10000 | 0.1 | blew up by step 28000 |
+| 10000 | 0.17 | stable |
+| 20000 | 0.1 | blew up by step 26000 |
+| 20000 | 0.17 | stable |
+| 50000 | 0.1 | blew up by step 34000 |
+| 50000 | 0.17 | stable |
+
+_Source: `results/street/stability.json`, generated 2026-10-03T02:40:35Z by `python -m treesvb.street` at commit `c4f2efd`._
 
 ## 3. Trees, hedges and fumes
 

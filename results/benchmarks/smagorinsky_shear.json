@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "generated_by": "python -m treesvb.benchmarks",
+  "generated_at": "2026-10-02T18:08:40Z",
+  "commit": "f9140ce6e3ab85372d65cea1dcfbac91503b102f",
+  "dirty": false,
+  "platform": "Linux-6.18.44-fc-v51-x86_64-with-glibc2.39",
+  "versions": {
+    "python": "3.11.15",
+    "numpy": "2.4.6",
+    "jax": "0.10.2"
+  },
+  "name": "Smagorinsky eddy viscosity in uniform shear",
+  "method": "Couette flow started from its exact linear profile, Cs = 0.17, tau0 = 0.51, 500 steps, float64; interior rows",
+  "metric": "relative difference between the solver's eddy viscosity and Cs^2 |S|",
+  "threshold": {
+    "rel_error_below": 0.01
+  },
+  "smagorinsky": 0.17,
+  "strain_rate": 0.0015625,
+  "expected_nu_t": 4.515625000000001e-05,
+  "rel_error": 7.714365872768525e-07,
+  "passed": true
+}

@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "generated_by": "python -m treesvb.benchmarks",
+  "generated_at": "2026-10-02T19:20:13Z",
+  "commit": "2377612a6e3a03664e11dfe80b8c9a643f96921c",
+  "dirty": false,
+  "platform": "Linux-6.18.44-fc-v51-x86_64-with-glibc2.39",
+  "versions": {
+    "python": "3.11.15",
+    "numpy": "2.4.6",
+    "jax": "0.10.2"
+  },
+  "name": "Porous block: drag and pressure-loss coefficient",
+  "method": "Channel 240 x 3 (periodic across), porous block 12 cells deep, tau 0.6, stepped until the momentum balance changes by less than 2e-4 over 3000 steps, float64; lambda d = 4.8 and 12 match the CODASC crowns (80 and 200 1/m over 0.5 H = 0.06 m)",
+  "metric": "momentum balance over drag, and measured over set lambda",
+  "threshold": {
+    "momentum_balance_within": 0.002,
+    "lambda_ratio_within": 0.05,
+    "error_ratio_halving_u_between": [
+      3.0,
+      5.0
+    ]
+  },
+  "rows": [
+    {
+      "lambda_times_depth": 4.8,
+      "inflow_speed": 0.05,
+      "steps": 36000,
+      "momentum_balance": 0.999955327942211,
+      "lambda_ratio": 1.0167248981734112
+    },
+    {
+      "lambda_times_depth": 12.0,
+      "inflow_speed": 0.05,
+      "steps": 16000,
+      "momentum_balance": 1.00045193624863,
+      "lambda_ratio": 1.031754117425023
+    },
+    {
+      "lambda_times_depth": 12.0,
+      "inflow_speed": 0.025,
+      "steps": 30000,
+      "momentum_balance": 0.9997522208525741,
+      "lambda_ratio": 1.007564123093069
+    }
+  ],
+  "error_ratio_halving_u": 4.197990571322071,
+  "passed": true
+}

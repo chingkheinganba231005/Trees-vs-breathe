@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "generated_by": "python -m treesvb.benchmarks",
+  "generated_at": "2026-10-02T18:04:29Z",
+  "commit": "f9140ce6e3ab85372d65cea1dcfbac91503b102f",
+  "dirty": false,
+  "platform": "Linux-6.18.44-fc-v51-x86_64-with-glibc2.39",
+  "versions": {
+    "python": "3.11.15",
+    "numpy": "2.4.6",
+    "jax": "0.10.2"
+  },
+  "name": "Channel flow against the exact Poiseuille profile",
+  "method": "Body-force-driven channel, half-way bounce-back walls, Guo forcing, float64",
+  "metric": "relative L2 error of the velocity profile",
+  "threshold": {
+    "rel_l2_below": 0.01,
+    "for_height_at_least": 32
+  },
+  "rows": [
+    {
+      "height": 16,
+      "tau": 0.8,
+      "steps": 7500,
+      "converged": true,
+      "rel_l2": 0.0027813850448784334
+    },
+    {
+      "height": 32,
+      "tau": 0.8,
+      "steps": 27500,
+      "converged": true,
+      "rel_l2": 0.0006953506156472986
+    },
+    {
+      "height": 64,
+      "tau": 0.8,
+      "steps": 103500,
+      "converged": true,
+      "rel_l2": 0.00017383773420826478
+    }
+  ],
+  "observed_order": 1.999990965520468,
+  "passed": true
+}

@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "generated_by": "python -m treesvb.benchmarks",
+  "generated_at": "2026-10-02T19:16:00Z",
+  "commit": "2377612a6e3a03664e11dfe80b8c9a643f96921c",
+  "dirty": false,
+  "platform": "Linux-6.18.44-fc-v51-x86_64-with-glibc2.39",
+  "versions": {
+    "python": "3.11.15",
+    "numpy": "2.4.6",
+    "jax": "0.10.2"
+  },
+  "name": "NumPy (float64) against JAX (float32)",
+  "method": "Same step code on both backends; velocity fields after a fixed number of steps",
+  "metric": "largest velocity difference as a fraction of the reference speed",
+  "threshold": {
+    "max_abs_diff_over_uref_below": 0.005
+  },
+  "rows": [
+    {
+      "case": "cavity_n32_re100",
+      "steps": 2000,
+      "max_abs_diff_over_uref": 2.3066948377364893e-05
+    },
+    {
+      "case": "poiseuille_h16",
+      "steps": 2000,
+      "max_abs_diff_over_uref": 1.9066320532945547e-05
+    },
+    {
+      "case": "canyon_h8_ar1.00",
+      "steps": 500,
+      "max_abs_diff_over_uref": 0.0002046439644426412
+    }
+  ],
+  "passed": true
+}

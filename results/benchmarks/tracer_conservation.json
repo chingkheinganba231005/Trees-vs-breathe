@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "generated_by": "python -m treesvb.benchmarks",
+  "generated_at": "2026-10-02T19:20:48Z",
+  "commit": "2377612a6e3a03664e11dfe80b8c9a643f96921c",
+  "dirty": false,
+  "platform": "Linux-6.18.44-fc-v51-x86_64-with-glibc2.39",
+  "versions": {
+    "python": "3.11.15",
+    "numpy": "2.4.6",
+    "jax": "0.10.2"
+  },
+  "name": "Tracer conservation with sources and walls",
+  "method": "96 x 48 channel, periodic along, walls across, force-driven with the Smagorinsky model on, two point sources, 2000 steps, float64",
+  "metric": "relative difference between tracer in the domain and tracer injected",
+  "threshold": {
+    "rel_error_below": 1e-10
+  },
+  "rel_error": 1.0658141036401503e-13,
+  "passed": true
+}
