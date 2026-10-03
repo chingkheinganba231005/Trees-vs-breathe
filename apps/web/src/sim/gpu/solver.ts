@@ -6,7 +6,7 @@ import { updateStrided } from '../span';
 import { SIDE, stepShader } from './shaders';
 
 const WORKGROUP: [number, number] = [8, 8];
-const PARAM_BYTES = 80;
+const PARAM_BYTES = 96;
 /** Populations per node: nine flow directions, then five for the tracer (unused without one). */
 const SLOTS = Q + 5;
 
@@ -41,6 +41,10 @@ export class GpuSolver {
   params: SolverParams;
   time = 0;
   emaAlpha = 0;
+  /** Weight of each step in the display mean of the fumes. */
+  displayAlpha = 0;
+  /** Set by restartExposure: the next step zeroes the exposure mean first. */
+  private restartPending = false;
   readonly fBuffers: [GPUBuffer, GPUBuffer];
   readonly fieldsBuffer: GPUBuffer;
   readonly meanBuffer: GPUBuffer;
@@ -149,7 +153,15 @@ export class GpuSolver {
     this.device.queue.writeBuffer(this.auxBuffer, lo * 8, this.aux, 2 * lo, 2 * (hi - lo + 1));
   }
 
-  /** Restart the running means (velocity and concentration), e.g. after the street changed. */
+  /**
+   * Restart the exposure mean only, e.g. after the greenery changed: the next step zeroes it
+   * before averaging. The display mean carries on, so the picture does not blank.
+   */
+  restartExposure(): void {
+    this.restartPending = true;
+  }
+
+  /** Restart every running mean, e.g. after the street was rebuilt. */
   clearMean(): void {
     // Cleared on the GPU: no zero-filled copy has to cross from the page.
     const enc = this.device.createCommandEncoder();
@@ -184,7 +196,7 @@ export class GpuSolver {
     this.time = this.checkpointTime;
   }
 
-  writeParams(): void {
+  writeParams(restart = false): void {
     const d = this.domain;
     const p = this.params;
     const buf = new ArrayBuffer(PARAM_BYTES);
@@ -210,6 +222,8 @@ export class GpuSolver {
     u32[16] = p.tracer ? 1 : 0;
     f32[17] = p.tracer?.diffusivity ?? 0;
     f32[18] = p.tracer?.schmidt ?? 1;
+    f32[19] = this.displayAlpha;
+    u32[20] = restart ? 1 : 0;
     this.device.queue.writeBuffer(this.paramBuffer, 0, buf);
   }
 
@@ -230,6 +244,19 @@ export class GpuSolver {
 
   /** Encode `steps` steps into one submit. */
   step(steps = 1): void {
+    if (this.restartPending && steps > 0) {
+      // Parameter writes are ordered with submissions, not inside one: the restarting step goes
+      // in a submission of its own, between a write that sets the flag and one that clears it.
+      this.restartPending = false;
+      this.writeParams(true);
+      this.dispatch(1);
+      this.writeParams(false);
+      steps -= 1;
+    }
+    if (steps > 0) this.dispatch(steps);
+  }
+
+  private dispatch(steps: number): void {
     const enc = this.device.createCommandEncoder();
     const pass = enc.beginComputePass();
     pass.setPipeline(this.pipeline);

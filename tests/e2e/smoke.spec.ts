@@ -85,6 +85,46 @@ test('trees change the fumes on the pavements against the bare street', async ({
   expect(errors).toEqual([]);
 });
 
+test('the fumes picture does not blank while a tree is dragged', async ({ page }) => {
+  test.setTimeout(60_000);
+  // The CPU engine draws to a 2D canvas, so its pixels can be counted.
+  await page.goto('./?engine=cpu&speed=4#/design');
+  await page.getByRole('radio', { name: 'Avenue of trees' }).check();
+  await page.waitForTimeout(8000);
+  const counts = await page.evaluate(
+    () =>
+      new Promise<number[]>((resolve) => {
+        const canvas = document.querySelector('canvas')!;
+        const ctx = canvas.getContext('2d')!;
+        const slider = document.getElementById('green-shift') as HTMLInputElement;
+        const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!;
+        const lo = Number(slider.min);
+        const hi = Number(slider.max);
+        const out: number[] = [];
+        const frame = () => {
+          // Move the tree a little on every frame, as a drag does, then count violet pixels.
+          setValue.call(slider, String(lo + (hi - lo) * (0.5 + 0.3 * Math.sin(out.length / 10))));
+          slider.dispatchEvent(new Event('input', { bubbles: true }));
+          setTimeout(() => {
+            const d = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+            let n = 0;
+            for (let j = 0; j < d.length; j += 4)
+              if (d[j + 2]! - d[j + 1]! > 12 && d[j]! > d[j + 1]!) n++;
+            out.push(n);
+            if (out.length < 60) requestAnimationFrame(frame);
+            else resolve(out);
+          }, 30);
+        };
+        requestAnimationFrame(frame);
+      }),
+  );
+  const sorted = [...counts].sort((a, b) => a - b);
+  const median = sorted[Math.floor(sorted.length / 2)]!;
+  expect(median).toBeGreaterThan(0);
+  // Before the display mean was split from the exposure mean, every change blanked a frame.
+  expect(sorted[0]).toBeGreaterThan(0.5 * median);
+});
+
 test('a measured street opens in Design with its shape', async ({ page }) => {
   const errors = collectErrors(page);
   await page.goto('./?engine=cpu#/street');

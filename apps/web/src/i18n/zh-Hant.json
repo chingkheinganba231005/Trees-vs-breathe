@@ -183,7 +183,7 @@
   "hwk.upwindY": "高度 ÷ 建築高度",
   "hwk.upwindNote": "正值表示順風。掠過流下，街頂順風，地面逆風。",
   "layer.fumes": "廢氣",
-  "legend.fumes": "廢氣，時間平均（c⁺，模擬）：",
+  "legend.fumes": "廢氣，最近數秒的平均（c⁺，模擬）：",
   "green.title": "綠化",
   "green.none": "沒有",
   "green.trees": "行道樹",

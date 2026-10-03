@@ -11,6 +11,7 @@ import { isHealthy, lowerTimeStep } from './guard';
 import { GpuRenderer } from './gpu/render';
 import { GpuSolver, requestDevice } from './gpu/solver';
 import { StepClock } from './clock';
+import { DISPLAY_FLOW_THROUGHS } from './display';
 import { Particles } from './particles';
 import type { CanyonGeometry, FlowSettings } from './street';
 import { canyonDomain, canyonGeometry, canyonNx, canyonParams, uniformStart } from './street';
@@ -226,6 +227,8 @@ abstract class BaseSim {
   protected solid!: Uint8Array;
   protected averaging = 10_000;
   protected meanSteps = 0;
+  /** Steps averaged into the display mean since the street was built; it never restarts. */
+  protected displaySteps = 0;
   protected exposure: { A: number; B: number } | null = null;
   /** Decides how many lattice steps each frame runs, the same in simulated time on every device. */
   protected readonly clock = new StepClock();
@@ -262,11 +265,16 @@ abstract class BaseSim {
     return this.clock.achieved;
   }
 
-  /** Converts the running-mean concentration to c+, corrected for the mean's start. */
-  protected cScale(): number {
-    if (this.meanSteps <= 0) return 0;
-    const w = 1 - Math.pow(1 - 1 / this.averaging, this.meanSteps);
+  /** Converts the display mean of the concentration to c+, corrected for its start from zero. */
+  protected displayScale(): number {
+    if (this.displaySteps <= 0) return 0;
+    const w = 1 - Math.pow(1 - 1 / this.displayAveraging(), this.displaySteps);
     return (this.flow.uRef * this.geometry.height) / SOURCE_TOTAL / w;
+  }
+
+  /** Time constant of the display mean, in steps. */
+  protected displayAveraging(): number {
+    return DISPLAY_FLOW_THROUGHS * this.stepsPerFlowThrough();
   }
 
   setLayers(layers: Layers): void {
@@ -371,8 +379,10 @@ class GpuStreetSim extends BaseSim implements StreetSim {
     this.solver = new GpuSolver(this.device, domain, this.params());
     this.averaging = averagingSteps(this.geometry, this.flow.uRef);
     this.solver.emaAlpha = 1 / this.averaging;
+    this.solver.displayAlpha = 1 / this.displayAveraging();
     this.solver.writeParams();
     this.meanSteps = 0;
+    this.displaySteps = 0;
     this.generation += 1;
     this.exposure = null;
     // Starting from rest would send a pressure pulse through the domain (cases.uniform_start).
@@ -389,7 +399,7 @@ class GpuStreetSim extends BaseSim implements StreetSim {
 
   protected applyDrag(drag: Float32Array): void {
     this.solver.setDrag(drag);
-    this.solver.clearMean();
+    this.solver.restartExposure();
   }
 
   setColors(colors: SimColors): void {
@@ -414,6 +424,7 @@ class GpuStreetSim extends BaseSim implements StreetSim {
     if (steps > 0) {
       this.solver.step(steps);
       this.meanSteps += steps;
+      this.displaySteps += steps;
     }
     this.clock.ran(steps, now);
     this.renderer.draw(
@@ -424,7 +435,7 @@ class GpuStreetSim extends BaseSim implements StreetSim {
       this.colors,
       this.width,
       this.heightPx,
-      this.cScale(),
+      this.displayScale(),
     );
     this.countFrame(steps);
     this.framesSinceCheck += 1;
@@ -491,7 +502,7 @@ class CpuStreetSim extends BaseSim implements StreetSim {
   private readonly renderer: CanvasRenderer;
   private particles!: Particles;
   private drag: Float32Array | null = null;
-  private conc: Float32Array | null = null;
+  private display: Float32Array | null = null;
   private framesSinceExposure = 0;
   private time = 0;
   private readonly note: EngineNote;
@@ -531,8 +542,9 @@ class CpuStreetSim extends BaseSim implements StreetSim {
     });
     this.sendClock();
     this.meanSteps = 0;
+    this.displaySteps = 0;
     this.exposure = null;
-    this.conc = null;
+    this.display = null;
     const solid = solidAt(this.geometry, domain.solid);
     if (this.particles) this.particles.setView(this.view, solid);
     else this.particles = new Particles(900, this.view, solid, 11);
@@ -547,7 +559,7 @@ class CpuStreetSim extends BaseSim implements StreetSim {
   protected applyDrag(drag: Float32Array): void {
     this.drag = drag;
     const copy = drag.slice();
-    // The worker restarts its mean; the last fumes frame stays on screen until the next arrives.
+    // The worker restarts the exposure mean only; the fumes picture carries on.
     this.send({ type: 'greenery', drag: copy }, [copy.buffer]);
   }
 
@@ -598,8 +610,9 @@ class CpuStreetSim extends BaseSim implements StreetSim {
     }
     this.workerAchieved = msg.achieved;
     this.time = msg.time;
-    this.conc = msg.conc;
     this.meanSteps = msg.meanSteps;
+    this.display = msg.display;
+    this.displaySteps = msg.displaySteps;
     this.framesSinceExposure += 1;
     if (this.framesSinceExposure >= 30) {
       this.framesSinceExposure = 0;
@@ -625,7 +638,7 @@ class CpuStreetSim extends BaseSim implements StreetSim {
         this.flow.uRef,
         this.particles,
         this.layers,
-        { conc: this.conc, cScale: this.cScale(), drag: this.drag },
+        { conc: this.display, cScale: this.displayScale(), drag: this.drag },
       );
       this.countFrame(msg.steps);
       this.tick();

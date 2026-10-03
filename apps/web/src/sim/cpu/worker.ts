@@ -1,5 +1,6 @@
 /// <reference lib="webworker" />
 import { StepClock } from '../clock';
+import { DISPLAY_FLOW_THROUGHS } from '../display';
 import { isHealthy } from '../guard';
 import { Q } from '../lattice';
 import type { FromWorker, ToWorker } from './protocol';
@@ -26,6 +27,9 @@ let meanC: Float32Array | null = null;
 let conc: Float32Array | null = null;
 let meanSteps = 0;
 let averaging = 10_000;
+// Short running mean for the picture; it is not restarted when the greenery changes.
+let displayC: Float32Array | null = null;
+let displaySteps = 0;
 let clock = new StepClock(1);
 let stepsPerFlowThrough = 480;
 let sinceFrame = 0;
@@ -67,8 +71,14 @@ function slice(): void {
   if (ran > 0 && meanC) {
     conc = solver.concentration(conc ?? undefined);
     const b = 1 - Math.pow(1 - 1 / averaging, ran);
-    for (let k = 0; k < conc.length; k++) meanC[k] = meanC[k]! + b * (conc[k]! - meanC[k]!);
+    const bd = 1 - Math.pow(1 - 1 / (DISPLAY_FLOW_THROUGHS * stepsPerFlowThrough), ran);
+    const d = displayC!;
+    for (let k = 0; k < conc.length; k++) {
+      meanC[k] = meanC[k]! + b * (conc[k]! - meanC[k]!);
+      d[k] = d[k]! + bd * (conc[k]! - d[k]!);
+    }
     meanSteps += ran;
+    displaySteps += ran;
     sinceFrame += ran;
   }
   // At once while steps are owed; otherwise when the next four fall due.
@@ -96,6 +106,7 @@ function frame(): void {
     checkpointTime = solver.time;
   }
   const meanOut = meanC ? meanC.slice() : new Float32Array(solver.n);
+  const displayOut = displayC ? displayC.slice() : new Float32Array(solver.n);
   post(
     {
       type: 'frame',
@@ -107,9 +118,11 @@ function frame(): void {
       recovered,
       conc: meanOut,
       meanSteps,
+      display: displayOut,
+      displaySteps,
       achieved: clock.achieved,
     },
-    [fields.ux.buffer, fields.uy.buffer, meanOut.buffer],
+    [fields.ux.buffer, fields.uy.buffer, meanOut.buffer, displayOut.buffer],
   );
   sinceFrame = 0;
 }
@@ -125,8 +138,10 @@ self.onmessage = (ev: MessageEvent<ToWorker>) => {
       checkpointTracer = solver.gPost?.slice() ?? null;
       checkpointTime = 0;
       meanC = new Float32Array(n);
+      displayC = new Float32Array(n);
       conc = null;
       meanSteps = 0;
+      displaySteps = 0;
       sinceFrame = 0;
       clock.reset();
       return;

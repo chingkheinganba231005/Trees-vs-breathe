@@ -146,7 +146,8 @@ ${common}
 @group(0) @binding(1) var<storage, read> fields: array<vec4<f32>>;
 @group(0) @binding(2) var<storage, read> solid: array<u32>;
 @group(0) @binding(4) var trail: texture_2d<f32>;
-// Running means: ux, uy, |u|, concentration (see shaders.ts).
+// Running means: ux, uy, the display mean of the concentration (z) and the exposure mean (w);
+// see shaders.ts.
 @group(0) @binding(5) var<storage, read> mean: array<vec4<f32>>;
 // Drag lambda and tracer source per node.
 @group(0) @binding(6) var<storage, read> aux: array<vec2<f32>>;
@@ -180,7 +181,7 @@ fn compose(@builtin(position) frag: vec4<f32>) -> @location(0) vec4<f32> {
   if (solid[k] != 0u) { return vec4<f32>(V.building.rgb, 1.0); }
   var c = V.background.rgb;
   if (V.fumesOn > 0.5) {
-    let f = fumes(mean[k].w * V.cScale);
+    let f = fumes(mean[k].z * V.cScale);
     c = mix(c, f.rgb, f.a);
   }
   if (V.speedOn > 0.5) {
@@ -375,7 +376,7 @@ export class GpuRenderer {
     colors: SimColors,
     width: number,
     height: number,
-    /** Converts the running-mean concentration to c+; 0 hides the fumes. */
+    /** Converts the display mean of the concentration to c+; 0 hides the fumes. */
     cScale = 0,
   ): void {
     const solver = this.solver;

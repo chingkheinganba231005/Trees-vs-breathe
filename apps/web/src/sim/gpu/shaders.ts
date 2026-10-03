@@ -17,7 +17,8 @@ struct Params {
   bottom: u32, top: u32, tau0: f32, cs: f32,
   gx: f32, gy: f32, lid: f32, emaAlpha: f32,
   spongeSigma: f32, spongeIn: f32, spongeOut: f32, spongeTop: f32,
-  tracer: u32, d0: f32, sct: f32, pad: f32,
+  tracer: u32, d0: f32, sct: f32, displayAlpha: f32,
+  restart: u32, pad0: f32, pad1: f32, pad2: f32,
 };
 
 @group(0) @binding(0) var<uniform> P: Params;
@@ -27,7 +28,9 @@ struct Params {
 @group(0) @binding(4) var<storage, read> inletU: array<f32>;
 // rho, ux, uy, tau of the state this step collided.
 @group(0) @binding(5) var<storage, read_write> fields: array<vec4<f32>>;
-// Exponential moving average of ux, uy, |u| and the tracer concentration.
+// Exponential moving averages: ux, uy; the tracer concentration for display (z, a short window,
+// never restarted, so the picture does not blank when trees move); the tracer concentration for
+// the pavement readings (w, restarted from zero when the greenery changes).
 @group(0) @binding(6) var<storage, read_write> mean: array<vec4<f32>>;
 // Per node: pressure-loss coefficient lambda (1/cell) and tracer source per step.
 @group(0) @binding(7) var<storage, read> aux: array<vec2<f32>>;
@@ -231,8 +234,13 @@ ${loads}
 
   if (P.emaAlpha > 0.0) {
     let m = mean[k];
-    let cur = vec4<f32>(ux, uy, sqrt(ux * ux + uy * uy), conc);
-    mean[k] = m + P.emaAlpha * (cur - m);
+    let mw = select(m.w, 0.0, P.restart == 1u);
+    mean[k] = vec4<f32>(
+      m.x + P.emaAlpha * (ux - m.x),
+      m.y + P.emaAlpha * (uy - m.y),
+      m.z + P.displayAlpha * (conc - m.z),
+      mw + P.emaAlpha * (conc - mw),
+    );
   }
 }
 `;

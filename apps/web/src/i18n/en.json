@@ -183,7 +183,7 @@
   "hwk.upwindY": "Height ÷ building height",
   "hwk.upwindNote": "Positive values move with the wind. Under skimming flow the top of the street moves with the wind and the floor against it.",
   "layer.fumes": "Fumes",
-  "legend.fumes": "Fumes, time-averaged (c⁺, simulated):",
+  "legend.fumes": "Fumes, averaged over the last few seconds (c⁺, simulated):",
   "green.title": "Greenery",
   "green.none": "None",
   "green.trees": "Avenue of trees",

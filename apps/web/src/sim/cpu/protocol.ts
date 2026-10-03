@@ -34,6 +34,10 @@ export type FromWorker =
       conc: Float32Array;
       /** Steps since the running mean was restarted, for its start-up correction. */
       meanSteps: number;
+      /** Short running mean of the concentration for the picture; never restarted. */
+      display: Float32Array;
+      /** Steps in the display mean since the street was built, for its start-up correction. */
+      displaySteps: number;
       /** True when this frame followed a restore from the last good state. */
       recovered: boolean;
       /** Share of the target playback speed reached over the last second. */
