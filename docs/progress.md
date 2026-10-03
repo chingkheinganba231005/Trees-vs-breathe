@@ -77,7 +77,7 @@ Goal: one D2Q9 lattice Boltzmann solver in four implementations (NumPy, JAX, Typ
 - Sound from vortex shedding filled the domain with pressure noise of order the vortex pressure itself. Absorbing layers at the inlet, outlet and top remove most of it (`results/street/sponge.json`).
 - Starting the street from rest sends a strong pressure pulse; runs start from uniform flow.
 - With C_s = 0.1 the street blew up at Re 10 000 and above; C_s = 0.17 is stable from Re 2000 to 50 000 (`results/street/stability.json`).
-- The mean vortex of a single street turned the wrong way: the top of the street moved against the wind at about u_ref, and road fumes collected on the windward wall. In 2D the vortex shed from the first block's upwind edge stays over the street. The regime check had only counted vortices, so it passed anyway; it now also checks the rotation. Inflow fluctuations of 20% at roof height did not help; one street upwind did at H/W 1, but at H/W 2 and 3 the studied street needed two, so the rule is now a clearance of 3H from the row's upwind edge (D-019, `results/street/upwind.json`).
+- The mean vortex of a single street turned the wrong way: the top of the street moved against the wind at about u_ref, and road fumes collected on the windward wall. In 2D the vortex shed from the first block's upwind edge stays over the street. The regime check had only counted vortices, so it passed anyway; it now also checks the rotation. Inflow fluctuations of 20% at roof height did not help; one street upwind did at H/W 1. At H/W 2 a run with one narrow street upwind (2.5H from the edge, superseded) still turned the wrong way, while the street on its own turned correctly, so distance alone does not decide. Every case at least 3H behind the edge turned correctly, which is now the rule (D-019, `results/street/upwind.json`). H/W 3 is only 8 cells wide at H = 24 and goes to the Colab job at H = 48; the Design slider stops at 2 until then.
 - The regime check's "street floor with the wind" measure stopped telling the regimes apart once the vortex turned the right way: corner eddies at the foot of both walls carry the floor flow with the wind over a large part of the floor at every H/W, so the measure no longer separated H/W 0.3 from H/W 1 (`results/street/regimes.json` keeps reporting it). It is replaced by measures that follow the regime definitions: the top of the street moves with the wind in skimming and deep streets, and that flow weakens as the street narrows from H/W 0.3 to 1 (Oke 1988).
 - Headless Chromium's default shell loses a WebGPU device once a canvas is configured; the full Chromium build with Vulkan on SwiftShader keeps it. Real GPUs are not affected.
 - The production CSS minifier writes `#fff` for `#ffffff`, which the canvas colour reader did not accept.
@@ -98,7 +98,7 @@ Goal: one D2Q9 lattice Boltzmann solver in four implementations (NumPy, JAX, Typ
 ### Exit
 
 - [x] GPU kernel checked headless against the Python reference
-- [ ] Benchmark and street result files green and committed; CI green
+- [x] Benchmark and street result files green and committed; CI green
 - [ ] Screenshot of the street vortex
 
 ### Still open from P1
@@ -147,7 +147,7 @@ Goal: porous trees and hedges in the street, traffic fumes as a passive tracer, 
 
 - Copying the neighbour's populations into the tracer outlet fed their non-equilibrium part back and blew up with τ near ½; the outlet now takes the equilibrium at the neighbour's previous concentration and velocity.
 - A trial CODASC run with a single street put fumes on the windward wall: the vortex turned the wrong way (see P1, D-019). Behind an upwind street the leeward wall came out close to the wind tunnel in trial runs; the committed numbers will come from the Colab job.
-- Right next to each lane the fumes field shows grid-scale ripples: a point source in a cell with very little diffusion. In the screenshots they sit within a few cells of the lanes; whether they reach the pavement zone is still to be checked. Spreading each source over a few cells would remove them.
+- Right next to each lane the fumes field shows grid-scale ripples: a point source in a cell with very little diffusion. In the screenshots they sit within a few cells of the lanes. In a trial run (scratch, not a committed result) spreading each source over three cells left the wall values practically unchanged, so the sources stay as they are.
 - In the same trials the lowest taps on wall B read several times the measured value: a corner eddy at the foot of the windward wall holds fumes from the nearest lane, and a 2D model mixes it out too slowly. To be reported with the results, not tuned away.
 
 ### Decisions

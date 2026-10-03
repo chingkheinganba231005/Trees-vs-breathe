@@ -198,14 +198,18 @@ function checkText(
   const row = rows.find((r) => r.aspect === c.aspect);
   if (!c.id || !row) return `${c.expectation}. ${t('hwk.observed')}: ${c.observed}.`;
   const locale = lang === 'en' ? 'en-GB' : 'zh-HK';
+  const signed = (v: number | undefined) =>
+    (v ?? Number.NaN).toLocaleString(locale, { maximumFractionDigits: 2, signDisplay: 'always' });
+  const turn = (r: 'clockwise' | 'anticlockwise' | null | undefined) =>
+    t(r === 'clockwise' ? 'regimes.cw' : 'regimes.acw');
+  const wide = rows.filter((r) => r.aspect <= 1).sort((a, b) => a.aspect - b.aspect);
   return t(`hwk.check.${c.id}`, {
     n: row.stacked_primary_vortices,
-    floor: row.floor_fraction_with_wind.toLocaleString(locale, { style: 'percent' }),
-    rotation: t(row.strongest_vortex_rotation === 'clockwise' ? 'regimes.cw' : 'regimes.acw'),
-    top: (row.top_flow_over_uref ?? Number.NaN).toLocaleString(locale, {
-      maximumFractionDigits: 2,
-      signDisplay: 'always',
-    }),
+    rotation: turn(row.strongest_vortex_rotation),
+    topRotation: turn(row.top_vortex_rotation),
+    top: signed(row.top_flow_over_uref),
+    aspects: wide.map((r) => r.aspect.toLocaleString(locale)).join(' → '),
+    tops: wide.map((r) => signed(r.top_flow_over_uref)).join(' → '),
   });
 }
 

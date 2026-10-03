@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 
 from treesvb.benchmarks import force_stress, smagorinsky_shear
-from treesvb.solver2d import Domain, NumpySolver, Params, build_stream_map, cases, core
+from treesvb.solver2d import Domain, NumpySolver, Params, analysis, build_stream_map, cases, core
 from treesvb.solver2d.lattice import CS2, CX, CY, MIRROR_Y, OPP, Q, W
 
 REPO = Path(__file__).resolve().parents[2]
@@ -245,3 +245,14 @@ def test_committed_results_pass_and_carry_provenance(path: Path) -> None:
         assert key in doc, key
     assert doc["passed"] is True
     assert doc["dirty"] is False, "regenerate from committed code"
+
+
+def test_vortex_detector_ignores_a_checkerboard() -> None:
+    """Two stacked counter-rotating cells plus an odd-even mode: two vortices, upper clockwise."""
+    ny, nx = 24, 12
+    y, x = np.mgrid[0:ny, 0:nx] + 0.5
+    u = (2 * np.pi / ny) * np.cos(2 * np.pi * y / ny) * np.sin(np.pi * x / nx)
+    u = u + 0.05 * ((-1.0) ** np.arange(nx))[None, :] + 0.05 * ((-1.0) ** np.arange(ny))[:, None]
+    found = sorted(analysis.canyon_vortices(u, 0 * u, 0, nx, ny, 0.1), key=lambda v: v["z"])
+    assert [v["rotation"] for v in found] == ["anticlockwise", "clockwise"]
+    assert abs(found[0]["z"] - 0.25) < 0.05 and abs(found[1]["z"] - 0.75) < 0.05

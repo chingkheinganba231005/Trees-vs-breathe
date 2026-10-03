@@ -79,6 +79,7 @@ export interface RegimeRow {
   stacked_primary_vortices: number;
   floor_fraction_with_wind: number;
   strongest_vortex_rotation?: 'clockwise' | 'anticlockwise' | null;
+  top_vortex_rotation?: 'clockwise' | 'anticlockwise' | null;
   top_flow_over_uref?: number;
   vortices: { x: number; z: number; psi: number; rotation: 'clockwise' | 'anticlockwise' }[];
   psi: { rows: number; cols: number; values: number[] };

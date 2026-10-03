@@ -164,8 +164,7 @@ def _regime_row(aspect: float, height: int, spin_up: int, average: int) -> dict:
     # The vortex nearest the roofs is the one the wind above drives.
     topmost = max(vortices, key=lambda v: v["z"]) if vortices else None
     # Averaged stream function inside the street, normalised by its peak, for the evidence chart.
-    u = mean_u[: g.height, x0:x1]
-    psi = np.cumsum(u, axis=0) - 0.5 * u
+    psi = analysis.street_psi(mean_u, x0, x1, g.height)
     psi = psi / np.abs(psi).max()
     return {
         "aspect": aspect,
@@ -182,7 +181,8 @@ def _regime_row(aspect: float, height: int, spin_up: int, average: int) -> dict:
         "psi": {
             "rows": int(psi.shape[0]),
             "cols": int(psi.shape[1]),
-            "note": "row 0 is the street floor; positive is anticlockwise",
+            "note": "row 0 is the street floor; positive is anticlockwise; from the mean "
+            "velocity filtered against the grid-scale mode (analysis.smooth)",
             "values": [round(float(v), 3) for v in psi.reshape(-1)],
         },
     }
