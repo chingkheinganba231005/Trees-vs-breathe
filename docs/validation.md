@@ -466,14 +466,52 @@ _Source: `results/trees/reynolds_h48.json`, generated 2026-10-03T12:14:39Z by `p
 
 What these results show, and what they do not: `docs/codasc.md`, section "Results of the first comparison".
 
+## 4. Sun and heat
+
+### Solar position against pvlib
+
+Verdict: meets the target.
+
+Method: NOAA solar position (Meeus) in apps/web/src/sun/position.ts against Solar position from pvlib.solarposition.get_solarposition, method nrel_numpy (NREL SPA, Reda and Andreas 2004), default pressure and temperature; 2283 instants at Hong Kong Observatory, Equator, London, Sydney, Helsinki, every hour on the 21st of each month of 2000, 2026 and 2050, sun above -2 degrees; azimuth compared below 89 degrees elevation and apparent elevation above 2 degrees.
+
+2283 instants. Largest differences: elevation 0.0143°, apparent elevation 0.0133°, azimuth 0.0767° (target below 0.1°).
+
+_Source: `results/sun/position.json`, generated 2026-10-03T09:43:55Z by `npx vitest run tests/web/sun.test.ts (RECORD_RESULTS=1)` at commit `0edc8fd`._
+
+### UTCI against pythermalcomfort
+
+Verdict: meets the target.
+
+Method: Operational polynomial of Broede et al. (2012) in apps/web/src/sun/utci.ts against pythermalcomfort.models.utci with limit_inputs=False, round_output=False, 3630 inputs: air temperature -50 to 50 C, mean radiant temperature 30 K below to 70 K above it, wind at 10 m 0.5 to 17 m/s, humidity 5 to 100%.
+
+3630 inputs. Largest difference 5.0e-07 °C (target below 0.1 °C); stress category the same in 3630 of 3630.
+
+_Source: `results/sun/utci.json`, generated 2026-10-03T09:43:55Z by `npx vitest run tests/web/utci.test.ts (RECORD_RESULTS=1)` at commit `0edc8fd`._
+
+## 5. The AI
+
+### Training data
+
+Verdict: not yet computed.
+
+Not yet computed.
+
+### Surrogate accuracy against the BRIEF.md 7.3 targets
+
+Verdict: not yet computed.
+
+Not yet computed.
+
 ## Still to come
 
-2D against 3D (phase 4), sun and heat (phase 3), and the AI's accuracy (phase 4).
+2D against 3D (phase 4).
 
 ## What the model leaves out
 
+The same list as the app's How we know screen (`apps/web/src/content/leftOut.ts`).
+
 - 3D effects such as junctions, short streets and wind along the street
-- NO-NO2-O3 chemistry (the fumes are a passive tracer)
+- NO–NO₂–O₃ chemistry (the fumes are a passive tracer)
 - Pollution caught by leaves (deposition)
 - Cooling by evaporation from leaves
 - Crowns that move in the wind (each crown is a fixed porous block)
@@ -481,3 +519,9 @@ What these results show, and what they do not: `docs/codasc.md`, section "Result
 - Turbulence from moving traffic
 - Real-scale Reynolds numbers
 - Traffic changing over the day
+- Wind in the street is turned into the 10 m wind UTCI expects with an open-country profile, which can misstate UTCI by up to 7 °C in streets (Lee, Park and Mayer 2025)
+- Heat stored in walls and paving: surfaces warm and cool at once with the sun
+- Clouds and haze in the heat radiated by the sky
+- Shade from crowns for light from the rest of the sky, and the crowns' own heat
+- Wind speed in the fumes: the model runs one Reynolds number whatever the wind, and with dense crowns the fumes on the pavements still change with it (How we know)
+- Escape of fumes along the street: in a 2D section a street closed off by dense crowns fills with fumes very slowly, so its readings can still be rising when a run ends
