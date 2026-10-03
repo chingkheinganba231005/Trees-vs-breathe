@@ -12,6 +12,7 @@ export default tseslint.config(
       'test-results/**',
       'playwright-report/**',
       '.venv/**',
+      '.venv-ref/**',
       'python/**',
       'colab/**',
     ],

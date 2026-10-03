@@ -8,6 +8,7 @@ data
 python
 colab
 .venv
+.venv-ref
 *.ipynb
 BRIEF.md
 docs/validation.md

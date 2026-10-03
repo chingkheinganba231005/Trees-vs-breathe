@@ -3,6 +3,7 @@ dist/
 test-results/
 playwright-report/
 .venv/
+.venv-ref/
 __pycache__/
 *.egg-info/
 .pytest_cache/
