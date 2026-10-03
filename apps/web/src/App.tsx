@@ -3,11 +3,13 @@ import { AppShell } from './components/AppShell';
 import { useRoute } from './lib/router';
 import { browserHasWebGPU, parseEngineParam, resolveEngine } from './sim/engine';
 import type { EngineChoice } from './sim/engine';
+import { Compare } from './screens/Compare';
 import { Design } from './screens/Design';
+import { HongKong } from './screens/HongKong';
 import { HowWeKnow } from './screens/HowWeKnow';
 import { NotFound } from './screens/NotFound';
-import { Placeholder } from './screens/Placeholder';
 import { Present } from './screens/Present';
+import { Report } from './screens/Report';
 import { Start } from './screens/Start';
 import { Street } from './screens/Street';
 import { TradeOff } from './screens/TradeOff';
@@ -23,13 +25,13 @@ function screenFor(route: string, engine: EngineChoice) {
     case '/trade-off':
       return <TradeOff />;
     case '/compare':
-      return <Placeholder title="compare.title" intro="compare.intro" phase={5} />;
+      return <Compare />;
     case '/how-we-know':
       return <HowWeKnow />;
     case '/hong-kong':
-      return <Placeholder title="hongKong.title" intro="hongKong.intro" phase={5} />;
+      return <HongKong />;
     case '/report':
-      return <Placeholder title="report.title" intro="report.intro" phase={5} />;
+      return <Report />;
     default:
       return <NotFound />;
   }

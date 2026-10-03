@@ -1,8 +1,9 @@
+import { useMemo, useState } from 'react';
 import { Screen } from '../components/Screen';
 import { StreetSection } from '../components/StreetSection';
 import { SimulatedTag } from '../components/SimulatedTag';
 import type { StreetPreset } from '../content/presets';
-import { localTree, streetEnds, streetPresets } from '../content/presets';
+import { customStreetHref, localTree, streetEnds, streetPresets } from '../content/presets';
 import { result } from '../content/results';
 import type { Provenance } from '../content/results';
 import { useI18n } from '../i18n/context';
@@ -99,6 +100,110 @@ function PresetCard({ preset }: { preset: StreetPreset }) {
   );
 }
 
+function CustomStreetForm() {
+  const { t } = useI18n();
+  const [heightM, setHeightM] = useState(30);
+  const [widthM, setWidthM] = useState(20);
+  const [pavementLeftM, setPavementLeftM] = useState(2);
+  const [pavementRightM, setPavementRightM] = useState(2);
+  const [bearingDeg, setBearingDeg] = useState(0);
+
+  const href = useMemo(
+    () =>
+      customStreetHref({
+        heightM,
+        widthM,
+        pavementLeftM,
+        pavementRightM,
+        bearingDeg,
+      }),
+    [bearingDeg, heightM, pavementLeftM, pavementRightM, widthM],
+  );
+
+  return (
+    <section className="mt-8 rounded-lg border border-line bg-surface p-4">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-bold">{t('street.customTitle')}</h2>
+          <p className="text-sm text-ink-muted">{t('street.customText')}</p>
+        </div>
+        <SimulatedTag kind="assumption" />
+      </div>
+      <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        <label className="text-sm">
+          <span className="mb-1 block text-ink-muted">{t('street.customHeight')}</span>
+          <input
+            type="number"
+            min={6}
+            step={1}
+            value={heightM}
+            onChange={(e) => setHeightM(Number(e.target.value) || 0)}
+            className="w-full rounded-md border border-line bg-transparent px-3 py-2"
+          />
+        </label>
+        <label className="text-sm">
+          <span className="mb-1 block text-ink-muted">{t('street.customWidth')}</span>
+          <input
+            type="number"
+            min={6}
+            step={1}
+            value={widthM}
+            onChange={(e) => setWidthM(Number(e.target.value) || 0)}
+            className="w-full rounded-md border border-line bg-transparent px-3 py-2"
+          />
+        </label>
+        <label className="text-sm">
+          <span className="mb-1 block text-ink-muted">{t('street.customPavementLeft')}</span>
+          <input
+            type="number"
+            min={0}
+            step={0.5}
+            value={pavementLeftM}
+            onChange={(e) => setPavementLeftM(Number(e.target.value) || 0)}
+            className="w-full rounded-md border border-line bg-transparent px-3 py-2"
+          />
+        </label>
+        <label className="text-sm">
+          <span className="mb-1 block text-ink-muted">{t('street.customPavementRight')}</span>
+          <input
+            type="number"
+            min={0}
+            step={0.5}
+            value={pavementRightM}
+            onChange={(e) => setPavementRightM(Number(e.target.value) || 0)}
+            className="w-full rounded-md border border-line bg-transparent px-3 py-2"
+          />
+        </label>
+        <label className="text-sm">
+          <span className="mb-1 block text-ink-muted">{t('street.customBearing')}</span>
+          <input
+            type="number"
+            min={0}
+            max={360}
+            step={1}
+            value={bearingDeg}
+            onChange={(e) => setBearingDeg(Number(e.target.value) || 0)}
+            className="w-full rounded-md border border-line bg-transparent px-3 py-2"
+          />
+        </label>
+      </div>
+      <div className="mt-4 flex items-center justify-between gap-4">
+        <p className="text-sm text-ink-muted">
+          {t('street.customAspect', {
+            value: (heightM / widthM).toFixed(1),
+          })}
+        </p>
+        <a
+          href={href}
+          className="inline-flex min-h-11 items-center justify-center rounded-lg bg-accent px-4 font-bold text-accent-ink hover:opacity-90"
+        >
+          {t('street.open')}
+        </a>
+      </div>
+    </section>
+  );
+}
+
 /** The measured Hong Kong street presets. Custom streets and phone mode come later in phase 3. */
 export function Street() {
   const { t, lang } = useI18n();
@@ -121,6 +226,7 @@ export function Street() {
         ))}
       </div>
       <p className="mt-4 text-sm text-ink-muted">{t('street.source', { date })}</p>
+      <CustomStreetForm />
       <p className="mt-6 rounded-md border border-dashed border-line px-3 py-2 text-sm text-ink-muted">
         {t('street.later')}
       </p>

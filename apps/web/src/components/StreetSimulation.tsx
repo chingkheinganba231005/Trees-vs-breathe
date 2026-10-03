@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useI18n } from '../i18n/context';
 import type { Layers } from '../sim/cpu/canvasRenderer';
 import type { EngineChoice } from '../sim/engine';
 import type { GreenElement } from '../sim/greenery';
@@ -28,6 +29,7 @@ export function StreetSimulation({
   onDrag,
   label,
 }: Props) {
+  const { t } = useI18n();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const simRef = useRef<StreetSim | null>(null);
   const statsRef = useRef(onStats);
@@ -124,34 +126,77 @@ export function StreetSimulation({
     );
   }
   return (
-    <canvas
-      // A canvas that once had a WebGPU context cannot give a 2D one; a new key means a new canvas.
-      key={fallback ?? engine}
-      ref={canvasRef}
-      role="img"
-      aria-label={label}
-      className={`block w-full rounded-lg border border-line bg-surface ${
-        onDrag && greenery.length > 0 ? 'cursor-ew-resize touch-pan-y' : ''
-      }`}
-      style={{ aspectRatio: `${view.width} / ${view.height}` }}
-      onPointerDown={(e) => {
-        if (!onDrag || greenery.length === 0) return;
-        dragFrom.current = e.clientX;
-        e.currentTarget.setPointerCapture(e.pointerId);
-      }}
-      onPointerMove={(e) => {
-        if (dragFrom.current === null || !onDrag) return;
-        const dx = toH(e.clientX - dragFrom.current, e.currentTarget);
-        if (Math.abs(dx) < 0.01) return;
-        dragFrom.current = e.clientX;
-        onDrag(dx);
-      }}
-      onPointerUp={() => {
-        dragFrom.current = null;
-      }}
-      onPointerCancel={() => {
-        dragFrom.current = null;
-      }}
-    />
+    <div className="relative w-full overflow-hidden rounded-lg border border-line bg-surface">
+      <canvas
+        // A canvas that once had a WebGPU context cannot give a 2D one; a new key means a new canvas.
+        key={fallback ?? engine}
+        ref={canvasRef}
+        role="img"
+        aria-label={label}
+        className={`block w-full bg-surface ${
+          onDrag && greenery.length > 0 ? 'cursor-ew-resize touch-pan-y' : ''
+        }`}
+        style={{ aspectRatio: `${view.width} / ${view.height}` }}
+        onPointerDown={(e) => {
+          if (!onDrag || greenery.length === 0) return;
+          dragFrom.current = e.clientX;
+          e.currentTarget.setPointerCapture(e.pointerId);
+        }}
+        onPointerMove={(e) => {
+          if (dragFrom.current === null || !onDrag) return;
+          const dx = toH(e.clientX - dragFrom.current, e.currentTarget);
+          if (Math.abs(dx) < 0.01) return;
+          dragFrom.current = e.clientX;
+          onDrag(dx);
+        }}
+        onPointerUp={() => {
+          dragFrom.current = null;
+        }}
+        onPointerCancel={() => {
+          dragFrom.current = null;
+        }}
+      />
+      <div className="pointer-events-none absolute inset-0">
+        {greenery.length > 0 && (
+          <div
+            className="absolute rounded-md border border-accent/60 bg-accent/10"
+            style={{
+              left: '20%',
+              right: '20%',
+              top: '18%',
+              height: '28%',
+            }}
+          />
+        )}
+        <div
+          className="absolute rounded-sm border border-[var(--ink)]/50"
+          style={{
+            left: '10%',
+            top: '62%',
+            width: '18%',
+            height: '14%',
+            background: 'linear-gradient(90deg,rgba(255,179,0,0.65),rgba(255,100,80,0.7),rgba(255,64,64,0.85))',
+          }}
+        />
+        <div
+          className="absolute rounded-sm border border-[var(--ink)]/50"
+          style={{
+            right: '10%',
+            top: '62%',
+            width: '18%',
+            height: '14%',
+            background: 'linear-gradient(90deg,rgba(255,179,0,0.65),rgba(255,100,80,0.7),rgba(255,64,64,0.85))',
+          }}
+        />
+        {greenery.length > 0 && (
+          <div className="absolute left-2 top-2 rounded-full border border-accent bg-surface/90 px-2 py-0.5 text-[0.6rem] uppercase tracking-wide text-ink-muted">
+            {t('design.canvasShadeBand')}
+          </div>
+        )}
+        <div className="absolute right-2 top-2 rounded-full border border-line bg-surface/90 px-2 py-0.5 text-[0.6rem] uppercase tracking-wide text-ink-muted">
+          {t('design.canvasUtciStrip')}
+        </div>
+      </div>
+    </div>
   );
 }

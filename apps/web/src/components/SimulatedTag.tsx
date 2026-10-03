@@ -4,11 +4,17 @@ import { useI18n } from '../i18n/context';
  * Attached to every number that comes from a model rather than a measurement; with
  * kind="measured" it marks numbers measured from data instead, so the two are never confused.
  */
-export function SimulatedTag({ kind = 'simulated' }: { kind?: 'simulated' | 'measured' }) {
+export function SimulatedTag({ kind = 'simulated' }: { kind?: 'simulated' | 'measured' | 'assumption' }) {
   const { t } = useI18n();
+  const label =
+    kind === 'simulated'
+      ? 'tag.simulated'
+      : kind === 'measured'
+        ? 'tag.measured'
+        : 'tag.assumption';
   return (
     <span className="inline-flex items-center rounded-full border border-line px-2 py-0.5 align-middle font-mono text-[0.7rem] tracking-wide text-ink-muted uppercase">
-      {t(kind === 'simulated' ? 'tag.simulated' : 'tag.measured')}
+      {t(label)}
     </span>
   );
 }
