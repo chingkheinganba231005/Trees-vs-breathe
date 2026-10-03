@@ -221,7 +221,7 @@ Goal: the time of day moves the sun, shade falls from the roofs and the crowns, 
 
 - [x] Design: per-pavement Heat (UTCI °C and category, sun or shade, radiant temperature, 10 m wind) next to the Fumes readouts, with the shade the greenery gives against the bare street; the street drawn to scale with the ground in sun and the sun's direction
 - [ ] Shade band and UTCI strip on the live canvas; a wind-speed control (the wind now comes from the weather preset)
-- [ ] Tree rows along the kerbs for real streets: CODASC's central row puts Nathan Road's local trees over the carriageway, so their shade misses the pavements unless moved
+- [x] Tree rows along the kerbs (A-024), the default on measured streets: CODASC's central row had put Nathan Road's local trees over the carriageway, where their shade missed the pavements
 - [x] Trees sized in metres on the real streets: a typical local roadside tree (A-014, A-015), the default for presets; the wind-tunnel avenue stays as an option
 - [ ] Lanes and the breathing zone sized in metres on the real streets in the live app (the Wing Lok run already uses them: A-012, A-016)
 - [ ] Wing Lok Street at its measured shape, recorded on Colab and shown beside the live view (D-030)
