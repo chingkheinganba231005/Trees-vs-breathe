@@ -14,6 +14,9 @@ dependencies = ["numpy==2.4.6"]
 [project.optional-dependencies]
 test = ["pytest==9.1.1", "ruff==0.16.10"]
 jax = ["jax==0.10.2"]
+# CPU builds for CI and local runs come from https://download.pytorch.org/whl/cpu; Colab
+# installs the same version from PyPI with CUDA.
+train = ["torch==2.14.1", "onnx==1.23.1", "onnxruntime==1.30.0"]
 notebooks = [
   "ipykernel==7.4.0",
   "jupytext==1.19.5",

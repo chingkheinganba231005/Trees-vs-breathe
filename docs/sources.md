@@ -95,17 +95,20 @@ Licences checked against the npm registry and PyPI metadata on 2026-10-02. All a
 
 ### Python
 
-| Package     | Version | Licence                                                    |
-| ----------- | ------- | ---------------------------------------------------------- |
-| numpy       | 2.4.6   | BSD-3-Clause (with bundled 0BSD, MIT, Zlib, CC0-1.0 parts) |
-| pytest      | 9.1.1   | MIT                                                        |
-| ruff        | 0.16.10 | MIT                                                        |
-| jupytext    | 1.19.5  | MIT                                                        |
-| nbclient    | 0.11.0  | BSD-3-Clause                                               |
-| nbformat    | 5.11.1  | BSD-3-Clause                                               |
-| ipykernel   | 7.4.0   | BSD-3-Clause                                               |
-| hatchling   | 1.32.4  | MIT                                                        |
-| jax, jaxlib | 0.10.2  | Apache-2.0                                                 |
+| Package     | Version | Licence                                                                                                                                           |
+| ----------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| numpy       | 2.4.6   | BSD-3-Clause (with bundled 0BSD, MIT, Zlib, CC0-1.0 parts)                                                                                        |
+| pytest      | 9.1.1   | MIT                                                                                                                                               |
+| ruff        | 0.16.10 | MIT                                                                                                                                               |
+| jupytext    | 1.19.5  | MIT                                                                                                                                               |
+| nbclient    | 0.11.0  | BSD-3-Clause                                                                                                                                      |
+| nbformat    | 5.11.1  | BSD-3-Clause                                                                                                                                      |
+| ipykernel   | 7.4.0   | BSD-3-Clause                                                                                                                                      |
+| hatchling   | 1.32.4  | MIT                                                                                                                                               |
+| jax, jaxlib | 0.10.2  | Apache-2.0                                                                                                                                        |
+| torch       | 2.14.1  | Apache-2.0 AND Apache-2.0 WITH LLVM-exception AND BSD-2-Clause AND BSD-3-Clause AND BSL-1.0 AND MIT (PyPI licence expression, checked 2026-10-03) |
+| onnx        | 1.23.1  | Apache-2.0 (checked 2026-10-03)                                                                                                                   |
+| onnxruntime | 1.30.0  | MIT (checked 2026-10-03)                                                                                                                          |
 
 Reference tools, run in a separate environment (`.venv-ref`) only to write the test references in `tests/reference/` (`scripts/reference_*.py`); not dependencies of the package. pythermalcomfort's UTCI polynomial is also ported into `apps/web/src/sun/utciPolynomial.ts` with its MIT notice.
 
