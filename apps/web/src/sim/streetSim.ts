@@ -26,8 +26,9 @@ import type { SimColors, ViewWindow } from './view';
 import { streetView } from './view';
 
 /**
- * Live settings. Chosen from the stability sweep in results/street/stability.json: BGK with the
- * Smagorinsky model stays stable at this Reynolds number with Cs = 0.17 but not with Cs = 0.1.
+ * Live settings. Chosen from the stability sweep in results/street/stability.json: with
+ * Cs = 0.17 the street stays stable at every Reynolds number tried (2000 to 50 000); with
+ * Cs = 0.1 it does not (it fails at Re 5000 and 10 000).
  */
 export const LIVE_FLOW: FlowSettings = { uRef: 0.05, reynolds: 20000, smagorinsky: 0.17 };
 /**
