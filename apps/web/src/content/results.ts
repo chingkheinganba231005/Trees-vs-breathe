@@ -127,3 +127,51 @@ export interface StabilityResult extends Provenance {
 export interface CalibrationResult extends Provenance {
   schmidt: number | null;
 }
+
+export interface PorousResult extends Provenance {
+  rows: {
+    lambda_times_depth: number;
+    inflow_speed: number;
+    momentum_balance: number;
+    lambda_ratio: number;
+  }[];
+  error_ratio_halving_u: number | null;
+}
+
+export interface TracerConservationResult extends Provenance {
+  rel_error: number;
+}
+
+export interface TracerPulseResult extends Provenance {
+  rows: { diffusivity: number; velocity: [number, number]; steps: number; rel_l2: number }[];
+}
+
+export interface Metrics {
+  n: number;
+  fb: number;
+  nmse: number;
+  fac2: number;
+}
+
+export interface CodascResult extends Provenance {
+  threshold: { fb_abs_below: number; nmse_below: number; fac2_above: number };
+  schmidt: number;
+  rows: {
+    case: string;
+    aspect_w_over_h: number;
+    stand_density: number;
+    lambda_per_m: number;
+    healthy: boolean;
+    metrics?: Metrics;
+  }[];
+  overall: Metrics | null;
+}
+
+export interface DirectionsResult extends Provenance {
+  rows: {
+    case: 'trees' | 'hedge';
+    expected_leeward: 'up' | 'down';
+    ratio?: { A: number; B: number };
+    passed: boolean;
+  }[];
+}

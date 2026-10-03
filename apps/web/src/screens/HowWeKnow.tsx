@@ -15,6 +15,11 @@ import type {
   ShearResult,
   SpongeResult,
   UpwindResult,
+  PorousResult,
+  TracerConservationResult,
+  TracerPulseResult,
+  CodascResult,
+  DirectionsResult,
   StabilityResult,
 } from '../content/results';
 import { useI18n } from '../i18n/context';
@@ -382,6 +387,132 @@ function StreetCards() {
   );
 }
 
+function GreenCards() {
+  const { t, lang } = useI18n();
+  const locale = lang === 'en' ? 'en-GB' : 'zh-HK';
+  const porous = result<PorousResult>('benchmarks/porous_lambda.json');
+  const cons = result<TracerConservationResult>('benchmarks/tracer_conservation.json');
+  const pulse = result<TracerPulseResult>('benchmarks/tracer_pulse.json');
+  const codasc = result<CodascResult>('trees/codasc.json');
+  const directions = result<DirectionsResult>('trees/directions.json');
+  const fmt = (v: number, d = 2) => v.toLocaleString(locale, { maximumFractionDigits: d });
+  const dense = porous?.rows.find((r) => r.lambda_times_depth === 12 && r.inflow_speed === 0.05);
+  return (
+    <div className="mt-4 grid gap-4">
+      <EvidenceCard title={t('hwk.porousTitle')} question={t('hwk.porousQuestion')} result={porous}>
+        {porous && (
+          <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-3">
+            <StatTile
+              label={t('hwk.porousBalance')}
+              value={pct(Math.max(...porous.rows.map((r) => Math.abs(r.momentum_balance - 1))))}
+            />
+            {dense && (
+              <StatTile label={t('hwk.porousLambda')} value={`${fmt(dense.lambda_ratio, 3)}`} />
+            )}
+            {porous.error_ratio_halving_u !== null && (
+              <StatTile
+                label={t('hwk.porousScaling')}
+                value={`${fmt(porous.error_ratio_halving_u, 1)}×`}
+              />
+            )}
+          </div>
+        )}
+      </EvidenceCard>
+      <EvidenceCard title={t('hwk.tracerTitle')} question={t('hwk.tracerQuestion')} result={pulse}>
+        {cons && pulse && (
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <StatTile label={t('hwk.tracerMass')} value={sci(cons.rel_error)} />
+            <StatTile
+              label={t('hwk.tracerPulse')}
+              value={pct(Math.max(...pulse.rows.map((r) => r.rel_l2)), 1)}
+            />
+          </div>
+        )}
+      </EvidenceCard>
+      <EvidenceCard title={t('hwk.codascTitle')} question={t('hwk.codascQuestion')} result={codasc}>
+        {codasc && (
+          <>
+            <table className="mt-3 w-full text-left text-sm">
+              <thead>
+                <tr className="text-ink-muted">
+                  <th className="py-1 pr-2 font-normal">{t('hwk.codascCase')}</th>
+                  <th className="py-1 pr-2 font-normal">FB</th>
+                  <th className="py-1 pr-2 font-normal">NMSE</th>
+                  <th className="py-1 font-normal">FAC2</th>
+                </tr>
+              </thead>
+              <tbody className="font-mono tabular-nums">
+                {codasc.rows.map((r) => (
+                  <tr key={r.case} className="border-t border-line">
+                    <td className="py-1.5 pr-2 font-sans">
+                      {t('hwk.codascRow', {
+                        w: r.aspect_w_over_h,
+                        trees:
+                          r.lambda_per_m === 0
+                            ? t('hwk.codascNoTrees')
+                            : t('hwk.codascTrees', {
+                                lambda: r.lambda_per_m,
+                                rho: r.stand_density,
+                              }),
+                      })}
+                    </td>
+                    <td className="pr-2">{r.metrics ? fmt(r.metrics.fb) : '—'}</td>
+                    <td className="pr-2">{r.metrics ? fmt(r.metrics.nmse) : '—'}</td>
+                    <td>{r.metrics ? fmt(r.metrics.fac2) : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {codasc.overall && (
+              <p className="mt-3 text-sm">
+                {t('hwk.codascOverall', {
+                  fb: fmt(codasc.overall.fb),
+                  nmse: fmt(codasc.overall.nmse),
+                  fac2: fmt(codasc.overall.fac2),
+                  fbMax: codasc.threshold.fb_abs_below,
+                  nmseMax: codasc.threshold.nmse_below,
+                  fac2Min: codasc.threshold.fac2_above,
+                })}
+              </p>
+            )}
+          </>
+        )}
+      </EvidenceCard>
+      <EvidenceCard
+        title={t('hwk.directionsTitle')}
+        question={t('hwk.directionsQuestion')}
+        result={directions}
+      >
+        {directions && (
+          <ul className="mt-3 space-y-2 text-sm">
+            {directions.rows.map((r) => (
+              <li key={r.case} className="border-t border-line pt-2">
+                <span className="font-bold">
+                  {t(r.case === 'trees' ? 'hwk.directionsTrees' : 'hwk.directionsHedge')}:{' '}
+                  {t(r.passed ? 'evidence.passed' : 'evidence.failed')}.
+                </span>{' '}
+                {r.ratio &&
+                  t('hwk.directionsRatio', {
+                    a: (r.ratio.A - 1).toLocaleString(locale, {
+                      style: 'percent',
+                      maximumFractionDigits: 0,
+                      signDisplay: 'always',
+                    }),
+                    b: (r.ratio.B - 1).toLocaleString(locale, {
+                      style: 'percent',
+                      maximumFractionDigits: 0,
+                      signDisplay: 'always',
+                    }),
+                  })}
+              </li>
+            ))}
+          </ul>
+        )}
+      </EvidenceCard>
+    </div>
+  );
+}
+
 export function HowWeKnow() {
   const { t } = useI18n();
   return (
@@ -395,6 +526,11 @@ export function HowWeKnow() {
         <h2 className="text-xl font-bold">{t('hwk.streetHeading')}</h2>
         <p className="mt-1 text-ink-muted">{t('hwk.streetIntro')}</p>
         <StreetCards />
+      </section>
+      <section className="mt-12">
+        <h2 className="text-xl font-bold">{t('hwk.greenHeading')}</h2>
+        <p className="mt-1 text-ink-muted">{t('hwk.greenIntro')}</p>
+        <GreenCards />
       </section>
       <section className="mt-12">
         <h2 className="text-xl font-bold">{t('howWeKnow.leftOutTitle')}</h2>

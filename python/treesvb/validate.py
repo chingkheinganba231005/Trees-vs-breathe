@@ -140,6 +140,43 @@ def render() -> str:
         ]
     lines += _section("NumPy against JAX", r, body)
 
+    r = load("benchmarks/porous_lambda.json")
+    body = []
+    if r:
+        body = [
+            "| λ d | Inflow speed | Momentum balance | λ measured ÷ λ set |",
+            "| --- | --- | --- | --- |",
+            *[
+                f"| {x['lambda_times_depth']} | {x['inflow_speed']} | "
+                f"{x['momentum_balance']:.5f} | {x['lambda_ratio']:.4f} |"
+                for x in r["rows"]
+            ],
+            "",
+            "The momentum balance checks that the drag is applied as specified. λ by CODASC's "
+            "definition also carries the lattice's compressibility error, which shrinks "
+            f"{r['error_ratio_halving_u']:.1f} times when the inflow speed halves (expected about "
+            "4, as the square of the speed).",
+        ]
+    lines += _section("Porous block: drag and pressure-loss coefficient", r, body)
+
+    r = load("benchmarks/tracer_conservation.json")
+    body = [f"Relative difference: {_sci(r['rel_error'])}."] if r else []
+    lines += _section("Tracer conservation with sources and walls", r, body)
+
+    r = load("benchmarks/tracer_pulse.json")
+    body = []
+    if r:
+        body = [
+            "| Diffusivity | Velocity | Steps | Relative L2 error |",
+            "| --- | --- | --- | --- |",
+            *[
+                f"| {x['diffusivity']} | ({x['velocity'][0]}, {x['velocity'][1]}) | "
+                f"{x['steps']} | {_pct(x['rel_l2'])} |"
+                for x in r["rows"]
+            ],
+        ]
+    lines += _section("Tracer pulse against the exact solution", r, body)
+
     r = load("benchmarks/browser_agreement.json")
     body = []
     if r:
@@ -162,10 +199,13 @@ def render() -> str:
     body = []
     if r:
         body = [
-            "| H/W | Stacked vortex cells | Street floor with the wind |",
-            "| --- | --- | --- |",
+            "| H/W | Stacked vortex cells | Strongest vortex | Top of the street ÷ u_ref | "
+            "Street floor with the wind |",
+            "| --- | --- | --- | --- | --- |",
             *[
                 f"| {x['aspect']} | {x['stacked_primary_vortices']} | "
+                f"{x.get('strongest_vortex_rotation') or 'none'} | "
+                f"{x.get('top_flow_over_uref', float('nan')):+.2f} | "
                 f"{_pct(x['floor_fraction_with_wind'], 0)} |"
                 for x in r["rows"]
             ],
@@ -177,6 +217,24 @@ def render() -> str:
             ],
         ]
     lines += _section("Vortex structure against street aspect ratio", r, body)
+
+    r = load("street/upwind.json")
+    body = []
+    if r:
+        body = [
+            "| Streets in the row | Strongest vortex | Top of the street ÷ u_ref |",
+            "| --- | --- | --- |",
+            *[
+                f"| {x['streets_in_row']} | {x['strongest_vortex_rotation']} | "
+                f"{x['top_flow_over_uref']:+.2f} |"
+                for x in r["rows"]
+            ],
+            "",
+            "With a single street, the vortex shed from the first block's upwind edge stays over "
+            "the street and turns its mean vortex the wrong way; the studied street therefore "
+            "sits behind one upwind street (docs/solver.md).",
+        ]
+    lines += _section("A street upwind of the studied street", r, body)
 
     r = load("street/sponge.json")
     body = []
@@ -207,12 +265,89 @@ def render() -> str:
         ]
     lines += _section("Stability of the street solver", r, body)
 
+    lines += ["## 3. Trees, hedges and fumes", ""]
+    r = load("trees/calibration.json")
+    body = []
+    if r:
+        body = [
+            "| Sc_t | FB | NMSE | FAC2 |",
+            "| --- | --- | --- | --- |",
+            *[
+                f"| {x['schmidt']} | {x['fb']:+.2f} | {x['nmse']:.2f} | {x['fac2']:.2f} |"
+                if x.get("healthy")
+                else f"| {x['schmidt']} | unstable | | |"
+                for x in r["rows"]
+            ],
+            "",
+            f"Kept: Sc_t = {r['schmidt']}, the only calibrated parameter.",
+        ]
+    lines += _section("Turbulent Schmidt number, calibrated on one case", r, body)
+
+    r = load("trees/codasc.json")
+    body = []
+    if r:
+        crit = r["threshold"]
+        body = [
+            f"Urban criteria (Hanna and Chang 2012): |FB| < {crit['fb_abs_below']}, "
+            f"NMSE < {crit['nmse_below']}, FAC2 > {crit['fac2_above']}.",
+            "",
+            "| Case | W/H | Stand density | λ (1/m) | FB | NMSE | FAC2 |",
+            "| --- | --- | --- | --- | --- | --- | --- |",
+            *[
+                f"| {x['case']} | {x['aspect_w_over_h']} | {x['stand_density']} | "
+                f"{x['lambda_per_m']} | "
+                + (
+                    f"{x['metrics']['fb']:+.2f} | {x['metrics']['nmse']:.2f} | "
+                    f"{x['metrics']['fac2']:.2f} |"
+                    if "metrics" in x
+                    else "unstable | | |"
+                )
+                for x in r["rows"]
+            ],
+        ]
+        if r.get("overall"):
+            o = r["overall"]
+            body += [
+                "",
+                f"All cases together ({o['n']} points): FB {o['fb']:+.2f}, NMSE {o['nmse']:.2f}, "
+                f"FAC2 {o['fac2']:.2f}.",
+            ]
+    lines += _section("Concentrations against the CODASC wind tunnel", r, body)
+
+    r = load("trees/directions.json")
+    body = []
+    if r:
+        body = [
+            "| Case | Expected on the leeward pavement | Leeward ratio | Windward ratio |",
+            "| --- | --- | --- | --- |",
+            *[
+                f"| {x['case']} | {x['expected_leeward']} | {x['ratio']['A']:.2f} | "
+                f"{x['ratio']['B']:.2f} |"
+                for x in r["rows"]
+                if "ratio" in x
+            ],
+        ]
+    lines += _section("Direction of the effect: trees and a hedge", r, body)
+
+    r = load("trees/reynolds.json")
+    body = []
+    if r:
+        body = [
+            "| Case | Change, leeward | Change, windward |",
+            "| --- | --- | --- |",
+            *[
+                f"| {x['case']} | {_pct(x['relative_change']['A'], 1)} | "
+                f"{_pct(x['relative_change']['B'], 1)} |"
+                for x in r["rows"]
+                if "relative_change" in x
+            ],
+        ]
+    lines += _section("Reynolds-number sensitivity of pavement exposure", r, body)
+
     lines += [
         "## Still to come",
         "",
-        "Reynolds sensitivity and the CODASC wind-tunnel comparison (phase 2), direction checks "
-        "for trees and hedges (phase 2), 2D against 3D (phase 4), sun and heat (phase 3), and "
-        "the AI's accuracy (phase 4).",
+        "2D against 3D (phase 4), sun and heat (phase 3), and the AI's accuracy (phase 4).",
         "",
         "## What the model leaves out",
         "",
