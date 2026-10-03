@@ -1,10 +1,10 @@
 {
   "schema": 1,
   "generated_by": "python -m treesvb.benchmarks",
-  "generated_at": "2026-10-02T18:08:40Z",
-  "commit": "f9140ce6e3ab85372d65cea1dcfbac91503b102f",
+  "generated_at": "2026-10-03T12:32:53Z",
+  "commit": "53b9ec2d45f816e07bc1f8f19f217298cef209ce",
   "dirty": false,
-  "platform": "Linux-6.18.44-fc-v51-x86_64-with-glibc2.39",
+  "platform": "Linux-6.18.44-fc-v64-x86_64-with-glibc2.39",
   "versions": {
     "python": "3.11.15",
     "numpy": "2.4.6",
@@ -19,6 +19,6 @@
   "smagorinsky": 0.17,
   "strain_rate": 0.0015625,
   "expected_nu_t": 4.515625000000001e-05,
-  "rel_error": 7.714365872768525e-07,
+  "rel_error": 2.0477237899552136e-05,
   "passed": true
 }

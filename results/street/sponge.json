@@ -1,10 +1,10 @@
 {
   "schema": 1,
   "generated_by": "python -m treesvb.street",
-  "generated_at": "2026-10-02T19:31:59Z",
-  "commit": "2377612a6e3a03664e11dfe80b8c9a643f96921c",
+  "generated_at": "2026-10-03T12:44:34Z",
+  "commit": "b4863b2df0771b62e84c3061360900f9a1edd8b4",
   "dirty": false,
-  "platform": "Linux-6.18.44-fc-v51-x86_64-with-glibc2.39",
+  "platform": "Linux-6.18.44-fc-v64-x86_64-with-glibc2.39",
   "versions": {
     "python": "3.11.15",
     "numpy": "2.4.6",
@@ -26,107 +26,97 @@
       "series": [
         {
           "step": 2000,
-          "rho_std": 0.011609949171543121,
-          "max_speed_over_uref": 2.835606813430786
+          "rho_std": 0.006252075545489788,
+          "max_speed_over_uref": 2.98734450340271
         },
         {
           "step": 4000,
-          "rho_std": 0.014243208803236485,
-          "max_speed_over_uref": 2.6559314727783203
+          "rho_std": 0.0085292374715209,
+          "max_speed_over_uref": 2.9384782314300537
         },
         {
           "step": 6000,
-          "rho_std": 0.013396170921623707,
-          "max_speed_over_uref": 2.758108139038086
+          "rho_std": 0.007774960249662399,
+          "max_speed_over_uref": 3.1431641578674316
         },
         {
           "step": 8000,
-          "rho_std": 0.012656740844249725,
-          "max_speed_over_uref": 2.5975286960601807
+          "rho_std": 0.007920675911009312,
+          "max_speed_over_uref": 3.1739439964294434
         },
         {
           "step": 10000,
-          "rho_std": 0.014554581604897976,
-          "max_speed_over_uref": 2.305204391479492
+          "rho_std": 0.01005521696060896,
+          "max_speed_over_uref": 2.579963207244873
         },
         {
           "step": 12000,
-          "rho_std": 0.014226359315216541,
-          "max_speed_over_uref": 2.2269127368927
+          "rho_std": 0.004476804286241531,
+          "max_speed_over_uref": 2.2624008655548096
         },
         {
           "step": 14000,
-          "rho_std": 0.016305211931467056,
-          "max_speed_over_uref": 2.4041662216186523
+          "rho_std": 0.004562241956591606,
+          "max_speed_over_uref": 2.380161762237549
         },
         {
           "step": 16000,
-          "rho_std": 0.020255332812666893,
-          "max_speed_over_uref": 2.5542404651641846
+          "rho_std": 0.007114574778825045,
+          "max_speed_over_uref": 2.844273090362549
         },
         {
           "step": 18000,
-          "rho_std": 0.02850835770368576,
-          "max_speed_over_uref": 2.7979018688201904
+          "rho_std": 0.005742834415286779,
+          "max_speed_over_uref": 3.1897733211517334
         },
         {
           "step": 20000,
-          "rho_std": 0.03513269126415253,
-          "max_speed_over_uref": 2.7413978576660156
+          "rho_std": 0.0034331162460148335,
+          "max_speed_over_uref": 3.275320291519165
         },
         {
           "step": 22000,
-          "rho_std": 0.034225258976221085,
-          "max_speed_over_uref": 3.3022286891937256
+          "rho_std": 0.007380831055343151,
+          "max_speed_over_uref": 2.4019598960876465
         },
         {
           "step": 24000,
-          "rho_std": 0.03197820112109184,
-          "max_speed_over_uref": 2.7872209548950195
+          "rho_std": 0.004120207857340574,
+          "max_speed_over_uref": 2.339570999145508
         },
         {
           "step": 26000,
-          "rho_std": 0.03497639298439026,
-          "max_speed_over_uref": 3.1290152072906494
+          "rho_std": 0.00602875417098403,
+          "max_speed_over_uref": 2.4142796993255615
         },
         {
           "step": 28000,
-          "rho_std": 0.04044139012694359,
-          "max_speed_over_uref": 2.699147939682007
+          "rho_std": 0.0049046119675040245,
+          "max_speed_over_uref": 2.407473087310791
         },
         {
           "step": 30000,
-          "rho_std": 0.039930108934640884,
-          "max_speed_over_uref": 3.798929214477539
+          "rho_std": 0.0034593073651194572,
+          "max_speed_over_uref": 2.805647850036621
         },
         {
           "step": 32000,
-          "rho_std": 0.04477177932858467,
-          "max_speed_over_uref": 3.003957748413086
+          "rho_std": 0.008728236891329288,
+          "max_speed_over_uref": 2.887343645095825
         },
         {
           "step": 34000,
-          "rho_std": 0.04552650451660156,
-          "max_speed_over_uref": 2.6791443824768066
+          "rho_std": 0.011050413362681866,
+          "max_speed_over_uref": 2.3980937004089355
         },
         {
           "step": 36000,
-          "rho_std": 0.04138962924480438,
-          "max_speed_over_uref": 3.0409531593322754
-        },
-        {
-          "step": 38000,
-          "rho_std": 0.03827985003590584,
-          "max_speed_over_uref": 2.7505710124969482
-        },
-        {
-          "step": 40000,
-          "rho_std": 0.04401002451777458,
-          "max_speed_over_uref": 3.1246492862701416
+          "rho_std": 0.004616779275238514,
+          "max_speed_over_uref": 4.079493045806885
         }
       ],
-      "mean_rho_std_second_half": 0.03955291397869587,
-      "mean_max_speed_second_half": 3.03158175945282
+      "healthy": false,
+      "failed_at": 38000
     },
     {
       "configuration": "with absorbing layers",
@@ -139,110 +129,111 @@
       "series": [
         {
           "step": 2000,
-          "rho_std": 0.0029882064554840326,
-          "max_speed_over_uref": 2.672640562057495
+          "rho_std": 0.0031440879683941603,
+          "max_speed_over_uref": 2.2206952571868896
         },
         {
           "step": 4000,
-          "rho_std": 0.002800987334921956,
-          "max_speed_over_uref": 2.372612237930298
+          "rho_std": 0.00289908517152071,
+          "max_speed_over_uref": 2.369577646255493
         },
         {
           "step": 6000,
-          "rho_std": 0.0033344749826937914,
-          "max_speed_over_uref": 2.4558846950531006
+          "rho_std": 0.0031216859351843596,
+          "max_speed_over_uref": 2.72652006149292
         },
         {
           "step": 8000,
-          "rho_std": 0.003443222027271986,
-          "max_speed_over_uref": 2.3282153606414795
+          "rho_std": 0.0032699427101761103,
+          "max_speed_over_uref": 2.246171474456787
         },
         {
           "step": 10000,
-          "rho_std": 0.0036738638300448656,
-          "max_speed_over_uref": 2.240044116973877
+          "rho_std": 0.0036456675734370947,
+          "max_speed_over_uref": 2.557100534439087
         },
         {
           "step": 12000,
-          "rho_std": 0.003634706139564514,
-          "max_speed_over_uref": 2.372981071472168
+          "rho_std": 0.003441689070314169,
+          "max_speed_over_uref": 2.9141077995300293
         },
         {
           "step": 14000,
-          "rho_std": 0.004037621896713972,
-          "max_speed_over_uref": 2.544194221496582
+          "rho_std": 0.003347167046740651,
+          "max_speed_over_uref": 2.368173360824585
         },
         {
           "step": 16000,
-          "rho_std": 0.0029821302741765976,
-          "max_speed_over_uref": 2.3413944244384766
+          "rho_std": 0.0035208070185035467,
+          "max_speed_over_uref": 2.491408586502075
         },
         {
           "step": 18000,
-          "rho_std": 0.0028777688276022673,
-          "max_speed_over_uref": 2.511455774307251
+          "rho_std": 0.0033607848454266787,
+          "max_speed_over_uref": 2.363267421722412
         },
         {
           "step": 20000,
-          "rho_std": 0.003446438815444708,
-          "max_speed_over_uref": 2.3799924850463867
+          "rho_std": 0.0032389776315540075,
+          "max_speed_over_uref": 3.2662222385406494
         },
         {
           "step": 22000,
-          "rho_std": 0.003603453515097499,
-          "max_speed_over_uref": 2.422238349914551
+          "rho_std": 0.002998299663886428,
+          "max_speed_over_uref": 2.8641490936279297
         },
         {
           "step": 24000,
-          "rho_std": 0.0031661533284932375,
-          "max_speed_over_uref": 2.3641886711120605
+          "rho_std": 0.0030578416772186756,
+          "max_speed_over_uref": 2.2668375968933105
         },
         {
           "step": 26000,
-          "rho_std": 0.0030725710093975067,
-          "max_speed_over_uref": 2.2893171310424805
+          "rho_std": 0.002974999602884054,
+          "max_speed_over_uref": 2.6616084575653076
         },
         {
           "step": 28000,
-          "rho_std": 0.003281444776803255,
-          "max_speed_over_uref": 3.014552593231201
+          "rho_std": 0.003177955048158765,
+          "max_speed_over_uref": 2.578648805618286
         },
         {
           "step": 30000,
-          "rho_std": 0.003355644177645445,
-          "max_speed_over_uref": 2.58601713180542
+          "rho_std": 0.0034711386542767286,
+          "max_speed_over_uref": 2.2676937580108643
         },
         {
           "step": 32000,
-          "rho_std": 0.0033632598351687193,
-          "max_speed_over_uref": 2.757746934890747
+          "rho_std": 0.0031344217713922262,
+          "max_speed_over_uref": 2.2834999561309814
         },
         {
           "step": 34000,
-          "rho_std": 0.003090263344347477,
-          "max_speed_over_uref": 2.2941081523895264
+          "rho_std": 0.003325788304209709,
+          "max_speed_over_uref": 2.2046241760253906
         },
         {
           "step": 36000,
-          "rho_std": 0.003798556746914983,
-          "max_speed_over_uref": 2.4558610916137695
+          "rho_std": 0.002921083942055702,
+          "max_speed_over_uref": 2.281078815460205
         },
         {
           "step": 38000,
-          "rho_std": 0.003652238752692938,
-          "max_speed_over_uref": 2.3858025074005127
+          "rho_std": 0.0033566851634532213,
+          "max_speed_over_uref": 2.440236806869507
         },
         {
           "step": 40000,
-          "rho_std": 0.003641248680651188,
-          "max_speed_over_uref": 2.565593957901001
+          "rho_std": 0.0028773071244359016,
+          "max_speed_over_uref": 2.3877720832824707
         }
       ],
-      "mean_rho_std_second_half": 0.003402483416721225,
-      "mean_max_speed_second_half": 2.513542652130127
+      "healthy": true,
+      "mean_rho_std_second_half": 0.0031295520951971413,
+      "mean_max_speed_second_half": 2.4236149549484254
     }
   ],
-  "noise_reduction_factor": 11.624719104967957,
+  "noise_reduction_factor": null,
   "threshold": {
     "noise_reduction_factor_above": 3.0
   },

@@ -14,13 +14,13 @@ Target: relative L2 error below 1% with 32 cells across or more.
 
 | Cells across | Relative L2 error | Steps |
 | --- | --- | --- |
-| 16 | 0.278% | 7500 |
-| 32 | 0.070% | 27500 |
-| 64 | 0.017% | 103500 |
+| 16 | 0.107% | 7500 |
+| 32 | 0.027% | 27500 |
+| 64 | 0.007% | 103500 |
 
 Observed order of convergence: 2.00.
 
-_Source: `results/benchmarks/poiseuille.json`, generated 2026-10-02T18:04:29Z by `python -m treesvb.benchmarks` at commit `f9140ce`._
+_Source: `results/benchmarks/poiseuille.json`, generated 2026-10-03T12:30:30Z by `python -m treesvb.benchmarks` at commit `53b9ec2`._
 
 ### Lid-driven cavity at Re 100 against Ghia et al. (1982)
 
@@ -32,12 +32,12 @@ Target: within 2% of the lid speed at every tabulated point. Grid 128 x 128, 200
 
 | Profile | Largest difference | RMS difference |
 | --- | --- | --- |
-| u on the vertical centreline | 0.52% | 0.27% |
+| u on the vertical centreline | 0.52% | 0.26% |
 | v on the horizontal centreline | 0.82% | 0.43% |
 
 Reference: Ghia, Ghia and Shin (1982), J. Comput. Phys. 48, 387-411, Tables I and II; values via Nextjournal reference_u.txt/reference_v.txt (accessed 2026-10-02), extremes cross-checked with Mramor, Vertnik and Šarler (2013), CMC 36(1), Table 1.
 
-_Source: `results/benchmarks/cavity_re100.json`, generated 2026-10-02T18:05:23Z by `python -m treesvb.benchmarks` at commit `f9140ce`._
+_Source: `results/benchmarks/cavity_re100.json`, generated 2026-10-03T12:31:03Z by `python -m treesvb.benchmarks` at commit `53b9ec2`._
 
 ### Lid-driven cavity at Re 1000 against Ghia et al. (1982)
 
@@ -45,16 +45,16 @@ Verdict: meets the target.
 
 Method: 128 x 128 nodes, lid speed 0.1 (lattice), tau 0.53840, BGK without sub-grid model, jax float32.
 
-Target: within 5% of the lid speed at every tabulated point. Grid 128 x 128, 70000 steps.
+Target: within 5% of the lid speed at every tabulated point. Grid 128 x 128, 64000 steps.
 
 | Profile | Largest difference | RMS difference |
 | --- | --- | --- |
-| u on the vertical centreline | 1.03% | 0.51% |
-| v on the horizontal centreline | 1.34% | 0.73% |
+| u on the vertical centreline | 1.05% | 0.51% |
+| v on the horizontal centreline | 1.29% | 0.70% |
 
 Reference: Ghia, Ghia and Shin (1982), J. Comput. Phys. 48, 387-411, Tables I and II; values via Najjar, Solberg and White (2008), LLNL-TR-403164, Tables 7-8, https://www.osti.gov/servlets/purl/936989.
 
-_Source: `results/benchmarks/cavity_re1000.json`, generated 2026-10-02T18:08:26Z by `python -m treesvb.benchmarks` at commit `f9140ce`._
+_Source: `results/benchmarks/cavity_re1000.json`, generated 2026-10-03T12:32:43Z by `python -m treesvb.benchmarks` at commit `53b9ec2`._
 
 ### Mass conservation
 
@@ -62,9 +62,9 @@ Verdict: meets the target.
 
 Method: 64 x 64 lid-driven cavity, 5000 steps, float64.
 
-Relative change of total mass: 4.0e-13.
+Relative change of total mass: 2.8e-13.
 
-_Source: `results/benchmarks/conservation.json`, generated 2026-10-02T18:08:40Z by `python -m treesvb.benchmarks` at commit `f9140ce`._
+_Source: `results/benchmarks/conservation.json`, generated 2026-10-03T12:32:53Z by `python -m treesvb.benchmarks` at commit `53b9ec2`._
 
 ### Smagorinsky eddy viscosity in uniform shear
 
@@ -72,9 +72,9 @@ Verdict: meets the target.
 
 Method: Couette flow started from its exact linear profile, Cs = 0.17, tau0 = 0.51, 500 steps, float64; interior rows.
 
-Relative difference between the solver's eddy viscosity and Cs^2 |S| with Cs = 0.17: 7.7e-07.
+Relative difference between the solver's eddy viscosity and Cs^2 |S| with Cs = 0.17: 2.0e-05.
 
-_Source: `results/benchmarks/smagorinsky_shear.json`, generated 2026-10-02T18:08:40Z by `python -m treesvb.benchmarks` at commit `f9140ce`._
+_Source: `results/benchmarks/smagorinsky_shear.json`, generated 2026-10-03T12:32:53Z by `python -m treesvb.benchmarks` at commit `53b9ec2`._
 
 ### Force correction of the sub-grid stress
 
@@ -82,9 +82,9 @@ Verdict: meets the target.
 
 Method: Fully periodic box under uniform force (zero strain), tau 0.8, 200 steps.
 
-Corrected flux relative to F u: 3.8e-11.
+Corrected flux relative to F u: 4.5e-11.
 
-_Source: `results/benchmarks/force_stress.json`, generated 2026-10-02T18:08:40Z by `python -m treesvb.benchmarks` at commit `f9140ce`._
+_Source: `results/benchmarks/force_stress.json`, generated 2026-10-03T12:32:53Z by `python -m treesvb.benchmarks` at commit `53b9ec2`._
 
 ### NumPy against JAX
 
@@ -94,11 +94,11 @@ Method: Same step code on both backends; velocity fields after a fixed number of
 
 | Case | Steps | Largest velocity difference |
 | --- | --- | --- |
-| cavity_n32_re100 | 2000 | 0.0023% |
-| poiseuille_h16 | 2000 | 0.0019% |
-| canyon_h8_ar1.00 | 500 | 0.0205% |
+| cavity_n32_re100 | 2000 | 0.0013% |
+| poiseuille_h16 | 2000 | 0.0017% |
+| canyon_h8_ar1.00 | 500 | 0.0265% |
 
-_Source: `results/benchmarks/numpy_jax_agreement.json`, generated 2026-10-02T19:16:00Z by `python -m treesvb.benchmarks` at commit `2377612`._
+_Source: `results/benchmarks/numpy_jax_agreement.json`, generated 2026-10-03T12:33:07Z by `python -m treesvb.benchmarks` at commit `53b9ec2`._
 
 ### Porous block: drag and pressure-loss coefficient
 
@@ -108,13 +108,13 @@ Method: Channel 240 x 3 (periodic across), porous block 12 cells deep, tau 0.6, 
 
 | λ d | Inflow speed | Momentum balance | λ measured ÷ λ set |
 | --- | --- | --- | --- |
-| 4.8 | 0.05 | 0.99996 | 1.0167 |
-| 12.0 | 0.05 | 1.00045 | 1.0318 |
-| 12.0 | 0.025 | 0.99975 | 1.0076 |
+| 4.8 | 0.05 | 1.00053 | 1.0175 |
+| 12.0 | 0.05 | 1.00021 | 1.0319 |
+| 12.0 | 0.025 | 0.99985 | 1.0076 |
 
 The momentum balance checks that the drag is applied as specified. λ by CODASC's definition also carries the lattice's compressibility error, which shrinks 4.2 times when the inflow speed halves (expected about 4, as the square of the speed).
 
-_Source: `results/benchmarks/porous_lambda.json`, generated 2026-10-02T19:20:13Z by `python -m treesvb.benchmarks` at commit `2377612`._
+_Source: `results/benchmarks/porous_lambda.json`, generated 2026-10-03T12:33:59Z by `python -m treesvb.benchmarks` at commit `53b9ec2`._
 
 ### Tracer conservation with sources and walls
 
@@ -124,7 +124,7 @@ Method: 96 x 48 channel, periodic along, walls across, force-driven with the Sma
 
 Relative difference: 1.1e-13.
 
-_Source: `results/benchmarks/tracer_conservation.json`, generated 2026-10-02T19:20:48Z by `python -m treesvb.benchmarks` at commit `2377612`._
+_Source: `results/benchmarks/tracer_conservation.json`, generated 2026-10-03T12:34:04Z by `python -m treesvb.benchmarks` at commit `53b9ec2`._
 
 ### Tracer pulse against the exact solution
 
@@ -138,7 +138,7 @@ Method: 128 x 128 periodic box, uniform flow, Gaussian pulse, D2Q5 BGK, float64.
 | 0.02 | (0.05, 0.02) | 512 | 0.69% |
 | 0.005 | (0.05, 0.02) | 512 | 1.56% |
 
-_Source: `results/benchmarks/tracer_pulse.json`, generated 2026-10-02T19:21:52Z by `python -m treesvb.benchmarks` at commit `2377612`._
+_Source: `results/benchmarks/tracer_pulse.json`, generated 2026-10-03T12:34:17Z by `python -m treesvb.benchmarks` at commit `53b9ec2`._
 
 ### Browser solvers against the Python reference
 
@@ -223,12 +223,12 @@ Method: Street canyon H = 24 cells, H/W = 1, Re 20000, Cs 0.17, 40000 steps from
 
 | Configuration | Mean density spread, second half |
 | --- | --- |
-| without absorbing layers | 0.0396 |
-| with absorbing layers | 0.0034 |
+| without absorbing layers | unstable (the run blew up) at step 38000 |
+| with absorbing layers | 0.0031 |
 
-Noise reduced 11.6 times. For scale, the pressure of a vortex turning at twice the inflow speed corresponds to a density change of 0.0300.
+Without the layers the noise grows until the run fails. For scale, the pressure of a vortex turning at twice the inflow speed corresponds to a density change of 0.0300.
 
-_Source: `results/street/sponge.json`, generated 2026-10-02T19:31:59Z by `python -m treesvb.street` at commit `2377612`._
+_Source: `results/street/sponge.json`, generated 2026-10-03T12:44:34Z by `python -m treesvb.street` at commit `b4863b2`._
 
 ### Stability of the street solver
 
