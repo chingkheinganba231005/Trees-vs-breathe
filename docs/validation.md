@@ -150,15 +150,15 @@ GPU adapter: google swiftshader.
 
 | Case | Cells | Steps | CPU worker | WebGPU |
 | --- | --- | --- | --- | --- |
-| canyon | 2520 | 300 | 0.0016% | 0.0051% |
-| canyon_deep | 2610 | 300 | 0.0005% | 0.0050% |
-| cavity | 256 | 400 | 0.0001% | 0.0004% |
-| couette_smag | 40 | 200 | 0.0002% | 0.0026% |
+| canyon | 2520 | 300 | 0.0002% | 0.0019% |
+| canyon_deep | 2610 | 300 | 0.0002% | 0.0020% |
+| cavity | 256 | 400 | 0.0000% | 0.0003% |
+| couette_smag | 40 | 200 | 0.0001% | 0.0021% |
 | poiseuille | 48 | 600 | 0.0001% | 0.0004% |
-| poiseuille_smag | 48 | 600 | 0.0002% | 0.0019% |
-| street_trees | 2520 | 300 | 0.0004% | 0.0045% |
+| poiseuille_smag | 48 | 600 | 0.0003% | 0.0009% |
+| street_trees | 2520 | 300 | 0.0002% | 0.0019% |
 
-_Source: `results/benchmarks/browser_agreement.json`, generated 2026-10-03T02:55:07Z by `npx playwright test --project=webgpu (RECORD_RESULTS=1)` at commit `da97a58`._
+_Source: `results/benchmarks/browser_agreement.json`, generated 2026-10-03T09:44:16Z by `npx playwright test --project=webgpu (RECORD_RESULTS=1)` at commit `0edc8fd`._
 
 ## 2. Street physics
 
