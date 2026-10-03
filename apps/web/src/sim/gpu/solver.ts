@@ -2,6 +2,7 @@ import type { SolverParams } from '../cpu/solver';
 import { equilibrium } from '../cpu/solver';
 import type { Domain } from '../domain';
 import { Q } from '../lattice';
+import { updateStrided } from '../span';
 import { SIDE, stepShader } from './shaders';
 
 const WORKGROUP: [number, number] = [8, 8];
@@ -141,13 +142,19 @@ export class GpuSolver {
 
   /** Replace the porous drag (lambda per node, 1/cell), e.g. when trees are moved. */
   setDrag(drag: ArrayLike<number> | null): void {
-    for (let k = 0; k < this.n; k++) this.aux[2 * k] = drag?.[k] ?? 0;
-    this.device.queue.writeBuffer(this.auxBuffer, 0, this.aux);
+    const span = updateStrided(this.aux, drag, 2);
+    if (!span) return;
+    // A moved crown changes a band of rows; the rest of the field stays on the GPU as it is.
+    const [lo, hi] = span;
+    this.device.queue.writeBuffer(this.auxBuffer, lo * 8, this.aux, 2 * lo, 2 * (hi - lo + 1));
   }
 
   /** Restart the running means (velocity and concentration), e.g. after the street changed. */
   clearMean(): void {
-    this.device.queue.writeBuffer(this.meanBuffer, 0, new Float32Array(4 * this.n));
+    // Cleared on the GPU: no zero-filled copy has to cross from the page.
+    const enc = this.device.createCommandEncoder();
+    enc.clearBuffer(this.meanBuffer);
+    this.device.queue.submit([enc.finish()]);
   }
 
   /** Copy the current state aside on the GPU; used after a health check passes. */

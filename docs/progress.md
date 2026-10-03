@@ -149,6 +149,8 @@ Goal: porous trees and hedges in the street, traffic fumes as a passive tracer, 
 - A trial CODASC run with a single street put fumes on the windward wall: the vortex turned the wrong way (see P1, D-019). Behind an upwind street the leeward wall came out close to the wind tunnel in trial runs; the committed numbers will come from the Colab job.
 - Right next to each lane the fumes field shows grid-scale ripples: a point source in a cell with very little diffusion. In the screenshots they sit within a few cells of the lanes. In a trial run (scratch, not a committed result) spreading each source over three cells left the wall values practically unchanged, so the sources stay as they are.
 - In the same trials the lowest taps on wall B read several times the measured value: a corner eddy at the foot of the windward wall holds fumes from the nearest lane, and a 2D model mixes it out too slowly. To be reported with the results, not tuned away.
+- Dragging the greenery stuttered on a desktop (reported by the user on 2026-10-03). Every slider event rebuilt the drag field, uploaded all of it and a zero-filled copy of the running means to the GPU, so a drag sent several megabytes per event. Changes are now applied at most once per frame, only the rows that changed are uploaded, and the means are cleared on the GPU. A browser check that counted uploads for a burst of slider events confirmed one small upload per frame (scratch measurement; the numbers are in the commit message).
+- When greenery is added or moved, the flow carries on from its current state, like planting into a street where the wind already blows; only the running means restart. Changing the street shape rebuilds the grid and restarts everything.
 
 ### Decisions
 

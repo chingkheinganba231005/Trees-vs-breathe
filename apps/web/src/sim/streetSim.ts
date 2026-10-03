@@ -200,6 +200,10 @@ abstract class BaseSim {
   protected stepsPerSecond = 0;
   protected fps = 0;
   protected greenery: GreenElement[];
+  /** Greenery waiting for the next frame: a dragged slider sends many more changes than frames. */
+  private pendingGreenery: GreenElement[] | null = null;
+  /** Counts restarts of the running means, so a read begun before one is not used after it. */
+  protected generation = 0;
   protected solid!: Uint8Array;
   protected averaging = 10_000;
   protected meanSteps = 0;
@@ -227,6 +231,26 @@ abstract class BaseSim {
   setLayers(layers: Layers): void {
     this.layers = layers;
   }
+
+  setGreenery(greenery: GreenElement[]): void {
+    this.pendingGreenery = greenery;
+  }
+
+  /** Applies the latest greenery, if any arrived since the last frame; called once per frame. */
+  protected takeGreenery(): void {
+    const greenery = this.pendingGreenery;
+    if (!greenery) return;
+    this.pendingGreenery = null;
+    this.greenery = greenery;
+    this.generation += 1;
+    this.meanSteps = 0;
+    this.exposure = null;
+    this.applyDrag(dragField(this.geometry, this.solid, greenery));
+    this.report();
+  }
+
+  /** Gives the solver a new drag field and restarts its running means. */
+  protected abstract applyDrag(drag: Float32Array): void;
 
   protected countFrame(steps: number): void {
     this.frames += 1;
@@ -306,6 +330,7 @@ class GpuStreetSim extends BaseSim implements StreetSim {
     this.solver.emaAlpha = 1 / this.averaging;
     this.solver.writeParams();
     this.meanSteps = 0;
+    this.generation += 1;
     this.exposure = null;
     // Starting from rest would send a pressure pulse through the domain (cases.uniform_start).
     const start = uniformStart(this.flow.uRef, domain.solid);
@@ -319,13 +344,9 @@ class GpuStreetSim extends BaseSim implements StreetSim {
     this.build();
   }
 
-  setGreenery(greenery: GreenElement[]): void {
-    this.greenery = greenery;
-    this.solver.setDrag(dragField(this.geometry, this.solid, greenery));
+  protected applyDrag(drag: Float32Array): void {
+    this.solver.setDrag(drag);
     this.solver.clearMean();
-    this.meanSteps = 0;
-    this.exposure = null;
-    this.report();
   }
 
   setColors(colors: SimColors): void {
@@ -347,6 +368,7 @@ class GpuStreetSim extends BaseSim implements StreetSim {
     if (this.frameMs > 30 && this.substeps > 2) this.substeps -= 1;
     else if (this.frameMs < 18 && this.substeps < 40) this.substeps += 1;
 
+    this.takeGreenery();
     this.solver.step(this.substeps);
     this.meanSteps += this.substeps;
     this.renderer.draw(
@@ -370,6 +392,7 @@ class GpuStreetSim extends BaseSim implements StreetSim {
 
   private async healthCheck(): Promise<void> {
     this.checking = true;
+    const generation = this.generation;
     try {
       const f = await this.solver.readFields();
       let maxSpeed = 0;
@@ -380,6 +403,8 @@ class GpuStreetSim extends BaseSim implements StreetSim {
       if (isHealthy(maxSpeed)) {
         this.solver.saveCheckpoint();
         const mean = await this.solver.readMean();
+        // The means restarted while the copy was in flight; it belongs to the old design.
+        if (generation !== this.generation) return;
         this.exposure = exposureFrom(
           this.geometry,
           mean,
@@ -470,14 +495,11 @@ class CpuStreetSim extends BaseSim implements StreetSim {
     this.build();
   }
 
-  setGreenery(greenery: GreenElement[]): void {
-    this.greenery = greenery;
-    this.drag = dragField(this.geometry, this.solid, greenery);
-    this.send({ type: 'greenery', drag: this.drag.slice() });
-    this.meanSteps = 0;
-    this.exposure = null;
-    this.conc = null;
-    this.report();
+  protected applyDrag(drag: Float32Array): void {
+    this.drag = drag;
+    const copy = drag.slice();
+    // The worker restarts its mean; the last fumes frame stays on screen until the next arrives.
+    this.send({ type: 'greenery', drag: copy }, [copy.buffer]);
   }
 
   setColors(colors: SimColors): void {
@@ -493,6 +515,7 @@ class CpuStreetSim extends BaseSim implements StreetSim {
 
   private requestFrame(): void {
     if (this.stopped || this.waiting) return;
+    this.takeGreenery();
     this.waiting = true;
     this.send({ type: 'run', budgetMs: 14, maxSteps: 400 });
   }
