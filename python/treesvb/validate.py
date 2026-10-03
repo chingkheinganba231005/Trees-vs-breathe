@@ -458,6 +458,27 @@ def render() -> str:
             "",
         ]
 
+    lines += ["## 4. Sun and heat", ""]
+    r = load("sun/position.json")
+    body = []
+    if r:
+        body = [
+            f"{r['cases']} instants. Largest differences: elevation "
+            f"{r['worst_elevation_deg']:.4f}°, "
+            f"apparent elevation {r['worst_apparent_elevation_deg']:.4f}°, azimuth "
+            f"{r['worst_azimuth_deg']:.4f}° (target below "
+            f"{r['threshold']['max_abs_diff_deg_below']}°).",
+        ]
+    lines += _section("Solar position against pvlib", r, body)
+    r = load("sun/utci.json")
+    body = []
+    if r:
+        body = [
+            f"{r['cases']} inputs. Largest difference {r['worst_abs_diff_c']:.1e} °C (target below "
+            f"{r['threshold']['max_abs_diff_c_below']} °C); stress category the same in "
+            f"{r['categories_matching']} of {r['cases']}.",
+        ]
+    lines += _section("UTCI against pythermalcomfort", r, body)
     lines += ai_sections(load)
     lines += [
         "## Still to come",
@@ -490,7 +511,7 @@ def _scores_row(label: str, s: dict) -> str:
 
 def ai_sections(load) -> list[str]:
     """Section 4: the dataset and the surrogate's scores, once they exist."""
-    out = ["## 4. The AI", ""]
+    out = ["## 5. The AI", ""]
     d = load("dataset/summary.json")
     body = []
     if d:
