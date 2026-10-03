@@ -1,0 +1,92 @@
+{
+  "schema": 1,
+  "generated_by": "python -m treesvb.hktrees measure",
+  "generated_at": "2026-10-03T08:19:32Z",
+  "commit": "475e00ed2af3e08e8d354b9410fcbbe3ce10ef43",
+  "dirty": false,
+  "platform": "Linux-6.18.44-fc-v64-x86_64-with-glibc2.39",
+  "versions": {
+    "python": "3.11.15",
+    "numpy": "2.4.6",
+    "jax": "0.10.2"
+  },
+  "name": "Typical roadside tree near each street preset",
+  "method": "Highways Department trees within 1000 m of each stretch: middle half of trunk diameter (DBH). AFCD country-park trees with DBH in that range: median and middle half of measured height and crown spread. Trees within 25 m of the stretch centreline counted as on the stretch. An estimate, not a measurement of the street's own trees (A-014)",
+  "sources": [
+    "Highways Department, Tree (HyD), CSDI Portal dataset hyd_rcd_1632210213867_60179",
+    "Agriculture, Fisheries and Conservation Department, Information on trees in major recreational sites of Country Parks, CSDI Portal dataset afcd_rcd_1728897424022_55263"
+  ],
+  "afcd_trees": 8659,
+  "data_sha256": {
+    "afcd_trees.json": "c1dabac8b841759089bf7d4e9d317428ff9a6d56811e0fba4fcbc7e4f39c65b5",
+    "nathan_mong_kok_hyd_trees.geojson": "f7aa455575dc394f2c19ec0789017867c27070fc9d15ae2f4143e0121ebc67c0",
+    "wing_lok_hyd_trees.geojson": "87f62bd135effcd1f43b3172259401d3fcb66fc4a41a610a50f42ed94969c0a0",
+    "yen_chow_hyd_trees.geojson": "07dc7b35bbdfe14a03df5188e4014a13ac9a61d53164aaa13441f485e8f22d02"
+  },
+  "rows": [
+    {
+      "key": "wing_lok",
+      "trees_on_stretch": 0,
+      "dbh_mm": {
+        "median": 232.0,
+        "p25": 163.0,
+        "p75": 398.0
+      },
+      "roadside_trees": 440,
+      "matched": 4924,
+      "height_m": {
+        "median": 10.0,
+        "p25": 8.0,
+        "p75": 12.0
+      },
+      "crown_spread_m": {
+        "median": 5.0,
+        "p25": 4.0,
+        "p75": 7.0
+      }
+    },
+    {
+      "key": "nathan_mong_kok",
+      "trees_on_stretch": 0,
+      "dbh_mm": {
+        "median": 152.0,
+        "p25": 121.0,
+        "p75": 204.5
+      },
+      "roadside_trees": 331,
+      "matched": 1985,
+      "height_m": {
+        "median": 7.0,
+        "p25": 6.0,
+        "p75": 9.0
+      },
+      "crown_spread_m": {
+        "median": 4.0,
+        "p25": 3.0,
+        "p75": 5.0
+      }
+    },
+    {
+      "key": "yen_chow",
+      "trees_on_stretch": 0,
+      "dbh_mm": {
+        "median": 169.0,
+        "p25": 124.0,
+        "p75": 229.0
+      },
+      "roadside_trees": 907,
+      "matched": 2451,
+      "height_m": {
+        "median": 8.0,
+        "p25": 6.0,
+        "p75": 10.0
+      },
+      "crown_spread_m": {
+        "median": 4.0,
+        "p25": 3.0,
+        "p75": 5.0
+      }
+    }
+  ],
+  "passed": true
+}
