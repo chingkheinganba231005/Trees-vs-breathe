@@ -13,3 +13,6 @@ __pycache__/
 /runs/
 # CODASC terms allow use, not redistribution in modified form; fetched by python -m treesvb.codasc.
 /data/codasc/raw/
+
+# Local timing scratch tests; never committed.
+tests/web/zz-scratch-*
