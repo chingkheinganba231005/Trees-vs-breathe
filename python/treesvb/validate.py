@@ -30,9 +30,11 @@ def _sci(v: float) -> str:
     return f"{v:.1e}"
 
 
-def _verdict(r: dict | None) -> str:
+def _verdict(r: dict | None, target: bool = True) -> str:
     if r is None:
         return "not yet computed"
+    if not target:
+        return "for information, no target"
     return "meets the target" if r["passed"] else "**misses the target**"
 
 
@@ -43,15 +45,40 @@ def _provenance(r: dict) -> str:
     )
 
 
-def _section(title: str, r: dict | None, body: list[str]) -> list[str]:
-    out = [f"### {title}", "", f"Verdict: {_verdict(r)}.", ""]
+def _section(title: str, r: dict | None, body: list[str], target: bool = True) -> list[str]:
+    out = [f"### {title}", "", f"Verdict: {_verdict(r, target)}.", ""]
     if r is None:
         return [*out, "Not yet computed.", ""]
     if r.get("method"):
-        out += [f"Method: {r['method']}.", ""]
+        out += [f"Method: {r['method'].rstrip('.')}.", ""]
     out += body
     out += ["", _provenance(r), ""]
     return out
+
+
+def _regime_body(r: dict) -> list[str]:
+    return [
+        "| H/W | Stacked vortex cells | Strongest vortex | Top of the street ÷ u_ref | "
+        "Street floor with the wind |",
+        "| --- | --- | --- | --- | --- |",
+        *[
+            f"| {x['aspect']} | {x['stacked_primary_vortices']} | "
+            f"{x.get('strongest_vortex_rotation') or 'none'} | "
+            f"{x.get('top_flow_over_uref', float('nan')):+.2f} | "
+            f"{_pct(x['floor_fraction_with_wind'], 0)} |"
+            for x in r["rows"]
+        ],
+        "",
+        *[
+            f"- H/W {c['aspect']}: {c['expectation']}. Observed: {c['observed']}. "
+            f"{'Meets' if c['passed'] else '**Misses**'} the expectation."
+            for c in r["checks"]
+        ],
+    ]
+
+
+def _ratios(measured: dict, model: dict, wall: str) -> list[float]:
+    return [b / a for a, b in zip(measured[wall], model[wall], strict=True)]
 
 
 def render() -> str:
@@ -196,27 +223,15 @@ def render() -> str:
 
     lines += ["## 2. Street physics", ""]
     r = load("street/regimes.json")
-    body = []
+    lines += _section(
+        "Vortex structure against street aspect ratio", r, _regime_body(r) if r else []
+    )
+
+    r = load("street/regimes_h48.json")
+    title = "Deep streets on a finer grid"
     if r:
-        body = [
-            "| H/W | Stacked vortex cells | Strongest vortex | Top of the street ÷ u_ref | "
-            "Street floor with the wind |",
-            "| --- | --- | --- | --- | --- |",
-            *[
-                f"| {x['aspect']} | {x['stacked_primary_vortices']} | "
-                f"{x.get('strongest_vortex_rotation') or 'none'} | "
-                f"{x.get('top_flow_over_uref', float('nan')):+.2f} | "
-                f"{_pct(x['floor_fraction_with_wind'], 0)} |"
-                for x in r["rows"]
-            ],
-            "",
-            *[
-                f"- H/W {c['aspect']}: {c['expectation']}. Observed: {c['observed']}. "
-                f"{'Meets' if c['passed'] else '**Misses**'} the expectation."
-                for c in r["checks"]
-            ],
-        ]
-    lines += _section("Vortex structure against street aspect ratio", r, body)
+        title = f"Deep streets at {r['rows'][0]['height_cells']} cells per building height"
+    lines += _section(title, r, _regime_body(r) if r else [])
 
     r = load("street/upwind.json")
     body = []
@@ -266,84 +281,148 @@ def render() -> str:
         ]
     lines += _section("Stability of the street solver", r, body)
 
-    lines += ["## 3. Trees, hedges and fumes", ""]
-    r = load("trees/calibration.json")
-    body = []
-    if r:
-        body = [
-            "| Sc_t | FB | NMSE | FAC2 |",
-            "| --- | --- | --- | --- |",
-            *[
-                f"| {x['schmidt']} | {x['fb']:+.2f} | {x['nmse']:.2f} | {x['fac2']:.2f} |"
-                if x.get("healthy")
-                else f"| {x['schmidt']} | unstable | | |"
-                for x in r["rows"]
-            ],
-            "",
-            f"Kept: Sc_t = {r['schmidt']}, the only calibrated parameter.",
-        ]
-    lines += _section("Turbulent Schmidt number, calibrated on one case", r, body)
+    def trees_sections(suffix: str, label: str) -> list[str]:
+        out: list[str] = []
+        r = load(f"trees/calibration{suffix}.json")
+        body = []
+        if r:
+            body = [
+                "| Sc_t | FB | NMSE | FAC2 |",
+                "| --- | --- | --- | --- |",
+                *[
+                    f"| {x['schmidt']} | {x['fb']:+.2f} | {x['nmse']:.2f} | {x['fac2']:.2f} |"
+                    if x.get("healthy")
+                    else f"| {x['schmidt']} | unstable | | |"
+                    for x in r["rows"]
+                ],
+                "",
+                f"Kept: Sc_t = {r['schmidt']}, the only calibrated parameter.",
+            ]
+            tried = [x["schmidt"] for x in r["rows"] if x.get("healthy")]
+            if r["schmidt"] in (min(tried), max(tried)):
+                end = "smallest" if r["schmidt"] == min(tried) else "largest"
+                body += [
+                    "",
+                    f"It is the {end} value tried, so the best value may lie outside the range.",
+                ]
+        out += _section("Turbulent Schmidt number, calibrated on one case" + label, r, body)
 
-    r = load("trees/codasc.json")
-    body = []
-    if r:
-        crit = r["threshold"]
-        body = [
-            f"Urban criteria (Hanna and Chang 2012): |FB| < {crit['fb_abs_below']}, "
-            f"NMSE < {crit['nmse_below']}, FAC2 > {crit['fac2_above']}.",
-            "",
-            "| Case | W/H | Stand density | λ (1/m) | FB | NMSE | FAC2 |",
-            "| --- | --- | --- | --- | --- | --- | --- |",
-            *[
-                f"| {x['case']} | {x['aspect_w_over_h']} | {x['stand_density']} | "
-                f"{x['lambda_per_m']} | "
-                + (
-                    f"{x['metrics']['fb']:+.2f} | {x['metrics']['nmse']:.2f} | "
-                    f"{x['metrics']['fac2']:.2f} |"
-                    if "metrics" in x
-                    else "unstable | | |"
-                )
-                for x in r["rows"]
-            ],
-        ]
-        if r.get("overall"):
-            o = r["overall"]
+        r = load(f"trees/codasc{suffix}.json")
+        body = []
+        if r:
+            crit = r["threshold"]
+            body = [
+                f"Urban criteria (Hanna and Chang 2012): |FB| < {crit['fb_abs_below']}, "
+                f"NMSE < {crit['nmse_below']}, FAC2 > {crit['fac2_above']}.",
+                "",
+                "| Case | W/H | Stand density | λ (1/m) | FB | NMSE | FAC2 |",
+                "| --- | --- | --- | --- | --- | --- | --- |",
+                *[
+                    f"| {x['case']} | {x['aspect_w_over_h']} | {x['stand_density']} | "
+                    f"{x['lambda_per_m']} | "
+                    + (
+                        f"{x['metrics']['fb']:+.2f} | {x['metrics']['nmse']:.2f} | "
+                        f"{x['metrics']['fac2']:.2f} |"
+                        if "metrics" in x
+                        else "unstable | | |"
+                    )
+                    for x in r["rows"]
+                ],
+            ]
+            if r.get("overall"):
+                o = r["overall"]
+                body += [
+                    "",
+                    f"All cases together ({o['n']} points): FB {o['fb']:+.2f}, "
+                    f"NMSE {o['nmse']:.2f}, FAC2 {o['fac2']:.2f}.",
+                ]
+            heights = " | ".join(f"z/H {z:.2f}" for z in r["heights"])
             body += [
                 "",
-                f"All cases together ({o['n']} points): FB {o['fb']:+.2f}, NMSE {o['nmse']:.2f}, "
-                f"FAC2 {o['fac2']:.2f}.",
+                "Model ÷ wind tunnel at each tap height (wall A leeward, wall B windward):",
+                "",
+                f"| Case | Wall | {heights} |",
+                "| --- | --- |" + " --- |" * len(r["heights"]),
+                *[
+                    f"| {x['case']} | {w} | "
+                    + " | ".join(f"{v:.2f}" for v in _ratios(x["measured"], x["model"], w))
+                    + " |"
+                    for x in r["rows"]
+                    if "model" in x
+                    for w in "AB"
+                ],
             ]
-    lines += _section("Concentrations against the CODASC wind tunnel", r, body)
+        out += _section("Concentrations against the CODASC wind tunnel" + label, r, body)
 
-    r = load("trees/directions.json")
-    body = []
-    if r:
-        body = [
-            "| Case | Expected on the leeward pavement | Leeward ratio | Windward ratio |",
-            "| --- | --- | --- | --- |",
-            *[
-                f"| {x['case']} | {x['expected_leeward']} | {x['ratio']['A']:.2f} | "
-                f"{x['ratio']['B']:.2f} |"
-                for x in r["rows"]
-                if "ratio" in x
-            ],
-        ]
-    lines += _section("Direction of the effect: trees and a hedge", r, body)
+        r = load(f"trees/directions{suffix}.json")
+        body = []
+        if r:
+            body = [
+                "| Case | Expected on the leeward pavement | Leeward ratio | Windward ratio |",
+                "| --- | --- | --- | --- |",
+                *[
+                    f"| {x['case']} | {x['expected_leeward']} | {x['ratio']['A']:.2f} | "
+                    f"{x['ratio']['B']:.2f} |"
+                    for x in r["rows"]
+                    if "ratio" in x
+                ],
+            ]
+        out += _section("Direction of the effect: trees and a hedge" + label, r, body)
 
-    r = load("trees/reynolds.json")
-    body = []
-    if r:
-        body = [
-            "| Case | Change, leeward | Change, windward |",
-            "| --- | --- | --- |",
-            *[
-                f"| {x['case']} | {_pct(x['relative_change']['A'], 1)} | "
-                f"{_pct(x['relative_change']['B'], 1)} |"
-                for x in r["rows"]
-                if "relative_change" in x
-            ],
+        r = load(f"trees/reynolds{suffix}.json")
+        body = []
+        if r:
+            body = [
+                "| Case | Change, leeward | Change, windward |",
+                "| --- | --- | --- |",
+                *[
+                    f"| {x['case']} | {_pct(x['relative_change']['A'], 1)} | "
+                    f"{_pct(x['relative_change']['B'], 1)} |"
+                    for x in r["rows"]
+                    if "relative_change" in x
+                ],
+            ]
+        out += _section("Reynolds-number sensitivity of pavement exposure" + label, r, body)
+
+        r = load(f"trees/resolution{suffix}.json")
+        body = []
+        if r:
+            body = [
+                "| Case | Cells per H | FB | NMSE | FAC2 | Lowest tap A ÷ tunnel | "
+                "Lowest tap B ÷ tunnel |",
+                "| --- | --- | --- | --- | --- | --- | --- |",
+                *[
+                    f"| {x['case']} | {k[1:]} | {x[k]['metrics']['fb']:+.2f} | "
+                    f"{x[k]['metrics']['nmse']:.2f} | {x[k]['metrics']['fac2']:.2f} | "
+                    f"{_ratios(x['measured'], x[k]['model'], 'A')[0]:.2f} | "
+                    f"{_ratios(x['measured'], x[k]['model'], 'B')[0]:.2f} |"
+                    for x in r["rows"]
+                    for k in sorted((k for k in x if k.startswith("h")), key=lambda k: int(k[1:]))
+                    if "metrics" in x[k]
+                ],
+            ]
+        out += _section("Grid resolution of the comparison" + label, r, body, target=False)
+        return out
+
+    lines += ["## 3. Trees, hedges and fumes", ""]
+    # Plain names hold the CPU engine's grid; other grids carry a suffix such as _h48.
+    finer = sorted(
+        (
+            p.stem.removeprefix("calibration")
+            for p in (RESULTS / "trees").glob("calibration_h*.json")
+        ),
+        key=lambda x: int(x[2:]),
+    )
+    lines += trees_sections("", "")
+    for suffix in finer:
+        lines += trees_sections(suffix, f" ({int(suffix[2:])} cells per building height)")
+
+    if load("trees/codasc.json"):
+        lines += [
+            "What these results show, and what they do not: `docs/codasc.md`, section "
+            '"Results of the first comparison".',
+            "",
         ]
-    lines += _section("Reynolds-number sensitivity of pavement exposure", r, body)
 
     lines += [
         "## Still to come",

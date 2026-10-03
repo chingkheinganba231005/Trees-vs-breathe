@@ -144,7 +144,7 @@ _Source: `results/benchmarks/tracer_pulse.json`, generated 2026-10-02T19:21:52Z 
 
 Verdict: meets the target.
 
-Method: Golden cases from python -m treesvb.golden run in headless Chromium; the GPU kernel runs on a SwiftShader WebGPU adapter. Fields compared after the stated number of steps..
+Method: Golden cases from python -m treesvb.golden run in headless Chromium; the GPU kernel runs on a SwiftShader WebGPU adapter. Fields compared after the stated number of steps.
 
 GPU adapter: google swiftshader.
 
@@ -166,7 +166,7 @@ _Source: `results/benchmarks/browser_agreement.json`, generated 2026-10-03T02:55
 
 Verdict: meets the target.
 
-Method: Street canyon H = 24 cells, Re 20000, Cs 0.17, absorbing layers; 40000 steps of spin-up then velocities averaged over 40000 steps. Vortex centres are extrema of the averaged stream function inside the street holding at least 10% of its peak..
+Method: Street canyon H = 24 cells, Re 20000, Cs 0.17, absorbing layers; 40000 steps of spin-up then velocities averaged over 40000 steps. Vortex centres are extrema of the averaged stream function inside the street holding at least 10% of its peak.
 
 | H/W | Stacked vortex cells | Strongest vortex | Top of the street ÷ u_ref | Street floor with the wind |
 | --- | --- | --- | --- | --- |
@@ -181,6 +181,22 @@ Method: Street canyon H = 24 cells, Re 20000, Cs 0.17, absorbing layers; 40000 s
 - H/W 0.3: The narrower the street, the less of the outer wind reaches into it (Oke 1988): the flow at the top of the street weakens from H/W 0.3 to 0.5 to 1. Observed: +0.44, +0.29, +0.09 u_ref. Meets the expectation.
 
 _Source: `results/street/regimes.json`, generated 2026-10-03T03:47:20Z by `python -m treesvb.street` at commit `21537b2`._
+
+### Deep streets at 48 cells per building height
+
+Verdict: meets the target.
+
+Method: Street canyon H = 48 cells, Re 20000, Cs 0.17, absorbing layers; 40000 steps of spin-up then velocities averaged over 40000 steps. Vortex centres are extrema of the averaged stream function inside the street holding at least 10% of its peak.
+
+| H/W | Stacked vortex cells | Strongest vortex | Top of the street ÷ u_ref | Street floor with the wind |
+| --- | --- | --- | --- | --- |
+| 2.0 | 2 | clockwise | +0.11 | 50% |
+| 3.0 | 2 | clockwise | +0.08 | 50% |
+
+- H/W 2.0: Vortices stacked one above the other, the upper one turning with the wind above (Liu, Barth and Leung 2004). Observed: 2 stacked vortex cells; top vortex clockwise. Meets the expectation.
+- H/W 3.0: Vortices stacked one above the other, the upper one turning with the wind above (Liu, Barth and Leung 2004). Observed: 2 stacked vortex cells; top vortex clockwise. Meets the expectation.
+
+_Source: `results/street/regimes_h48.json`, generated 2026-10-03T05:10:25Z by `python -m treesvb.street` at commit `c8d665e`._
 
 ### Streets upwind of the studied street
 
@@ -239,27 +255,116 @@ _Source: `results/street/stability.json`, generated 2026-10-03T02:40:35Z by `pyt
 
 ### Turbulent Schmidt number, calibrated on one case
 
-Verdict: not yet computed.
+Verdict: meets the target.
 
-Not yet computed.
+Method: Tree-free street W/H = 1, wind across, H = 24 cells, Re 20000, Cs 0.17, power-law inflow (exponent 0.3), 40000 steps spin-up, 80000 averaged; candidates [0.2, 0.3, 0.5, 0.7, 1.0]; the one with the lowest NMSE is kept.
+
+| Sc_t | FB | NMSE | FAC2 |
+| --- | --- | --- | --- |
+| 0.2 | -0.62 | 2.35 | 0.60 |
+| 0.3 | -0.73 | 3.06 | 0.60 |
+| 0.5 | -0.85 | 3.96 | 0.60 |
+| 0.7 | -0.91 | 4.54 | 0.60 |
+| 1.0 | -0.96 | 5.11 | 0.60 |
+
+Kept: Sc_t = 0.2, the only calibrated parameter.
+
+It is the smallest value tried, so the best value may lie outside the range.
+
+_Source: `results/trees/calibration.json`, generated 2026-10-03T05:05:49Z by `python -m treesvb.trees` at commit `c8d665e`._
 
 ### Concentrations against the CODASC wind tunnel
 
-Verdict: not yet computed.
+Verdict: meets the target.
 
-Not yet computed.
+Method: 2D centre-plane model, H = 24 cells, Re 20000, Cs 0.17, Sc_t 0.2 (results/trees/calibration.json), power-law inflow (exponent 0.3), 40000 steps spin-up, 80000 averaged; ten cases, walls A and B at y = 0, z/H = 1/6 to 5/6.
+
+Urban criteria (Hanna and Chang 2012): |FB| < 0.67, NMSE < 6.0, FAC2 > 0.3.
+
+| Case | W/H | Stand density | λ (1/m) | FB | NMSE | FAC2 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1_90_0,0_000 | 1 | 0.0 | 0 | -0.62 | 2.35 | 0.60 |
+| 1_90_1,0_080 | 1 | 1.0 | 80 | -0.06 | 0.24 | 0.60 |
+| 1_90_1,0_200 | 1 | 1.0 | 200 | -0.08 | 0.18 | 0.60 |
+| 1_90_0,5_080 | 1 | 0.5 | 80 | -0.27 | 0.78 | 0.50 |
+| 1_90_0,5_200 | 1 | 0.5 | 200 | -0.12 | 0.30 | 0.60 |
+| 2_90_0,0_000 | 2 | 0.0 | 0 | +0.33 | 0.14 | 0.50 |
+| 2_90_1,0_080 | 2 | 1.0 | 80 | -0.67 | 1.39 | 0.00 |
+| 2_90_1,0_200 | 2 | 1.0 | 200 | -0.06 | 0.04 | 0.90 |
+| 2_90_0,5_080 | 2 | 0.5 | 80 | -0.18 | 0.28 | 0.50 |
+| 2_90_0,5_200 | 2 | 0.5 | 200 | -0.64 | 1.34 | 0.00 |
+
+All cases together (100 points): FB -0.29, NMSE 0.82, FAC2 0.48.
+
+Model ÷ wind tunnel at each tap height (wall A leeward, wall B windward):
+
+| Case | Wall | z/H 0.17 | z/H 0.33 | z/H 0.50 | z/H 0.67 | z/H 0.83 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1_90_0,0_000 | A | 1.24 | 1.05 | 1.08 | 1.16 | 1.30 |
+| 1_90_0,0_000 | B | 11.73 | 5.35 | 0.57 | 0.33 | 0.34 |
+| 1_90_1,0_080 | A | 1.11 | 0.93 | 0.86 | 0.88 | 0.87 |
+| 1_90_1,0_080 | B | 7.54 | 1.58 | 0.36 | 0.28 | 0.30 |
+| 1_90_1,0_200 | A | 1.10 | 0.93 | 0.90 | 0.92 | 0.96 |
+| 1_90_1,0_200 | B | 8.14 | 1.43 | 0.38 | 0.37 | 0.41 |
+| 1_90_0,5_080 | A | 1.14 | 0.98 | 0.94 | 0.96 | 0.98 |
+| 1_90_0,5_080 | B | 11.23 | 2.38 | 0.37 | 0.29 | 0.30 |
+| 1_90_0,5_200 | A | 1.16 | 0.99 | 0.95 | 0.96 | 0.96 |
+| 1_90_0,5_200 | B | 6.97 | 1.09 | 0.26 | 0.23 | 0.25 |
+| 2_90_0,0_000 | A | 0.88 | 0.83 | 0.89 | 0.95 | 0.95 |
+| 2_90_0,0_000 | B | 0.38 | 0.42 | 0.36 | 0.37 | 0.38 |
+| 2_90_1,0_080 | A | 2.08 | 2.38 | 2.53 | 2.64 | 2.67 |
+| 2_90_1,0_080 | B | 0.15 | 0.17 | 0.20 | 0.19 | 0.19 |
+| 2_90_1,0_200 | A | 1.08 | 1.18 | 1.19 | 1.18 | 1.04 |
+| 2_90_1,0_200 | B | 0.79 | 1.01 | 0.89 | 0.65 | 0.37 |
+| 2_90_0,5_080 | A | 1.36 | 1.39 | 1.44 | 1.54 | 1.66 |
+| 2_90_0,5_080 | B | 0.23 | 0.24 | 0.22 | 0.20 | 0.20 |
+| 2_90_0,5_200 | A | 2.10 | 2.50 | 2.53 | 2.51 | 2.51 |
+| 2_90_0,5_200 | B | 0.12 | 0.15 | 0.16 | 0.14 | 0.13 |
+
+_Source: `results/trees/codasc.json`, generated 2026-10-03T05:07:26Z by `python -m treesvb.trees` at commit `c8d665e`._
 
 ### Direction of the effect: trees and a hedge
 
-Verdict: not yet computed.
+Verdict: meets the target.
 
-Not yet computed.
+Method: 2D street, H = 24 cells, Re 20000, Sc_t 0.2; trees: CODASC crown at W/H 1 (lambda 200 1/m, dense); hedge: 2.5 m high, 1.5 m wide, lambda 3.34 1/m in the middle of a W/H 2 street (Gromke et al. 2016 via Abhijith et al. 2017, Table 3), full-scale H = 18 m; exposure: mean c+ within 0.15 H of each wall, 0.05-0.15 H above the ground.
+
+| Case | Expected on the leeward pavement | Leeward ratio | Windward ratio |
+| --- | --- | --- | --- |
+| trees | up | 1.41 | 0.35 |
+| hedge | down | 0.95 | 0.99 |
+
+_Source: `results/trees/directions.json`, generated 2026-10-03T05:08:03Z by `python -m treesvb.trees` at commit `c8d665e`._
 
 ### Reynolds-number sensitivity of pavement exposure
 
-Verdict: not yet computed.
+Verdict: **misses the target**.
 
-Not yet computed.
+Method: CODASC W/H 1 without trees and with the dense crown (lambda 200 1/m), H = 24 cells, Sc_t 0.2, Re 20000 and 40000.
+
+| Case | Change, leeward | Change, windward |
+| --- | --- | --- |
+| 1_90_0,0_000 | 1.8% | 27.6% |
+| 1_90_1,0_200 | 13.1% | 7.8% |
+
+_Source: `results/trees/reynolds.json`, generated 2026-10-03T05:08:36Z by `python -m treesvb.trees` at commit `c8d665e`._
+
+### Grid resolution of the comparison
+
+Verdict: for information, no target.
+
+Method: Two CODASC cases at H = 24 and 48 cells, Sc_t 0.2.
+
+| Case | Cells per H | FB | NMSE | FAC2 | Lowest tap A ÷ tunnel | Lowest tap B ÷ tunnel |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1_90_0,0_000 | 24 | -0.62 | 2.35 | 0.60 | 1.24 | 11.73 |
+| 1_90_0,0_000 | 48 | -0.30 | 0.45 | 0.80 | 1.23 | 4.98 |
+| 1_90_1,0_200 | 24 | -0.08 | 0.18 | 0.60 | 1.10 | 8.14 |
+| 1_90_1,0_200 | 48 | -0.65 | 0.97 | 0.80 | 2.44 | 7.21 |
+
+_Source: `results/trees/resolution.json`, generated 2026-10-03T05:09:50Z by `python -m treesvb.trees` at commit `c8d665e`._
+
+What these results show, and what they do not: `docs/codasc.md`, section "Results of the first comparison".
 
 ## Still to come
 
