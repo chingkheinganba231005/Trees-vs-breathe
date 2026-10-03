@@ -3,9 +3,10 @@
 #
 # Run this once before the first real Colab job. It takes about two minutes and checks the
 # whole protocol from `BRIEF.md` section 10: the A100 runtime, getting the code, Google Drive,
-# the run folder, the manifest with checksums, and the download instructions.
+# the run folder, the manifest with checksums, and the zip you send back.
 #
-# **How to run:** Runtime → Change runtime type → A100 GPU, then Runtime → Run all.
+# **How to run:** Runtime → Change runtime type → A100 GPU, then Runtime → Run all. Keep this
+# tab open: the last cell downloads one zip, which is what you send back.
 #
 # CI runs the same notebook on CPU with `TVB_SMOKE=1` (no GPU, no Drive, local folder).
 
@@ -101,7 +102,10 @@ check = {
 print(check)
 
 # %% [markdown]
-# ## Manifest and download instructions
+# ## Manifest and the zip to send back
+#
+# Packs every file meant for the repo, with the manifest, into one zip, keeps it in the run
+# folder on Drive and starts a browser download. Send that zip back as it is.
 
 # %%
 manifest = colab.write_manifest(
@@ -114,4 +118,4 @@ manifest = colab.write_manifest(
     outputs={"setup_check.json": "results/colab/00_setup_check.json"},
     manifest_dest="results/colab/00_setup_check.manifest.json",
 )
-print(colab.download_instructions(run, manifest))
+colab.hand_off(run, manifest)

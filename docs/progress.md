@@ -152,11 +152,12 @@ Goal: porous trees and hedges in the street, traffic fumes as a passive tracer, 
 
 ### Decisions
 
-| ID    | Decision                                                                  | Why                                                                              |
-| ----- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| D-020 | The CODASC street is modelled behind one upwind street, like the live app | The single 2D street turns the wrong way; the comparison tests the choice        |
-| D-021 | One calibrated parameter: Sc_t, on the tree-free W/H 1 case only          | The brief allows one; the other nine cases are predictions                       |
-| D-022 | The comparison runs on Colab at H = 24 and 48                             | About 30 runs of 120 000 steps: hours on this CPU, about half an hour on an A100 |
+| ID    | Decision                                                                                                                  | Why                                                                                                                                                                                                      |
+| ----- | ------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D-020 | The CODASC street is modelled behind one upwind street, like the live app                                                 | The single 2D street turns the wrong way; the comparison tests the choice                                                                                                                                |
+| D-021 | One calibrated parameter: Sc_t, on the tree-free W/H 1 case only                                                          | The brief allows one; the other nine cases are predictions                                                                                                                                               |
+| D-022 | The comparison runs on Colab at H = 24 and 48                                                                             | About 30 runs of 120 000 steps: hours on this CPU, about half an hour on an A100                                                                                                                         |
+| D-023 | Colab results come back as one zip that the notebook downloads; `python -m treesvb.colab unpack` checks it before writing | Asked by the user on 2026-10-03. One file to send instead of several to place by hand, and nothing reaches the repo unless every checksum matches. Replaces the per-file hand-off in BRIEF.md section 10 |
 
 ### Exit
 

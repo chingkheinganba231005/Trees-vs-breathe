@@ -5,7 +5,11 @@ folder on Google Drive, record a manifest with the git commit, parameters, seeds
 wall time and the SHA-256 of every output, and finish by printing which files go where in the
 repo. In smoke mode (TVB_SMOKE=1, used by CI) the same code runs on CPU with a local folder.
 
-When the user brings files back, `python -m treesvb.colab verify <manifest>` checks them.
+The hand-off is one zip: `hand_off` packs every file meant for the repo at its repo path,
+together with the manifest, and starts a browser download when it runs inside Colab. The zip
+also stays in the run folder on Drive. `python -m treesvb.colab unpack <zip>` checks every file
+against the manifest before writing any of them into the repo; `verify <manifest>` re-checks
+files already in place.
 """
 
 from __future__ import annotations
@@ -19,10 +23,11 @@ import platform
 import subprocess
 import sys
 import time
+import zipfile
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from importlib import metadata
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 DRIVE_RUNS = Path("/content/drive/MyDrive/trees-vs-breath/runs")
@@ -173,24 +178,119 @@ def write_manifest(
     return manifest
 
 
-def download_instructions(run: RunDir, manifest: Mapping[str, Any]) -> str:
-    """The text the last cell prints: what to download and where it goes in the repo."""
+def bundle_name(manifest: Mapping[str, Any]) -> str:
+    return f"{manifest['notebook']}_{manifest['run']}.zip"
+
+
+def pack(run: RunDir, manifest: Mapping[str, Any]) -> Path:
+    """Zip the outputs meant for the repo, each at its repo path, with the manifest.
+
+    Files that stay on Drive (repo_path None) are left out. The manifest goes in at its own repo
+    path, or as manifest.json at the top when it has none.
+    """
+    bundle = run.path / bundle_name(manifest)
+    with zipfile.ZipFile(bundle, "w", compression=zipfile.ZIP_DEFLATED) as z:
+        for o in manifest["outputs"]:
+            if o["repo_path"]:
+                z.write(run.path / o["path"], o["repo_path"])
+        z.write(run.path / MANIFEST_NAME, manifest.get("manifest_repo_path") or MANIFEST_NAME)
+    return bundle
+
+
+def offer_download(path: Path) -> bool:
+    """Start a browser download of `path` when running in Colab; False anywhere else."""
     try:
-        shown = run.path.relative_to(DRIVE_RUNS.parent.parent)
-        where = f"Google Drive, folder MyDrive/{shown}"
+        from google.colab import files  # only importable inside Colab
+    except ImportError:
+        return False
+    try:
+        files.download(str(path))
+    except Exception as e:  # the zip is also on Drive, so a failed download is not fatal
+        print(f"The browser download did not start ({e}).")
+        return False
+    return True
+
+
+def where(run: RunDir) -> str:
+    try:
+        return f"Google Drive, folder MyDrive/{run.path.relative_to(DRIVE_RUNS.parent.parent)}"
     except ValueError:
-        where = str(run.path)
-    moves = [(o["path"], o["repo_path"]) for o in manifest["outputs"] if o["repo_path"]]
-    if manifest.get("manifest_repo_path"):
-        moves.append((MANIFEST_NAME, manifest["manifest_repo_path"]))
+        return str(run.path)
+
+
+def download_instructions(
+    run: RunDir, manifest: Mapping[str, Any], bundle: Path, *, downloading: bool
+) -> str:
+    """The text the last cell prints: the zip to send back and what it holds."""
+    if downloading:
+        lines = [
+            f"Your browser is downloading {bundle.name}.",
+            f"If no download appears, the same file is in {where(run)}.",
+        ]
+    else:
+        lines = [f"Download {bundle.name} from {where(run)}."]
+    with zipfile.ZipFile(bundle) as z:
+        held = z.namelist()
+    lines.append("Send the zip back unopened. It holds these files at their places in the repo:")
+    lines += [f"  {name}" for name in held]
     kept = [o["path"] for o in manifest["outputs"] if not o["repo_path"]]
-    width = max((len(src) for src, _ in moves), default=0)
-    lines = [f"Download from {where}", "and put each file at this path in the repo:"]
-    lines += [f"  {src.ljust(width)}  ->  {dest}" for src, dest in moves]
     if kept:
         lines.append("Leave these on Drive (not committed): " + ", ".join(kept))
-    lines.append('Then reply "done".')
+    lines.append('Then reply "done" with the zip attached.')
     return "\n".join(lines)
+
+
+def hand_off(run: RunDir, manifest: Mapping[str, Any]) -> Path:
+    """Last step of every notebook: zip the outputs, start the download, print what to send."""
+    bundle = pack(run, manifest)
+    downloading = offer_download(bundle)
+    print(download_instructions(run, manifest, bundle, downloading=downloading))
+    return bundle
+
+
+def _safe_repo_path(name: str) -> bool:
+    p = PurePosixPath(name)
+    return bool(name) and "\\" not in name and not p.is_absolute() and ".." not in p.parts
+
+
+def unpack(bundle: Path, repo: Path) -> list[str]:
+    """Check a returned zip against the manifest inside it, then write its files into the repo.
+
+    Nothing is written unless every file is expected, has a safe relative path and matches its
+    checksum. Returns the repo paths written; raises ValueError listing the problems otherwise.
+    """
+    with zipfile.ZipFile(bundle) as z:
+        names = [i.filename for i in z.infolist() if not i.is_dir()]
+        manifests = [n for n in names if PurePosixPath(n).name.endswith(MANIFEST_NAME)]
+        if len(manifests) != 1:
+            raise ValueError(f"expected one manifest in {bundle.name}, found {len(manifests)}")
+        manifest_name = manifests[0]
+        manifest = json.loads(z.read(manifest_name))
+        expected = {o["repo_path"]: o["sha256"] for o in manifest["outputs"] if o["repo_path"]}
+
+        problems = []
+        if manifest_name != (manifest.get("manifest_repo_path") or MANIFEST_NAME):
+            problems.append(f"manifest stored at an unexpected path: {manifest_name}")
+        for name in names:
+            if not _safe_repo_path(name):
+                problems.append(f"unsafe path: {name}")
+            elif name != manifest_name and name not in expected:
+                problems.append(f"not in the manifest: {name}")
+        for name, digest in expected.items():
+            if name not in names:
+                problems.append(f"missing: {name}")
+            elif (got := hashlib.sha256(z.read(name)).hexdigest()) != digest:
+                problems.append(f"checksum mismatch: {name} ({got[:12]} != {digest[:12]})")
+        if problems:
+            raise ValueError("; ".join(problems))
+
+        written = []
+        for name in [*expected, manifest_name]:
+            dest = repo / name
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_bytes(z.read(name))
+            written.append(name)
+    return written
 
 
 def verify(manifest_path: Path, repo: Path) -> list[str]:
@@ -216,7 +316,21 @@ def _main(argv: list[str] | None = None) -> int:
     v = sub.add_parser("verify", help="check returned Colab outputs against their manifest")
     v.add_argument("manifest", type=Path)
     v.add_argument("--repo", type=Path, default=Path("."))
+    u = sub.add_parser("unpack", help="check a Colab zip and write its files into the repo")
+    u.add_argument("bundle", type=Path)
+    u.add_argument("--repo", type=Path, default=Path("."))
     args = parser.parse_args(argv)
+
+    if args.cmd == "unpack":
+        try:
+            written = unpack(args.bundle, args.repo)
+        except ValueError as e:
+            print(f"Nothing written: {e}")
+            return 1
+        for name in written:
+            print(f"wrote {name}")
+        print(f"All {len(written)} files in {args.bundle.name} match the manifest.")
+        return 0
 
     problems = verify(args.manifest, args.repo)
     for line in problems:

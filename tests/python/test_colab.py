@@ -1,7 +1,11 @@
 import datetime as dt
 import hashlib
 import json
+import re
 import subprocess
+import sys
+import types
+import zipfile
 from pathlib import Path
 
 import pytest
@@ -89,19 +93,115 @@ def test_run_dir_never_reuses_a_folder(tmp_path: Path) -> None:
         colab.RunDir.create("n", smoke=True, root=tmp_path, stamp="s")
 
 
-def test_download_instructions_list_moves_and_kept_files(tmp_path: Path) -> None:
+def test_pack_holds_repo_files_and_manifest_only(tmp_path: Path) -> None:
     run, manifest = make_run(tmp_path)
-    text = colab.download_instructions(run, manifest)
-    assert "a.json" in text and "results/test/a.json" in text
-    assert "manifest.json" in text and "results/test/manifest.json" in text
+    bundle = colab.pack(run, manifest)
+    assert bundle == run.path / "99_test_20261002T000000Z.zip"
+    with zipfile.ZipFile(bundle) as z:
+        assert sorted(z.namelist()) == ["results/test/a.json", "results/test/manifest.json"]
+        assert z.read("results/test/a.json") == b'{"a": 1}\n'
+
+
+def test_offer_download_is_a_no_op_outside_colab(tmp_path: Path) -> None:
+    assert colab.offer_download(tmp_path / "x.zip") is False
+
+
+def fake_colab(monkeypatch: pytest.MonkeyPatch, download) -> None:
+    google = types.ModuleType("google")
+    google.colab = types.ModuleType("google.colab")
+    google.colab.files = types.SimpleNamespace(download=download)
+    monkeypatch.setitem(sys.modules, "google", google)
+    monkeypatch.setitem(sys.modules, "google.colab", google.colab)
+
+
+def test_offer_download_uses_colab_files(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[str] = []
+    fake_colab(monkeypatch, calls.append)
+    assert colab.offer_download(tmp_path / "x.zip") is True
+    assert calls == [str(tmp_path / "x.zip")]
+
+
+def test_failed_download_falls_back_to_drive(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def refuse(path: str) -> None:
+        raise RuntimeError("browser blocked it")
+
+    fake_colab(monkeypatch, refuse)
+    run, manifest = make_run(tmp_path)
+    bundle = colab.hand_off(run, manifest)
+    out = capsys.readouterr().out
+    assert "The browser download did not start (browser blocked it)." in out
+    assert f"Download {bundle.name} from {run.path}." in out
+
+
+def test_download_instructions_name_the_zip_and_its_contents(tmp_path: Path) -> None:
+    run, manifest = make_run(tmp_path)
+    bundle = colab.pack(run, manifest)
+    text = colab.download_instructions(run, manifest, bundle, downloading=True)
+    assert text.startswith("Your browser is downloading 99_test_20261002T000000Z.zip.")
+    assert "  results/test/a.json" in text and "  results/test/manifest.json" in text
     assert "Leave these on Drive (not committed): big.npz" in text
-    assert text.endswith('Then reply "done".')
+    assert text.endswith('Then reply "done" with the zip attached.')
+    quiet = colab.download_instructions(run, manifest, bundle, downloading=False)
+    assert quiet.startswith(f"Download 99_test_20261002T000000Z.zip from {run.path}.")
 
 
-def test_download_instructions_show_drive_folder() -> None:
+def test_drive_folder_is_named() -> None:
     run = colab.RunDir("03_dataset", "s", colab.DRIVE_RUNS / "03_dataset" / "s")
-    manifest = {"outputs": [], "manifest_repo_path": None}
-    assert "MyDrive/trees-vs-breath/runs/03_dataset/s" in colab.download_instructions(run, manifest)
+    assert colab.where(run) == "Google Drive, folder MyDrive/trees-vs-breath/runs/03_dataset/s"
+
+
+def test_unpack_writes_checked_files(tmp_path: Path) -> None:
+    run, manifest = make_run(tmp_path)
+    bundle = colab.pack(run, manifest)
+    repo = tmp_path / "repo"
+    assert colab.unpack(bundle, repo) == ["results/test/a.json", "results/test/manifest.json"]
+    assert (repo / "results/test/a.json").read_text() == '{"a": 1}\n'
+    assert colab.verify(repo / "results/test/manifest.json", repo) == []
+    assert colab._main(["unpack", str(bundle), "--repo", str(repo)]) == 0
+
+
+def rezip(bundle: Path, out: Path, change: dict[str, bytes | None]) -> Path:
+    """Copy a zip, replacing (bytes) or dropping (None) the named members."""
+    with zipfile.ZipFile(bundle) as src, zipfile.ZipFile(out, "w") as dst:
+        for name in src.namelist():
+            if name not in change:
+                dst.writestr(name, src.read(name))
+        for name, data in change.items():
+            if data is not None:
+                dst.writestr(name, data)
+    return out
+
+
+@pytest.mark.parametrize(
+    ("change", "problem"),
+    [
+        ({"results/test/a.json": b'{"a": 2}\n'}, "checksum mismatch: results/test/a.json"),
+        ({"results/test/a.json": None}, "missing: results/test/a.json"),
+        ({"results/test/extra.json": b"{}"}, "not in the manifest: results/test/extra.json"),
+        ({"../outside.json": b"{}"}, "unsafe path: ../outside.json"),
+        ({"/abs.json": b"{}"}, "unsafe path: /abs.json"),
+    ],
+)
+def test_unpack_refuses_bad_zips_and_writes_nothing(
+    tmp_path: Path, change: dict[str, bytes | None], problem: str
+) -> None:
+    run, manifest = make_run(tmp_path)
+    bad = rezip(colab.pack(run, manifest), tmp_path / "bad.zip", change)
+    repo = tmp_path / "repo"
+    with pytest.raises(ValueError, match=re.escape(problem)):
+        colab.unpack(bad, repo)
+    assert not repo.exists() and not (tmp_path / "outside.json").exists()
+    assert colab._main(["unpack", str(bad), "--repo", str(repo)]) == 1
+
+
+def test_unpack_needs_exactly_one_manifest(tmp_path: Path) -> None:
+    run, manifest = make_run(tmp_path)
+    bundle = colab.pack(run, manifest)
+    no_manifest = rezip(bundle, tmp_path / "none.zip", {"results/test/manifest.json": None})
+    with pytest.raises(ValueError, match="expected one manifest"):
+        colab.unpack(no_manifest, tmp_path / "repo")
 
 
 def test_verify_catches_missing_and_changed_files(tmp_path: Path) -> None:

@@ -39,5 +39,6 @@ The full brief is in `BRIEF.md`. Read it before starting work. These rules apply
 | Python lint and tests                                          | `ruff check python tests/python colab && ruff format --check python tests/python colab && pytest` |
 | Rebuild notebooks from `colab/src/*.py`                        | `python -m treesvb.notebooks build`                                                               |
 | Run notebooks in CPU smoke mode                                | `python -m treesvb.notebooks smoke`                                                               |
+| Check and unpack a zip returned from Colab                     | `python -m treesvb.colab unpack <zip>`                                                            |
 
 The container has no GPU. Playwright tests use `?engine=cpu`. Heavy GPU work goes to the user's Colab A100 through the protocol in `BRIEF.md` section 10.

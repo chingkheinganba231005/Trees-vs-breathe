@@ -67,6 +67,8 @@ def smoke(names: list[str] | None = None, timeout: int = 900) -> None:
     import nbformat
     from nbclient import NotebookClient
 
+    from treesvb import colab
+
     notebooks = sorted(OUT.glob("[0-9][0-9]_*.ipynb"))
     if names:
         notebooks = [p for p in notebooks if p.stem in names or p.stem[:2] in names]
@@ -82,11 +84,15 @@ def smoke(names: list[str] | None = None, timeout: int = 900) -> None:
                 nb, timeout=timeout, kernel_name="python3", resources={"metadata": {"path": tmp}}
             )
             client.execute()
-            # Echo the last cell (the download instructions) so CI logs show the hand-off text.
+            # Echo the last cell (the hand-off text) so CI logs show it.
             last = next(c for c in reversed(nb.cells) if c.cell_type == "code")
             for out in last.get("outputs", []):
                 if out.get("output_type") == "stream":
                     print(out["text"], end="")
+            # Unpack the zip the notebook made, the same way a real one is brought back.
+            [bundle] = (Path(tmp) / "runs" / path.stem).glob("*/*.zip")
+            written = colab.unpack(bundle, Path(tmp) / "repo" / path.stem)
+            print(f"smoke: {bundle.name} unpacks to {len(written)} files", flush=True)
             print(f"smoke: {path.name} ok", flush=True)
 
 

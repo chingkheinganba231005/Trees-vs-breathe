@@ -13,7 +13,8 @@
 # About 30 to 40 minutes on an A100. Everything is simulated; the wind-tunnel data are fetched
 # from the CODASC site and checked against the checksums in the repository.
 #
-# **How to run:** Runtime → Change runtime type → A100 GPU, then Runtime → Run all.
+# **How to run:** Runtime → Change runtime type → A100 GPU, then Runtime → Run all. Keep this
+# tab open: the last cell downloads one zip, which is what you send back.
 #
 # CI runs the same notebook on CPU with `TVB_SMOKE=1`: a coarse grid, a few hundred steps, and
 # only the studies that need no wind-tunnel files.
@@ -143,7 +144,10 @@ else:
 print("exit status", street.main(deep_args))
 
 # %% [markdown]
-# ## Manifest and download instructions
+# ## Manifest and the zip to send back
+#
+# Packs every file meant for the repo, with the manifest, into one zip, keeps it in the run
+# folder on Drive and starts a browser download. Send that zip back as it is.
 
 # %%
 names = (
@@ -162,4 +166,4 @@ manifest = colab.write_manifest(
     outputs=outputs,
     manifest_dest="results/trees/01_reference_2d.manifest.json",
 )
-print(colab.download_instructions(run, manifest))
+colab.hand_off(run, manifest)

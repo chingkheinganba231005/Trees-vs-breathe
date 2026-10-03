@@ -16,7 +16,7 @@ Heavy GPU work runs on the user's Colab Pro A100 (80 GB). The notebooks import t
 1. Open the notebook in Colab: File → Upload notebook, or File → Open notebook → GitHub, and paste the notebook's GitHub URL.
 2. Runtime → Change runtime type → A100 GPU.
 3. Runtime → Run all. The first cell runs `nvidia-smi`; the runtime check stops the notebook with a clear message if the GPU is not an A100.
-4. The last cell prints which files to download from `MyDrive/trees-vs-breath/runs/<notebook>/<UTC timestamp>/` and where each goes in the repo. Bring them back and reply "done"; the files are then checked with `python -m treesvb.colab verify <manifest.json>`.
+4. Keep the tab open. The last cell packs every file meant for the repo, with the manifest, into one zip (`<notebook>_<UTC timestamp>.zip`) and your browser downloads it. The same zip stays in `MyDrive/trees-vs-breath/runs/<notebook>/<UTC timestamp>/` in case the download does not start. Send the zip back unopened and reply "done". It is unpacked with `python -m treesvb.colab unpack <zip>`, which checks every file against the manifest before writing any of them.
 
 ## Rules every notebook follows
 
@@ -24,6 +24,7 @@ Heavy GPU work runs on the user's Colab Pro A100 (80 GB). The notebooks import t
 - Pinned installs for anything Colab does not already provide at the needed version.
 - Code comes from a fresh clone of this public repo. No token ever appears in a notebook.
 - Outputs go to `/content/drive/MyDrive/trees-vs-breath/runs/<notebook>/<UTC timestamp>/`, with a `manifest.json` holding the git commit, parameters, seeds, versions, GPU, wall time and the SHA-256 of every output.
+- The last cell calls `colab.hand_off`: one zip of the files for the repo, each at its repo path, plus the manifest, downloaded to the user's computer.
 - A CPU smoke mode (`TVB_SMOKE=1`: tiny grid, few runs, local folder) that CI executes on every push.
 - Committed artifacts stay small: each model at most 10 MB, 3D data at most 15 MB in total. Datasets stay on Drive.
 
