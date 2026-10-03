@@ -1,7 +1,25 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import type { GoldenCase } from '../../apps/web/src/sim/golden';
+import {
+  avenueTrees,
+  centralHedge,
+  dragField,
+  LANE_OFFSETS,
+  laneOffsets,
+  lineSources,
+  pavementExposure,
+  SOURCE_TOTAL,
+} from '../../apps/web/src/sim/greenery';
 import { isHealthy, lowerTimeStep, MIN_TAU_MARGIN } from '../../apps/web/src/sim/guard';
 import { Particles, sampleVelocity } from '../../apps/web/src/sim/particles';
-import { canyonGeometry, canyonNx, streetColumns } from '../../apps/web/src/sim/street';
+import {
+  canyonDomain,
+  canyonGeometry,
+  canyonNx,
+  streetColumns,
+} from '../../apps/web/src/sim/street';
 import { parseColor, streetView } from '../../apps/web/src/sim/view';
 import { contourSegments } from '../../apps/web/src/components/charts/contour';
 
@@ -95,5 +113,50 @@ describe('contours for the streamline plots', () => {
 
   it('finds nothing in a flat field', () => {
     expect(contourSegments(new Float64Array(9).fill(1), 3, 3, 0.5)).toEqual([]);
+  });
+});
+
+describe('greenery and traffic', () => {
+  const golden = JSON.parse(
+    readFileSync(resolve(import.meta.dirname, '../golden/street_trees.json'), 'utf8'),
+  ) as GoldenCase;
+  const g = canyonGeometry(6, 1);
+  const solid = canyonDomain(g).solid;
+
+  it('builds the same crown drag as Python', () => {
+    const drag = dragField(g, solid, avenueTrees(1, 'dense'));
+    const ref = golden.params.drag!;
+    expect(drag.length).toBe(ref.length);
+    for (let k = 0; k < ref.length; k++) expect(drag[k]).toBeCloseTo(ref[k]!, 6);
+  });
+
+  it('builds the same line sources as Python', () => {
+    const src = lineSources(g, LANE_OFFSETS, SOURCE_TOTAL);
+    const ref = golden.params.tracer!.source;
+    for (let k = 0; k < ref.length; k++) expect(src[k]).toBeCloseTo(ref[k]!, 9);
+  });
+
+  it('keeps the lanes inside narrow streets', () => {
+    for (const w of [0.33, 0.5, 1, 2]) {
+      for (const o of laneOffsets(w)) expect(Math.abs(o)).toBeLessThan(0.5 * w);
+    }
+    expect(laneOffsets(2)).toEqual([...LANE_OFFSETS]);
+  });
+
+  it('puts one row of trees in narrow streets and two in wide ones', () => {
+    expect(avenueTrees(1, 'light')).toHaveLength(1);
+    expect(avenueTrees(2, 'light')).toHaveLength(2);
+    const h = centralHedge(2);
+    expect(h.x0 + h.x1).toBeCloseTo(2, 12);
+    expect(h.z1).toBeCloseTo(2.5 / 18, 12);
+  });
+
+  it('measures a uniform concentration as its c+ on both pavements', () => {
+    const n = canyonNx(g) * g.top;
+    const c = new Float32Array(n).fill(2e-3);
+    const e = pavementExposure(g, c, 1, 0, 0.05);
+    const expected = (2e-3 * 0.05 * 6) / SOURCE_TOTAL;
+    expect(e.A).toBeCloseTo(expected, 4);
+    expect(e.B).toBeCloseTo(expected, 4);
   });
 });

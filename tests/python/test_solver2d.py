@@ -233,8 +233,13 @@ def test_jax_batches_with_vmap() -> None:
 # Committed results ----------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("path", sorted((REPO / "results/benchmarks").glob("*.json")), ids=str)
-def test_committed_benchmarks_pass_and_carry_provenance(path: Path) -> None:
+@pytest.mark.parametrize(
+    "path",
+    sorted((REPO / "results/benchmarks").glob("*.json"))
+    + sorted((REPO / "results/street").glob("*.json")),
+    ids=str,
+)
+def test_committed_results_pass_and_carry_provenance(path: Path) -> None:
     doc = json.loads(path.read_text())
     for key in ("schema", "generated_by", "generated_at", "commit", "versions", "passed"):
         assert key in doc, key
