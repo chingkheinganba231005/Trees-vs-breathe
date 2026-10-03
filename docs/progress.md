@@ -185,14 +185,14 @@ Goal: the time of day moves the sun, shade falls from the roofs and the crowns, 
 
 ### Sources to verify first
 
-- [ ] Solar position: NREL SPA (Reda and Andreas 2004) or NOAA, and `pvlib` for the tests (licence)
-- [ ] Leaf or crown transmission of sunlight by crown density, for crown shade (an assumption with a cited value)
-- [ ] Diffuse fraction of global radiation: Erbs et al. (1982) or Reindl et al. (1990)
-- [ ] Mean radiant temperature of a standing person: SOLWEIG (Lindberg et al. 2008), absorption coefficients and emissivity
-- [ ] UTCI operational polynomial (Bröde et al. 2012) in `pythermalcomfort` (MIT): version and reference values
-- [ ] Wind at 10 m from pedestrian wind: log profile and its roughness length
-- [ ] Hong Kong Observatory hourly data (temperature, humidity, global radiation, wind) for a very hot day and a typical July day, with licence
-- [ ] Sizes of Hong Kong street trees, to size crowns in metres on the real streets (until found, crowns keep the wind-tunnel proportions)
+- [x] Solar position: NOAA (Meeus); `pvlib` 0.16.1 (BSD-3-Clause) for the tests, run in a separate environment
+- [x] Crown transmission of sunlight: Takács et al. (2016), Table 3 (A-018)
+- [x] Diffuse fraction of global radiation: Erbs et al. (1982) as in pvlib
+- [x] Mean radiant temperature of a standing person: six-directional method and SOLWEIG defaults (Ouyang et al. 2022 for Thorsson et al. 2007; UMEP manual); the ISO 6946 surface resistance stays `UNVERIFIED`
+- [x] UTCI operational polynomial (Bröde et al. 2012) in `pythermalcomfort` 4.6.0 (MIT)
+- [x] Wind at 10 m from pedestrian wind: UTCI's log law with roughness 0.01 m (Lee, Park and Mayer 2025)
+- [x] Hong Kong Observatory data for a very hot day and a typical July day: open data are daily (King's Park), so the hours are rebuilt (A-022); DATA.GOV.HK terms
+- [x] Sizes of Hong Kong street trees: Highways Department trunk sizes matched to AFCD measured trees (A-014)
 - [ ] Bus headroom over carriageways (carried over from P2)
 
 ### Street
@@ -200,19 +200,20 @@ Goal: the time of day moves the sun, shade falls from the roofs and the crowns, 
 - [x] Three presets measured from Lands Department data (`python -m treesvb.hkstreets`, `results/streets/presets.json`); Street screen with drawings to scale and "Open in Design"
 - [ ] Custom street: H, W, pavement widths, compass direction
 - [ ] Phone mode: compass for the direction, tilt to the roofline for the height (h = d tan θ + eye height, with its uncertainty), thermometer reading
-- [ ] Date, time and weather preset
+- [x] Weather presets measured (`python -m treesvb.hkweather`, `results/weather/presets.json`)
+- [ ] Date, time and weather preset controls on Design
 
 ### Sun and shade
 
-- [ ] Solar position in TypeScript and Python, within 0.1° of `pvlib`
-- [ ] Profile angle in the cross-section; shadows from roof edges and crowns; crown transmission by density
+- [x] Solar position in TypeScript within 0.1° of `pvlib` (`results/sun/position.json`); a Python port waits until the dataset needs it
+- [x] Profile angle in the cross-section; shadows from roof edges and crowns; crown transmission by density (`apps/web/src/sun/canyon.ts`)
 
 ### Radiation and heat
 
-- [ ] Direct and diffuse split of global radiation
-- [ ] Simplified SOLWEIG mean radiant temperature at each pavement; surface temperatures by a documented simple approximation (assumption)
-- [ ] UTCI polynomial in TypeScript, within 0.1 °C of `pythermalcomfort` over a grid of inputs
-- [ ] Pedestrian wind from the solver converted to 10 m with a log profile
+- [x] Direct and diffuse split of global radiation, matching `pvlib`
+- [x] Simplified SOLWEIG mean radiant temperature at each pavement; surface temperatures by a steady balance (A-017 to A-021)
+- [x] UTCI polynomial in TypeScript, within 0.1 °C of `pythermalcomfort` over a grid of inputs (`results/sun/utci.json`)
+- [x] Pedestrian wind converted to 10 m with UTCI's log law (A-023); the solver's pavement wind is wired in with the Design readouts
 - [ ] UTCI stress categories in plain words
 
 ### App
