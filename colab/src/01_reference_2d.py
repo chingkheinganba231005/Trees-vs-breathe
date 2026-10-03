@@ -1,17 +1,19 @@
 # %% [markdown]
 # # 01 · Reference 2D: trees, hedges and the CODASC wind tunnel
 #
-# Runs the phase 2 studies of `python -m treesvb.trees` on an A100 (BRIEF.md section 10):
+# Runs the phase 2 studies of `python -m treesvb.trees` on an A100 (BRIEF.md section 10), once
+# per grid in `HEIGHTS`:
 #
 # 1. **calibrate**: the turbulent Schmidt number, on the tree-free CODASC street only;
 # 2. **codasc**: the ten cross-wind CODASC cases against the wind-tunnel data (FB, NMSE, FAC2);
 # 3. **directions**: do trees raise and a hedge lower the exposure on the pavements?
 # 4. **reynolds**: does pavement exposure move when the Reynolds number doubles?
-# 5. **resolution**: two cases again on a grid twice as fine;
-# 6. **deep streets**: the vortex structure at H/W 2 and 3 on 48 cells per building height.
+# 5. **resolution**: two cases again on a grid twice as fine.
 #
-# About 30 to 40 minutes on an A100. Everything is simulated; the wind-tunnel data are fetched
-# from the CODASC site and checked against the checksums in the repository.
+# Optionally (`DEEP_STREETS`), the vortex structure at H/W 2 and 3 on 48 cells per building
+# height. About 45 minutes on an A100 for grids of 24 and 48 cells. Everything is simulated; the
+# wind-tunnel data are fetched from the CODASC site and checked against the checksums in the
+# repository.
 #
 # **How to run:** Runtime → Change runtime type → A100 GPU, then Runtime → Run all. Keep this
 # tab open: the last cell downloads one zip, which is what you send back.
@@ -29,7 +31,12 @@
 REPO_URL = "https://github.com/chingkheinganba231005/Trees-vs-breathe.git"
 REPO_REF = "claude/relaxed-lamport-aefen3"  # branch, tag or commit; the manifest records the commit
 NOTEBOOK = "01_reference_2d"
-HEIGHT = 24  # cells per building height; the resolution study also runs twice this
+# Grids in cells per building height: 24 is the CPU engine's, 48 the WebGPU engine's. Each grid
+# gets its own calibration; the resolution study adds a run at twice the grid. Results at 24 keep
+# plain names, others get a suffix (codasc_h48.json).
+HEIGHTS = [24, 48]
+# H/W 2 and 3 at 48 cells; run 20261003T050408Z did this (results/street/regimes_h48.json).
+DEEP_STREETS = False
 JAX_PIN = "jax[cuda12]==0.10.2"  # the version pinned in python/pyproject.toml
 
 # %% [markdown]
@@ -118,11 +125,20 @@ if not SMOKE:
 # %%
 from treesvb import trees
 
+
+def suffix(height: int) -> str:
+    return "" if height == 24 else f"_h{height}"
+
+
 if SMOKE:
     args = ["directions", "--quick", "--schmidt", "0.7", "--out", str(run.path)]
     status = trees.main(args)
 else:
-    status = trees.main(["all", "--height", str(HEIGHT), "--out", str(run.path)])
+    status = 0
+    for h in HEIGHTS:
+        tag = ["--tag", suffix(h)[1:]] if suffix(h) else []
+        print(f"--- {h} cells per building height", flush=True)
+        status |= trees.main(["all", "--height", str(h), "--out", str(run.path), *tag])
 print(
     "exit status", status, "(1 means a study did not meet its criterion; files are still written)"
 )
@@ -131,17 +147,19 @@ print(
 # ## Deep streets on a finer grid
 #
 # At H = 24 cells a street with H/W 3 is only 8 cells wide, too coarse to trust its vortices. The
-# regime study runs H/W 2 and 3 again at H = 48; until it passes, the app's slider stops at 2.
+# regime study runs H/W 2 and 3 at H = 48 when `DEEP_STREETS` is set (smoke mode always runs a
+# short version, so the step stays tested).
 
 # %%
 from treesvb import street
 
-deep_args = ["regimes", "--tag", "h48", "--out", str(run.path)]
-if SMOKE:
-    deep_args += ["--quick", "--aspects", "2"]
-else:
-    deep_args += ["--height", str(2 * HEIGHT), "--aspects", "2", "3"]
-print("exit status", street.main(deep_args))
+if SMOKE or DEEP_STREETS:
+    deep_args = ["regimes", "--tag", "h48", "--out", str(run.path)]
+    if SMOKE:
+        deep_args += ["--quick", "--aspects", "2"]
+    else:
+        deep_args += ["--height", "48", "--aspects", "2", "3"]
+    print("exit status", street.main(deep_args))
 
 # %% [markdown]
 # ## Manifest and the zip to send back
@@ -150,20 +168,25 @@ print("exit status", street.main(deep_args))
 # folder on Drive and starts a browser download. Send that zip back as it is.
 
 # %%
-names = (
-    ["directions"] if SMOKE else ["calibration", "codasc", "directions", "reynolds", "resolution"]
-)
+studies = ["calibration", "codasc", "directions", "reynolds", "resolution"]
+names = ["directions"] if SMOKE else [f"{n}{suffix(h)}" for h in HEIGHTS for n in studies]
 outputs = {f"trees/{n}.json": f"results/trees/{n}.json" for n in names}
-if not SMOKE:
+if DEEP_STREETS and not SMOKE:
     outputs["street/regimes_h48.json"] = "results/street/regimes_h48.json"
 manifest = colab.write_manifest(
     run,
     repo=REPO,
-    parameters={"repo_ref": REPO_REF, "height": HEIGHT, "smoke": SMOKE, "jax_pin": JAX_PIN},
+    parameters={
+        "repo_ref": REPO_REF,
+        "heights": HEIGHTS,
+        "deep_streets": DEEP_STREETS,
+        "smoke": SMOKE,
+        "jax_pin": JAX_PIN,
+    },
     seeds={},
     runtime=runtime,
     started=STARTED,
     outputs=outputs,
-    manifest_dest="results/trees/01_reference_2d.manifest.json",
+    manifest_dest=f"results/manifests/{NOTEBOOK}_{run.stamp}.manifest.json",
 )
 colab.hand_off(run, manifest)

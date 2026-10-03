@@ -252,3 +252,14 @@ def test_git_state_reads_commit(tmp_path: Path) -> None:
     state = colab.git_state(tmp_path)
     assert len(state["commit"]) == 40
     assert state["dirty"] is False
+
+
+def test_returned_results_match_their_latest_manifest() -> None:
+    """Files brought back from Colab are committed as they arrived; a later run may replace them."""
+    manifests = [json.loads(p.read_text()) for p in REPO.glob("results/**/*.manifest.json")]
+    latest: dict[str, str] = {}
+    for m in sorted(manifests, key=lambda m: m["run"]):
+        latest.update({o["repo_path"]: o["sha256"] for o in m["outputs"] if o["repo_path"]})
+    assert latest, "no manifests found"
+    for path, digest in latest.items():
+        assert colab.sha256_file(REPO / path) == digest, path
