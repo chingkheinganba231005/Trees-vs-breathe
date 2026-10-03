@@ -74,13 +74,26 @@ BREATHING = (0.05, 0.15)
 
 @dataclass(frozen=True)
 class Run:
+    """Run length in steps for a grid of `height` cells per building height.
+
+    The lattice inflow speed is fixed, so the flow needs steps in proportion to the grid: `at`
+    rescales the run so that a finer grid covers the same number of flow-through times H / u_H.
+    """
+
     spin_up: int
     average: int
     every: int
+    height: int
+
+    def at(self, height: int) -> Run:
+        def steps(n: int) -> int:
+            return max(self.every, round(n * height / self.height / self.every) * self.every)
+
+        return Run(steps(self.spin_up), steps(self.average), self.every, height)
 
 
-FULL = Run(spin_up=40_000, average=80_000, every=200)
-QUICK = Run(spin_up=3_000, average=2_000, every=100)
+FULL = Run(spin_up=40_000, average=80_000, every=200, height=24)
+QUICK = Run(spin_up=3_000, average=2_000, every=100, height=12)
 
 
 def metrics(observed: np.ndarray, predicted: np.ndarray) -> dict:
@@ -192,38 +205,52 @@ def simulate(case: codasc.Case, height: int, schmidt: float, run: Run, reynolds=
 def simulate_street(
     aspect: int, crowns, height: int, schmidt: float, run: Run, reynolds=REYNOLDS
 ) -> dict:
-    """Spin up, then average the concentration; c+ at the taps, on the pavements, in the street."""
+    """Spin up, then average the concentration; c+ at the taps, on the pavements, in the street.
+
+    The average is also kept for its first and second halves: `settling` is the largest relative
+    difference between them on the two pavements and over the street, so a run that has not
+    reached a steady state shows it.
+    """
     from .solver2d.jax_solver import JaxSolver
 
+    run = run.at(height)
     g, c = build(aspect, crowns, height, schmidt, reynolds)
     s = JaxSolver(c.domain, c.params, np.float32)
     s.set_state(*cases.uniform_start(c))
     t0 = time.time()
     s.step(run.spin_up)
     healthy = s.healthy()
-    total = np.zeros((g.top, g.nx))
-    samples = 0
+    halves = [np.zeros((g.top, g.nx)), np.zeros((g.top, g.nx))]
+    counts = [0, 0]
     tracer_totals = []
     while healthy and s.time < run.spin_up + run.average:
         s.step(run.every)
-        total += s.concentration()
-        samples += 1
-        if samples % 50 == 0:
+        half = int(s.time - run.spin_up > run.average // 2)
+        halves[half] += s.concentration()
+        counts[half] += 1
+        if sum(counts) % 50 == 0:
             healthy = s.healthy()
             tracer_totals.append(s.total_tracer())
     if not healthy:
         return {"healthy": False, "steps": s.time}
     scale = U_H * g.height / SOURCE_TOTAL
-    cplus = total / samples * scale
+    cplus = (halves[0] + halves[1]) / sum(counts) * scale
     walls = wall_profiles(g, cplus)
     x0, x1 = g.street
     street = cplus[: g.height, x0:x1]
+
+    def summary(field: np.ndarray) -> dict[str, float]:
+        return {**pavement_exposure(g, field), "street": float(field[: g.height, x0:x1].mean())}
+
+    first, second = (summary(h / n * scale) for h, n in zip(halves, counts, strict=True))
+    settling = max(abs(second[k] - first[k]) / (0.5 * (second[k] + first[k])) for k in first)
     return {
         "healthy": True,
         "steps": s.time,
         "wall_time_s": round(time.time() - t0, 1),
         "model": {k: [round(float(v), 4) for v in walls[k]] for k in "AB"},
         "pavement": {k: round(v, 4) for k, v in pavement_exposure(g, cplus).items()},
+        "settling": round(float(settling), 4),
         # The tracer in the domain should level off once the average starts.
         "tracer_total_drift": float(
             (tracer_totals[-1] - tracer_totals[0]) / tracer_totals[-1]
@@ -268,7 +295,8 @@ def calibrate(height: int, run: Run) -> dict:
         "method": (
             f"Tree-free street W/H = 1, wind across, H = {height} cells, Re {REYNOLDS:g}, "
             f"Cs {SMAGORINSKY}, power-law inflow (exponent {PROFILE_EXPONENT}), "
-            f"{run.spin_up} steps spin-up, {run.average} averaged; candidates "
+            f"{run.at(height).spin_up} steps spin-up, {run.at(height).average} averaged; "
+            "candidates "
             f"{list(SCHMIDT_CANDIDATES)}; the one with the lowest NMSE is kept"
         ),
         "metric": "NMSE of c+ on walls A and B at y = 0",
@@ -298,7 +326,10 @@ def compare(height: int, run: Run, schmidt: float) -> dict:
             o = np.concatenate([obs["A"], obs["B"]])
             p = np.concatenate([sim["model"]["A"], sim["model"]["B"]])
             row.update(
-                {k: sim[k] for k in ("model", "street_cplus", "tracer_total_drift", "steps")}
+                {
+                    k: sim[k]
+                    for k in ("model", "street_cplus", "tracer_total_drift", "settling", "steps")
+                }
             )
             row["metrics"] = metrics(o, p)
             obs_all.append(o)
@@ -310,8 +341,9 @@ def compare(height: int, run: Run, schmidt: float) -> dict:
         "name": "Concentrations against the CODASC wind tunnel, wind across the street",
         "method": (
             f"2D centre-plane model, H = {height} cells, Re {REYNOLDS:g}, Cs {SMAGORINSKY}, "
-            f"Sc_t {schmidt} (results/trees/calibration.json), power-law inflow (exponent "
-            f"{PROFILE_EXPONENT}), {run.spin_up} steps spin-up, {run.average} averaged; ten cases, "
+            f"Sc_t {schmidt} (calibrated at this resolution), power-law inflow (exponent "
+            f"{PROFILE_EXPONENT}), {run.at(height).spin_up} steps spin-up, "
+            f"{run.at(height).average} averaged; ten cases, "
             "walls A and B at y = 0, z/H = 1/6 to 5/6"
         ),
         "metric": "FB, NMSE and FAC2 of c+ against the Hanna and Chang (2012) urban criteria",
@@ -430,7 +462,10 @@ def resolution(height: int, run: Run, schmidt: float) -> dict:
         print(f"  {case.stem}: done", flush=True)
     return {
         "name": "Grid resolution of the CODASC comparison",
-        "method": f"Two CODASC cases at H = {height} and {2 * height} cells, Sc_t {schmidt}",
+        "method": (
+            f"Two CODASC cases at H = {height} and {2 * height} cells, Sc_t {schmidt}, run "
+            "lengths scaled with the grid so both cover the same flow-through times"
+        ),
         "metric": "FB, NMSE and FAC2 at each resolution",
         "rows": rows,
         "passed": all(all("model" in r[k] for k in r if k.startswith("h")) for r in rows),
@@ -443,10 +478,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--height", type=int, default=24, help="cells per building height")
     p.add_argument("--quick", action="store_true", help="short coarse run, temporary output")
     p.add_argument("--out", type=Path, help="results root (default: results/)")
-    p.add_argument(
-        "--schmidt", type=float, help="use this Sc_t instead of results/trees/calibration.json"
-    )
+    p.add_argument("--schmidt", type=float, help="use this Sc_t instead of the calibration result")
+    p.add_argument("--tag", help="suffix for the output names, e.g. h48 -> codasc_h48.json")
     args = p.parse_args(argv)
+    suffix = f"_{args.tag}" if args.tag else ""
     run = QUICK if args.quick else FULL
     height = 12 if args.quick else args.height
     root = args.out or (Path(tempfile.mkdtemp(prefix="tvb-trees-")) if args.quick else None)
@@ -461,9 +496,10 @@ def main(argv: list[str] | None = None) -> int:
             schmidt = payload["schmidt"]
         else:
             if schmidt is None:
-                schmidt = results.read("trees/calibration.json", **kw)["schmidt"]
+                schmidt = results.read(f"trees/calibration{suffix}.json", **kw)["schmidt"]
             payload = STUDIES[name](height, run, schmidt)
-        path = results.write(f"trees/{OUTPUT[name]}.json", payload, GENERATED_BY, **kw)
+        payload["height_cells"] = height
+        path = results.write(f"trees/{OUTPUT[name]}{suffix}.json", payload, GENERATED_BY, **kw)
         verdict = "pass" if payload["passed"] else "FAIL"
         print(f"{name:10s} {verdict}  {time.time() - t0:5.0f}s  {path}", flush=True)
         failed |= not payload["passed"]

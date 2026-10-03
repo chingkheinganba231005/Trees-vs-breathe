@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from treesvb import codasc
+from treesvb import codasc, trees
 from treesvb.solver2d import cases, core
 from treesvb.solver2d.domain import Domain
 from treesvb.solver2d.lattice import CX, CY
@@ -162,3 +162,22 @@ def test_codasc_case_list_matches_the_checksums() -> None:
     assert len(codasc.CASES) == 28
     assert len(codasc.PERPENDICULAR) == 10
     assert set(codasc.read_sums()) == set(codasc.files())
+
+
+# Study runs ------------------------------------------------------------------------------------
+
+
+def test_run_length_scales_with_the_grid() -> None:
+    """A finer grid needs proportionally more steps to cover the same flow-through times."""
+    fine = trees.FULL.at(48)
+    assert (fine.spin_up, fine.average, fine.every, fine.height) == (80_000, 160_000, 200, 48)
+    assert trees.FULL.at(24) == trees.FULL
+    odd = trees.QUICK.at(17)
+    assert odd.spin_up % odd.every == 0 and odd.average % odd.every == 0
+
+
+def test_street_run_reports_how_far_it_settled() -> None:
+    sim = trees.simulate_street(1, [], 12, 0.7, trees.QUICK)
+    assert sim["healthy"]
+    assert sim["steps"] == trees.QUICK.spin_up + trees.QUICK.average
+    assert 0.0 <= sim["settling"] < 2.0
