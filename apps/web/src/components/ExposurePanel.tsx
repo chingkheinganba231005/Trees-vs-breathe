@@ -65,6 +65,7 @@ export function ExposurePanel({ stats, comparison, hasBaseline }: Props) {
               : null}
       </p>
       <p className="mt-2 text-sm text-ink-muted">{t('exposure.help')}</p>
+      <p className="mt-2 text-sm text-ink-muted">{t('exposure.windwardCaveat')}</p>
     </section>
   );
 }

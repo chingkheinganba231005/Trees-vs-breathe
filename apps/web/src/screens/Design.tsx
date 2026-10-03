@@ -13,11 +13,11 @@ import type { ExposureState } from '../sim/exposure';
 import type { GreeneryDesign } from '../sim/greenery';
 import { buildGreenery, DEFAULT_DESIGN, shiftRange } from '../sim/greenery';
 import type { SimStats } from '../sim/streetSim';
+import { checkedAspectMax, HEIGHT } from '../sim/streetSim';
 
-// The street shapes the regime study has checked (results/street/regimes.json); H/W 3 waits for
-// the finer-grid check in the Colab job.
+// The shallowest street the regime study checked (results/street/regimes.json); the deepest
+// depends on the engine's grid (checkedAspectMax).
 const ASPECT_MIN = 0.3;
-const ASPECT_MAX = 2;
 
 function Readout({ label, value, mono = true }: { label: string; value: string; mono?: boolean }) {
   return (
@@ -40,15 +40,20 @@ export function Design({ engine }: { engine: EngineChoice }) {
   const [stats, setStats] = useState<SimStats | null>(null);
   const [exposure, setExposure] = useState<ExposureState>(EMPTY_EXPOSURE);
   const layers = useMemo(() => ({ wind, speed, fumes }), [wind, speed, fumes]);
+  // Until the engine reports its grid, offer only what the coarser CPU grid has been checked for;
+  // a street chosen on the GPU grid is cut back if the simulation falls back to the CPU.
+  const aspectMax = checkedAspectMax(stats?.height ?? HEIGHT.cpu);
+  const street = Math.min(aspect, aspectMax);
+  const shown = Math.min(draft, aspectMax);
 
   // Street width in building heights, and the greenery placed in it.
-  const width = 1 / aspect;
+  const width = 1 / street;
   const greenery = useMemo(() => buildGreenery(design, width), [design, width]);
   const range = useMemo(
     () => shiftRange(buildGreenery({ ...design, shift: 0 }, width), width),
     [design, width],
   );
-  const shapeKey = aspect.toFixed(1);
+  const shapeKey = street.toFixed(1);
   const designKey = `${shapeKey}|${JSON.stringify(greenery)}`;
   const keys = useRef({ shapeKey, designKey });
   useEffect(() => {
@@ -68,7 +73,7 @@ export function Design({ engine }: { engine: EngineChoice }) {
     [range],
   );
   const comparison = compare(exposure, shapeKey);
-  const regime = regimeText[expectedRegime(draft)];
+  const regime = regimeText[expectedRegime(shown)];
   const num = (v: number, digits = 0) =>
     v.toLocaleString(lang === 'en' ? 'en-GB' : 'zh-HK', { maximumFractionDigits: digits });
 
@@ -80,7 +85,7 @@ export function Design({ engine }: { engine: EngineChoice }) {
           <SimulatedTag />
         </div>
         <StreetSimulation
-          aspect={aspect}
+          aspect={street}
           greenery={greenery}
           layers={layers}
           engine={engine}
@@ -101,9 +106,9 @@ export function Design({ engine }: { engine: EngineChoice }) {
               id="aspect"
               type="range"
               min={ASPECT_MIN}
-              max={ASPECT_MAX}
+              max={aspectMax}
               step={0.1}
-              value={draft}
+              value={shown}
               onChange={(e) => setDraft(Number(e.target.value))}
               onPointerUp={() => setAspect(draft)}
               onKeyUp={() => setAspect(draft)}
@@ -111,7 +116,7 @@ export function Design({ engine }: { engine: EngineChoice }) {
               className="h-11 flex-1 accent-[var(--accent)]"
             />
             <output htmlFor="aspect" className="w-16 text-right font-mono text-lg">
-              {draft.toFixed(1)}
+              {shown.toFixed(1)}
             </output>
           </div>
           <p className="mt-1 text-sm text-ink-muted">{t('design.aspectHint')}</p>

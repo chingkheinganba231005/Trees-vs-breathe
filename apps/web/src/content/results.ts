@@ -155,18 +155,37 @@ export interface Metrics {
   fac2: number;
 }
 
+/** c+ at the tap heights on wall A (leeward) and wall B (windward). */
+export interface WallProfiles {
+  A: number[];
+  B: number[];
+}
+
 export interface CodascResult extends Provenance {
   threshold: { fb_abs_below: number; nmse_below: number; fac2_above: number };
   schmidt: number;
+  /** Tap heights, z/H. */
+  heights: number[];
   rows: {
     case: string;
     aspect_w_over_h: number;
     stand_density: number;
     lambda_per_m: number;
     healthy: boolean;
+    measured: WallProfiles;
+    model?: WallProfiles;
     metrics?: Metrics;
   }[];
   overall: Metrics | null;
+}
+
+export interface ReynoldsResult extends Provenance {
+  threshold: { relative_change_below: number };
+  rows: {
+    case: string;
+    relative_change?: { A: number; B: number };
+    passed: boolean;
+  }[];
 }
 
 export interface DirectionsResult extends Provenance {

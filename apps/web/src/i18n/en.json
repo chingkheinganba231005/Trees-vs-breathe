@@ -205,6 +205,7 @@
   "exposure.needBaseline": "To compare, first run this street without greenery until the averaging finishes.",
   "exposure.baselineReady": "This is the street without greenery. Add trees or a hedge to compare with it.",
   "exposure.help": "c⁺ is the wind tunnel's normalised concentration: higher means more traffic fumes at breathing height (0.9–2.7 m), within 2.7 m of the wall. A range is the lowest to highest of the last five readings.",
+  "exposure.windwardCaveat": "In the wind-tunnel comparison the model reads too high at the foot of the windward wall, so treat the right pavement's level with care (How we know).",
   "hwk.greenHeading": "Trees, hedges and fumes",
   "hwk.greenIntro": "Crowns slow the wind and fumes ride on it. Each piece is checked on its own, then the whole street against the CODASC wind tunnel.",
   "hwk.porousTitle": "Crowns as porous blocks",
@@ -227,5 +228,15 @@
   "hwk.directionsQuestion": "Reviews of street studies find that trees in a narrow street raise the fumes on the pavement, while low hedges lower them; a single hedge in the middle of the road worked best in the wind tunnel (Abhijith et al. 2017). Does the model agree?",
   "hwk.directionsTrees": "Avenue of trees, W/H 1",
   "hwk.directionsHedge": "Hedge in the middle, W/H 2",
-  "hwk.directionsRatio": "Leeward pavement {a}, windward pavement {b} against the same street without greenery."
+  "hwk.directionsRatio": "Leeward pavement {a}, windward pavement {b} against the same street without greenery.",
+  "hwk.wallChartA": "Leeward wall (A), W/H 1 without trees",
+  "hwk.wallChartB": "Windward wall (B), W/H 1 without trees",
+  "hwk.wallX": "c⁺ (normalised concentration)",
+  "hwk.wallY": "Height ÷ building height",
+  "hwk.windTunnel": "CODASC wind tunnel",
+  "hwk.wallNote": "The model follows the leeward wall closely. On the windward wall it holds far too much near the ground: in a 2D model the small eddy in the corner at the foot of the wall is closed, so fumes from the nearest lane escape only slowly. In the wind tunnel, flow along the street probably flushes it.",
+  "hwk.reynoldsTitle": "Does the answer depend on the model's Reynolds number?",
+  "hwk.reynoldsQuestion": "Real streets have far higher Reynolds numbers than the model. If pavement exposure hardly moves when the model's Reynolds number doubles, the gap matters less. Target: a change below {tol}.",
+  "hwk.reynoldsRow": "Leeward pavement {a}, windward pavement {b}.",
+  "hwk.reynoldsMiss": "Not yet: on this grid the result still moves with the Reynolds number. The same check on the finer grid the GPU engine uses is the next Colab run."
 }

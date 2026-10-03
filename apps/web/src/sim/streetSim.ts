@@ -1,5 +1,5 @@
 import { result } from '../content/results';
-import type { CalibrationResult } from '../content/results';
+import type { CalibrationResult, RegimesResult } from '../content/results';
 import type { Layers } from './cpu/canvasRenderer';
 import type { SolverParams } from './cpu/solver';
 import type { GreenElement } from './greenery';
@@ -24,12 +24,35 @@ export const LIVE_FLOW: FlowSettings = { uRef: 0.05, reynolds: 20000, smagorinsk
 /** Building height in cells: 48 on WebGPU (BRIEF.md 5.1), 24 for the CPU worker. */
 export const HEIGHT = { gpu: 48, cpu: 24 } as const;
 
+/** Results at the CPU grid carry plain names; other grids add a suffix, e.g. calibration_h48. */
+function atGrid(name: string, height: number): string {
+  return height === HEIGHT.cpu ? `${name}.json` : `${name}_h${height}.json`;
+}
+
 /**
- * Turbulent Schmidt number of the fumes: the value calibrated on CODASC when
- * results/trees/calibration.json exists, otherwise the 1.0 of Gromke (2008, p. 87).
+ * Turbulent Schmidt number of the fumes on a grid of `height` cells per building height: the
+ * value calibrated on CODASC at that grid, else the one calibrated at the CPU grid, else the 1.0
+ * of Gromke (2008, p. 87).
  */
-export function liveSchmidt(): number {
-  return result<CalibrationResult>('trees/calibration.json')?.schmidt ?? 1.0;
+export function liveSchmidt(height: number): number {
+  const at = (h: number) => result<CalibrationResult>(`trees/${atGrid('calibration', h)}`)?.schmidt;
+  return at(height) ?? at(HEIGHT.cpu) ?? 1.0;
+}
+
+/**
+ * The deepest street (largest H/W) whose vortex structure a regime study has checked on a grid
+ * no finer than `height` (results/street/regimes*.json), so the app never offers an unchecked
+ * shape. Falls back to H/W 1 when no study has passed.
+ */
+export function checkedAspectMax(height: number): number {
+  let best = 1;
+  for (const h of [HEIGHT.cpu, HEIGHT.gpu]) {
+    if (h > height) continue;
+    const r = result<RegimesResult>(`street/${atGrid('regimes', h)}`);
+    if (!r?.passed) continue;
+    for (const row of r.rows) best = Math.max(best, row.aspect);
+  }
+  return best;
 }
 
 /**
@@ -72,7 +95,7 @@ export function liveParams(
       source: lineSources(g, laneOffsets(g.width / g.height), SOURCE_TOTAL),
       // Molecular diffusivity equal to the molecular viscosity (docs/assumptions.md A-009).
       diffusivity: (base.tau0 - 0.5) / 3,
-      schmidt: liveSchmidt(),
+      schmidt: liveSchmidt(g.height),
     },
   };
 }

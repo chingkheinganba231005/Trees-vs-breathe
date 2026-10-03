@@ -20,6 +20,7 @@ import type {
   TracerPulseResult,
   CodascResult,
   DirectionsResult,
+  ReynoldsResult,
   StabilityResult,
 } from '../content/results';
 import { useI18n } from '../i18n/context';
@@ -404,7 +405,25 @@ function GreenCards() {
   const pulse = result<TracerPulseResult>('benchmarks/tracer_pulse.json');
   const codasc = result<CodascResult>('trees/codasc.json');
   const directions = result<DirectionsResult>('trees/directions.json');
+  const reynolds = result<ReynoldsResult>('trees/reynolds.json');
+  const bare = codasc?.rows.find((r) => r.aspect_w_over_h === 1 && r.lambda_per_m === 0);
+  const caseLabel = (stem: string) => {
+    const r = codasc?.rows.find((x) => x.case === stem);
+    if (!r) return stem;
+    return t('hwk.codascRow', {
+      w: r.aspect_w_over_h,
+      trees:
+        r.lambda_per_m === 0
+          ? t('hwk.codascNoTrees')
+          : t('hwk.codascTrees', { lambda: r.lambda_per_m, rho: r.stand_density }),
+    });
+  };
+  const signedPct = (v: number) =>
+    v.toLocaleString(locale, { style: 'percent', maximumFractionDigits: 0 });
   const fmt = (v: number, d = 2) => v.toLocaleString(locale, { maximumFractionDigits: d });
+  // Table columns keep two decimals so they line up.
+  const fix2 = (v: number) =>
+    v.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const dense = porous?.rows.find((r) => r.lambda_times_depth === 12 && r.inflow_speed === 0.05);
   return (
     <div className="mt-4 grid gap-4">
@@ -465,9 +484,9 @@ function GreenCards() {
                               }),
                       })}
                     </td>
-                    <td className="pr-2">{r.metrics ? fmt(r.metrics.fb) : '—'}</td>
-                    <td className="pr-2">{r.metrics ? fmt(r.metrics.nmse) : '—'}</td>
-                    <td>{r.metrics ? fmt(r.metrics.fac2) : '—'}</td>
+                    <td className="pr-2">{r.metrics ? fix2(r.metrics.fb) : '—'}</td>
+                    <td className="pr-2">{r.metrics ? fix2(r.metrics.nmse) : '—'}</td>
+                    <td>{r.metrics ? fix2(r.metrics.fac2) : '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -483,6 +502,22 @@ function GreenCards() {
                   fac2Min: codasc.threshold.fac2_above,
                 })}
               </p>
+            )}
+            {bare?.model && (
+              <>
+                <div className="grid gap-x-6 md:grid-cols-2">
+                  {(['A', 'B'] as const).map((wall) => (
+                    <WallChart
+                      key={wall}
+                      title={t(wall === 'A' ? 'hwk.wallChartA' : 'hwk.wallChartB')}
+                      heights={codasc.heights}
+                      model={bare.model![wall]}
+                      measured={bare.measured[wall]}
+                    />
+                  ))}
+                </div>
+                <p className="mt-2 text-sm">{t('hwk.wallNote')}</p>
+              </>
             )}
           </>
         )}
@@ -518,7 +553,94 @@ function GreenCards() {
           </ul>
         )}
       </EvidenceCard>
+      <EvidenceCard
+        title={t('hwk.reynoldsTitle')}
+        question={t('hwk.reynoldsQuestion', {
+          tol: reynolds ? pct(reynolds.threshold.relative_change_below, 0) : '…',
+        })}
+        result={reynolds}
+      >
+        {reynolds && (
+          <>
+            <ul className="mt-3 space-y-2 text-sm">
+              {reynolds.rows.map((r) => (
+                <li key={r.case} className="border-t border-line pt-2">
+                  <span className="font-bold">
+                    {caseLabel(r.case)}: {t(r.passed ? 'evidence.passed' : 'evidence.failed')}.
+                  </span>{' '}
+                  {r.relative_change &&
+                    t('hwk.reynoldsRow', {
+                      a: signedPct(r.relative_change.A),
+                      b: signedPct(r.relative_change.B),
+                    })}
+                </li>
+              ))}
+            </ul>
+            {!reynolds.passed && <p className="mt-3 text-sm">{t('hwk.reynoldsMiss')}</p>}
+          </>
+        )}
+      </EvidenceCard>
     </div>
+  );
+}
+
+/** c+ up one wall of the street: the model as a line, the wind-tunnel taps as markers. */
+function WallChart({
+  title,
+  heights,
+  model,
+  measured,
+}: {
+  title: string;
+  heights: number[];
+  model: number[];
+  measured: number[];
+}) {
+  const { t } = useI18n();
+  const top = Math.max(...model, ...measured);
+  const step = top > 100 ? 50 : top > 40 ? 20 : 10;
+  const xMax = Math.ceil(top / step) * step;
+  const xTicks = Array.from({ length: xMax / step + 1 }, (_, i) => i * step);
+  return (
+    <LineChart
+      title={title}
+      xLabel={t('hwk.wallX')}
+      yLabel={t('hwk.wallY')}
+      xDomain={[0, xMax]}
+      yDomain={[0, 1]}
+      xTicks={xTicks}
+      yTicks={[0, 0.25, 0.5, 0.75, 1]}
+      format={(v) => (Number.isInteger(v) ? String(v) : v.toFixed(2))}
+      series={[
+        {
+          id: 'model',
+          label: t('hwk.thisModel'),
+          kind: 'line',
+          points: heights.map((z, i) => [model[i]!, z] as const),
+        },
+        {
+          id: 'tunnel',
+          label: t('hwk.windTunnel'),
+          kind: 'markers',
+          points: heights.map((z, i) => [measured[i]!, z] as const),
+        },
+      ]}
+      describe={(_, i) => (
+        <>
+          <div className="font-bold">z/H {heights[i]!.toFixed(2)}</div>
+          <div>
+            {t('hwk.thisModel')} {model[i]!.toFixed(1)}
+          </div>
+          <div>
+            {t('hwk.windTunnel')} {measured[i]!.toFixed(1)}
+          </div>
+        </>
+      )}
+      table={{
+        columns: [t('hwk.wallY'), t('hwk.thisModel'), t('hwk.windTunnel')],
+        rows: heights.map((z, i) => [z, model[i]!, measured[i]!]),
+      }}
+    />
   );
 }
 

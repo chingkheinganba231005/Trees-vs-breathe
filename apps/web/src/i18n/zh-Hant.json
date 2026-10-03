@@ -205,6 +205,7 @@
   "exposure.needBaseline": "要作比較，請先讓這條街在沒有綠化下運行，直至平均完成。",
   "exposure.baselineReady": "這是沒有綠化的街道。加入樹木或綠籬即可比較。",
   "exposure.help": "c⁺ 是風洞採用的標準化濃度：數值越高，呼吸高度（0.9–2.7 米）、離牆 2.7 米內的交通廢氣越多。範圍為最近五次讀數的最低至最高值。",
+  "exposure.windwardCaveat": "與風洞數據比較時，模型在迎風牆腳的讀數偏高，請審慎看待右邊行人路的數值（見「我們如何得知」）。",
   "hwk.greenHeading": "樹木、綠籬與廢氣",
   "hwk.greenIntro": "樹冠減慢風速，廢氣隨風飄散。每部分先獨立檢驗，再以整條街道對照 CODASC 風洞。",
   "hwk.porousTitle": "以多孔塊模擬樹冠",
@@ -227,5 +228,15 @@
   "hwk.directionsQuestion": "街道研究的綜述指出，窄街上的樹木會令行人路的廢氣增加，而矮綠籬則會減少廢氣；在風洞中，馬路中央的單排綠籬效果最好（Abhijith 等 2017）。模型是否一致？",
   "hwk.directionsTrees": "行道樹，W/H 1",
   "hwk.directionsHedge": "街中綠籬，W/H 2",
-  "hwk.directionsRatio": "與沒有綠化的同一條街相比：背風行人路 {a}，迎風行人路 {b}。"
+  "hwk.directionsRatio": "與沒有綠化的同一條街相比：背風行人路 {a}，迎風行人路 {b}。",
+  "hwk.wallChartA": "背風牆（A），W/H 1，無樹",
+  "hwk.wallChartB": "迎風牆（B），W/H 1，無樹",
+  "hwk.wallX": "c⁺（標準化濃度）",
+  "hwk.wallY": "高度 ÷ 建築物高度",
+  "hwk.windTunnel": "CODASC 風洞",
+  "hwk.wallNote": "模型與背風牆的數據十分吻合。在迎風牆近地面處，模型的廢氣卻遠高於風洞：在二維模型中，牆腳角落的小渦旋是封閉的，最近一條行車線的廢氣只能慢慢散出。在風洞中，沿街道方向的氣流相信會把它沖走。",
+  "hwk.reynoldsTitle": "結果會否隨模型的雷諾數改變？",
+  "hwk.reynoldsQuestion": "真實街道的雷諾數遠高於模型。如果模型的雷諾數加倍後，行人路上的廢氣幾乎不變，這個差距的影響便較小。目標：變化低於 {tol}。",
+  "hwk.reynoldsRow": "背風行人路 {a}，迎風行人路 {b}。",
+  "hwk.reynoldsMiss": "尚未達標：在這個網格上，結果仍隨雷諾數改變。下一次 Colab 運算會在 GPU 引擎所用的較細網格上再作同一檢查。"
 }
