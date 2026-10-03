@@ -66,11 +66,17 @@ Licences checked against the npm registry and PyPI metadata on 2026-10-02. All a
 
 ### Web app (shipped to the browser)
 
-| Package                                | Version | Licence                       |
-| -------------------------------------- | ------- | ----------------------------- |
-| react, react-dom                       | 19.3.0  | MIT                           |
-| @fontsource/atkinson-hyperlegible-next | 5.3.0   | OFL-1.1 (font), MIT (package) |
-| @fontsource/atkinson-hyperlegible-mono | 5.3.0   | OFL-1.1 (font), MIT (package) |
+| Package                                         | Version | Licence                                                                     |
+| ----------------------------------------------- | ------- | --------------------------------------------------------------------------- |
+| react, react-dom                                | 19.3.0  | MIT                                                                         |
+| @fontsource/atkinson-hyperlegible-next          | 5.3.0   | OFL-1.1 (font), MIT (package)                                               |
+| @fontsource/atkinson-hyperlegible-mono          | 5.3.0   | OFL-1.1 (font), MIT (package)                                               |
+| onnxruntime-web, onnxruntime-common             | 1.30.0  | MIT (npm registry, checked 2026-10-03); loaded only on the Trade-off screen |
+| long (dependency of onnxruntime-web)            | 5.3.2   | Apache-2.0                                                                  |
+| protobufjs (dependency of onnxruntime-web)      | 7.6.6   | BSD-3-Clause                                                                |
+| flatbuffers (dependency of onnxruntime-web)     | 25.9.23 | Apache-2.0                                                                  |
+| platform (dependency of onnxruntime-web)        | 1.3.6   | MIT                                                                         |
+| guid-typescript (dependency of onnxruntime-web) | 1.0.9   | ISC                                                                         |
 
 ### Web tooling (development only)
 
