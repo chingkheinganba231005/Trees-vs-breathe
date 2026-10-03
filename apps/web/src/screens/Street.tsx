@@ -2,7 +2,7 @@ import { Screen } from '../components/Screen';
 import { StreetSection } from '../components/StreetSection';
 import { SimulatedTag } from '../components/SimulatedTag';
 import type { StreetPreset } from '../content/presets';
-import { streetEnds, streetPresets } from '../content/presets';
+import { localTree, streetEnds, streetPresets } from '../content/presets';
 import { result } from '../content/results';
 import type { Provenance } from '../content/results';
 import { useI18n } from '../i18n/context';
@@ -35,6 +35,7 @@ function PresetCard({ preset }: { preset: StreetPreset }) {
   const ratio = preset.aspect_h_over_w;
   const max = checkedAspectMax();
   const station = preset.centred_on ? STATION_KEYS[preset.centred_on] : undefined;
+  const tree = localTree(preset.key);
   return (
     <article
       className="flex flex-col rounded-lg border border-line bg-surface p-4"
@@ -72,6 +73,17 @@ function PresetCard({ preset }: { preset: StreetPreset }) {
           points: preset.points,
         })}
       </p>
+      {tree?.height_m && tree.crown_spread_m && (
+        <p className="mt-2 text-sm text-ink-muted">
+          {tree.trees_on_stretch
+            ? t('street.treesSome', { n: tree.trees_on_stretch })
+            : t('street.treesNone')}{' '}
+          {t('street.treeTypical', {
+            h: num(tree.height_m.median),
+            s: num(tree.crown_spread_m.median),
+          })}
+        </p>
+      )}
       {ratio.median > max && (
         <p className="mt-2 rounded-md border border-line px-3 py-2 text-sm">
           {t('street.tooDeep', { max: num(max) })}

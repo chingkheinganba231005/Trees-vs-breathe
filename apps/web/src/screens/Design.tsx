@@ -11,11 +11,18 @@ import type { EngineChoice } from '../sim/engine';
 import { addReading, compare, EMPTY_EXPOSURE } from '../sim/exposure';
 import type { ExposureState } from '../sim/exposure';
 import type { GreeneryDesign } from '../sim/greenery';
-import { buildGreenery, DEFAULT_DESIGN, FULL_SCALE_HEIGHT_M, shiftRange } from '../sim/greenery';
+import {
+  buildGreenery,
+  crownTop,
+  DEFAULT_DESIGN,
+  FULL_SCALE_HEIGHT_M,
+  shiftRange,
+} from '../sim/greenery';
+import type { StreetScale } from '../sim/greenery';
 import type { SimStats } from '../sim/streetSim';
 import { PLAYBACK_RATE } from '../sim/clock';
 import { checkedAspectMax } from '../sim/streetSim';
-import { presetByKey } from '../content/presets';
+import { localTree, presetByKey } from '../content/presets';
 import type { StreetPreset } from '../content/presets';
 import { useHashParam } from '../lib/router';
 
@@ -30,6 +37,18 @@ function Readout({ label, value, mono = true }: { label: string; value: string; 
       <dd className={`text-right ${mono ? 'font-mono' : ''}`}>{value}</dd>
     </div>
   );
+}
+
+/** Building height in metres and typical local tree for a preset, or for the wind-tunnel street. */
+function streetScale(preset: StreetPreset | null): StreetScale {
+  const tree = localTree(preset?.key ?? null);
+  return {
+    heightM: preset ? preset.height_m.median : FULL_SCALE_HEIGHT_M,
+    localTree:
+      tree?.height_m && tree.crown_spread_m
+        ? { heightM: tree.height_m.median, spreadM: tree.crown_spread_m.median }
+        : null,
+  };
 }
 
 /** The Design screen; a street preset (#/design?street=...) sets the starting shape. */
@@ -48,7 +67,18 @@ function DesignScreen({ engine, preset }: { engine: EngineChoice; preset: Street
   const [wind, setWind] = useState(true);
   const [speed, setSpeed] = useState(false);
   const [fumes, setFumes] = useState(true);
-  const [design, setDesign] = useState<GreeneryDesign>(DEFAULT_DESIGN);
+  // The street's height in metres and its typical roadside tree size the greenery (A-014, A-015).
+  const scale = useMemo(() => streetScale(preset), [preset]);
+  const [design, setDesign] = useState<GreeneryDesign>(() =>
+    // On a real street, trees start at the size of the local roadside trees.
+    preset && scale.localTree
+      ? {
+          ...DEFAULT_DESIGN,
+          treeSize: 'local',
+          crownBase: crownTop({ ...DEFAULT_DESIGN, treeSize: 'local' }, scale) / 3,
+        }
+      : DEFAULT_DESIGN,
+  );
   const [stats, setStats] = useState<SimStats | null>(null);
   const [exposure, setExposure] = useState<ExposureState>(EMPTY_EXPOSURE);
   const layers = useMemo(() => ({ wind, speed, fumes }), [wind, speed, fumes]);
@@ -59,10 +89,10 @@ function DesignScreen({ engine, preset }: { engine: EngineChoice; preset: Street
 
   // Street width in building heights, and the greenery placed in it.
   const width = 1 / street;
-  const greenery = useMemo(() => buildGreenery(design, width), [design, width]);
+  const greenery = useMemo(() => buildGreenery(design, width, scale), [design, width, scale]);
   const range = useMemo(
-    () => shiftRange(buildGreenery({ ...design, shift: 0 }, width), width),
-    [design, width],
+    () => shiftRange(buildGreenery({ ...design, shift: 0 }, width, scale), width),
+    [design, width, scale],
   );
   const shapeKey = street.toFixed(1);
   const designKey = `${shapeKey}|${JSON.stringify(greenery)}`;
@@ -106,9 +136,7 @@ function DesignScreen({ engine, preset }: { engine: EngineChoice; preset: Street
                     ratio: num(preset.aspect_h_over_w.median, 1),
                   })}
             </p>
-            <p className="mt-1 text-ink-muted">
-              {t('design.presetScale', { h: num(FULL_SCALE_HEIGHT_M) })}
-            </p>
+            <p className="mt-1 text-ink-muted">{t('design.presetScale')}</p>
           </div>
         )}
         <div className="mb-2 flex items-center justify-between text-sm text-ink-muted">
@@ -178,7 +206,7 @@ function DesignScreen({ engine, preset }: { engine: EngineChoice; preset: Street
             </div>
           </fieldset>
 
-          <GreeneryControls design={design} onChange={setDesign} shiftRange={range} />
+          <GreeneryControls design={design} onChange={setDesign} shiftRange={range} scale={scale} />
 
           <section className="mt-6 rounded-lg border border-line bg-surface p-4">
             <h2 className="text-sm font-bold text-ink-muted">{t('design.expected')}</h2>

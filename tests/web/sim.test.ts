@@ -5,7 +5,9 @@ import type { GoldenCase } from '../../apps/web/src/sim/golden';
 import {
   avenueTrees,
   buildGreenery,
+  CROWN_LAM_H,
   DEFAULT_DESIGN,
+  TUNNEL_SCALE,
   centralHedge,
   dragField,
   LANE_OFFSETS,
@@ -200,5 +202,42 @@ describe('greenery designs', () => {
     );
     expect(h!.z1).toBeCloseTo(1.5 / 18, 12);
     expect(h!.lamH).toBeCloseTo(1.67 * 18, 12);
+  });
+});
+
+describe('greenery sized in metres', () => {
+  const nathan = { heightM: 36, localTree: { heightM: 8, spreadM: 4 } };
+
+  it('keeps the wind-tunnel street as it was', () => {
+    const d = { ...DEFAULT_DESIGN, kind: 'trees' as const };
+    expect(buildGreenery(d, 1)).toEqual(buildGreenery(d, 1, TUNNEL_SCALE));
+    expect(buildGreenery(d, 1)[0]!.lamH).toBeCloseTo(CROWN_LAM_H.dense);
+  });
+
+  it('gives local trees their height and crown in units of the street height', () => {
+    const d = {
+      ...DEFAULT_DESIGN,
+      kind: 'trees' as const,
+      treeSize: 'local' as const,
+      crownBase: 8 / 36 / 3,
+    };
+    const [tree] = buildGreenery(d, 1, nathan);
+    expect(tree!.z1).toBeCloseTo(8 / 36);
+    expect(tree!.z0).toBeCloseTo(8 / 36 / 3);
+    expect(tree!.x1 - tree!.x0).toBeCloseTo(4 / 36);
+    expect(0.5 * (tree!.x0 + tree!.x1)).toBeCloseTo(0.5);
+  });
+
+  it('keeps the crown porosity per metre, so lambda H grows with the street', () => {
+    const d = { ...DEFAULT_DESIGN, kind: 'trees' as const };
+    expect(buildGreenery(d, 1, nathan)[0]!.lamH).toBeCloseTo((CROWN_LAM_H.dense * 36) / 18);
+  });
+
+  it('sizes the hedge in metres for the street', () => {
+    const d = { ...DEFAULT_DESIGN, kind: 'hedge' as const };
+    const [hedge] = buildGreenery(d, 2, nathan);
+    expect(hedge!.z1).toBeCloseTo(2.5 / 36);
+    expect(hedge!.x1 - hedge!.x0).toBeCloseTo(1.5 / 36);
+    expect(hedge!.lamH).toBeCloseTo(3.34 * 36);
   });
 });

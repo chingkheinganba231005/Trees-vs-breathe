@@ -47,3 +47,25 @@ export function streetEnds(bearing: number): [CompassPoint, CompassPoint] {
   const at = (b: number) => POINTS[Math.round((((b % 360) + 360) % 360) / 45) % 8]!;
   return [at(bearing), at(bearing + 180)];
 }
+
+/** Typical roadside tree near a street (results/streets/trees.json, assumption A-014). */
+export interface LocalTree {
+  /** Trees on the measured stretch in the Highways Department records. */
+  trees_on_stretch?: number;
+  roadside_trees: number;
+  dbh_mm: Spread;
+  height_m?: Spread;
+  crown_spread_m?: Spread;
+}
+
+interface TreesResult extends Provenance {
+  rows: (LocalTree & { key: string })[];
+  overall: LocalTree;
+}
+
+/** The local tree near a preset, or over all preset areas when `key` is null. */
+export function localTree(key: string | null): LocalTree | null {
+  const r = result<TreesResult>('streets/trees.json');
+  if (!r) return null;
+  return key === null ? r.overall : (r.rows.find((t) => t.key === key) ?? null);
+}

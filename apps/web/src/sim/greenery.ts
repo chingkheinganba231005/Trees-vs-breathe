@@ -24,6 +24,32 @@ export type CrownDensity = keyof typeof CROWN_LAM_H;
 /** Full-scale building height of the CODASC street (Gromke and Ruck 2012, p. 44), in metres. */
 export const FULL_SCALE_HEIGHT_M = 18;
 
+/** A tree sized in metres: overall height and crown spread. */
+export interface TreeSize {
+  heightM: number;
+  spreadM: number;
+}
+
+/**
+ * The street the greenery stands in: its building height in metres, which turns sizes in metres
+ * into units of H, and the typical local roadside tree, if known (docs/assumptions.md A-014).
+ */
+export interface StreetScale {
+  heightM: number;
+  localTree: TreeSize | null;
+}
+
+/** The CODASC street at full scale, the default without a street preset. */
+export const TUNNEL_SCALE: StreetScale = { heightM: FULL_SCALE_HEIGHT_M, localTree: null };
+
+/**
+ * lambda H of a crown of the given density in a street `heightM` tall. The crown keeps CODASC's
+ * pressure loss per metre (A-015), so lambda H grows with the street's height in metres.
+ */
+export function crownLamH(density: CrownDensity, heightM = FULL_SCALE_HEIGHT_M): number {
+  return (CROWN_LAM_H[density] * heightM) / FULL_SCALE_HEIGHT_M;
+}
+
 /**
  * The hedge of Gromke et al. (2016) as tabulated by Abhijith et al. (2017, Table 3): 2.5 m high,
  * 1.5 m wide, lambda 3.34 1/m (docs/assumptions.md A-011).
@@ -46,8 +72,12 @@ export const BREATHING: readonly [number, number] = [0.05, 0.15];
  * each wall, the CODASC W/H 2 layout. Crowns run from H/3 to roof height (docs/codasc.md;
  * the switch at 1.5 H is assumption A-012).
  */
-export function avenueTrees(width: number, density: CrownDensity): GreenElement[] {
-  const lamH = CROWN_LAM_H[density];
+export function avenueTrees(
+  width: number,
+  density: CrownDensity,
+  heightM = FULL_SCALE_HEIGHT_M,
+): GreenElement[] {
+  const lamH = crownLamH(density, heightM);
   if (width <= 1.5) {
     return [
       { id: 'trees-0', kind: 'trees', x0: 0.25 * width, x1: 0.75 * width, z0: 1 / 3, z1: 1, lamH },
@@ -69,8 +99,10 @@ export const HEDGE_LAMBDAS = [1.67, 3.34] as const;
 /** What the user chose on the Design screen. */
 export interface GreeneryDesign {
   kind: 'none' | 'trees' | 'hedge';
+  /** CODASC's trees, as tall as the buildings, or a typical local roadside tree (A-014, A-015). */
+  treeSize: 'tunnel' | 'local';
   density: CrownDensity;
-  /** Crown base above the ground, units of H; crowns reach roof height. CODASC: 1/3. */
+  /** Crown base above the ground, units of H. CODASC: 1/3, its crowns reaching the roofs. */
   crownBase: number;
   /** Crown width as a multiple of the CODASC width. */
   crownScale: number;
@@ -82,6 +114,7 @@ export interface GreeneryDesign {
 
 export const DEFAULT_DESIGN: GreeneryDesign = {
   kind: 'none',
+  treeSize: 'tunnel',
   density: 'dense',
   crownBase: 1 / 3,
   crownScale: 1,
@@ -98,26 +131,51 @@ export function shiftRange(elements: GreenElement[], width: number): [number, nu
   return [-lo, width - hi];
 }
 
-/** The elements for a design in a street `width` H wide, shifted but kept inside the street. */
-export function buildGreenery(d: GreeneryDesign, width: number): GreenElement[] {
+/** Top of the crowns in units of H: the roofs for CODASC's trees, the tree height otherwise. */
+export function crownTop(d: GreeneryDesign, scale: StreetScale): number {
+  if (d.treeSize === 'local' && scale.localTree) {
+    return Math.min(1, scale.localTree.heightM / scale.heightM);
+  }
+  return 1;
+}
+
+/**
+ * The elements for a design in a street `width` H wide, shifted but kept inside the street.
+ * Local trees take CODASC's row layout with their own height and crown spread in metres; their
+ * crown starts at the crown base like CODASC's (one third of the tree height by default).
+ */
+export function buildGreenery(
+  d: GreeneryDesign,
+  width: number,
+  scale: StreetScale = TUNNEL_SCALE,
+): GreenElement[] {
   let els: GreenElement[] = [];
   if (d.kind === 'trees') {
-    els = avenueTrees(width, d.density).map((e) => {
+    const top = crownTop(d, scale);
+    const local = d.treeSize === 'local' && scale.localTree ? scale.localTree : null;
+    els = avenueTrees(width, d.density, scale.heightM).map((e) => {
       const mid = 0.5 * (e.x0 + e.x1);
-      const half = 0.5 * (e.x1 - e.x0) * d.crownScale;
-      return { ...e, x0: mid - half, x1: mid + half, z0: Math.min(d.crownBase, 0.9) };
+      const full = local ? local.spreadM / scale.heightM : e.x1 - e.x0;
+      const half = 0.5 * full * d.crownScale;
+      return {
+        ...e,
+        x0: mid - half,
+        x1: mid + half,
+        z0: Math.min(d.crownBase, 0.9 * top),
+        z1: top,
+      };
     });
     // Rows that grow into each other merge into one closed canopy.
     if (els.length === 2 && els[0]!.x1 >= els[1]!.x0) {
       els = [{ ...els[0]!, x1: els[1]!.x1 }];
     }
   } else if (d.kind === 'hedge') {
-    const base = centralHedge(width);
+    const base = centralHedge(width, scale.heightM);
     els = [
       {
         ...base,
-        z1: d.hedgeHeightM / FULL_SCALE_HEIGHT_M,
-        lamH: d.hedgeLambda * FULL_SCALE_HEIGHT_M,
+        z1: d.hedgeHeightM / scale.heightM,
+        lamH: d.hedgeLambda * scale.heightM,
       },
     ];
   }
@@ -128,9 +186,9 @@ export function buildGreenery(d: GreeneryDesign, width: number): GreenElement[] 
 }
 
 /** One hedge on the street axis, between the inner lanes (central_hedge in trees.py). */
-export function centralHedge(width: number): GreenElement {
-  const h = HEDGE.heightM / FULL_SCALE_HEIGHT_M;
-  const half = (0.5 * HEDGE.widthM) / FULL_SCALE_HEIGHT_M;
+export function centralHedge(width: number, heightM = FULL_SCALE_HEIGHT_M): GreenElement {
+  const h = HEDGE.heightM / heightM;
+  const half = (0.5 * HEDGE.widthM) / heightM;
   const mid = 0.5 * width;
   return {
     id: 'hedge-0',
@@ -139,7 +197,7 @@ export function centralHedge(width: number): GreenElement {
     x1: mid + half,
     z0: 0,
     z1: h,
-    lamH: HEDGE.lambdaPerM * FULL_SCALE_HEIGHT_M,
+    lamH: HEDGE.lambdaPerM * heightM,
   };
 }
 

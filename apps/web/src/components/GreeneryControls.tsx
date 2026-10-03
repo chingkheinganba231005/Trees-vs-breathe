@@ -1,13 +1,15 @@
 import type { ReactNode } from 'react';
 import { useI18n } from '../i18n/context';
-import type { GreeneryDesign } from '../sim/greenery';
-import { FULL_SCALE_HEIGHT_M, HEDGE_HEIGHTS_M, HEDGE_LAMBDAS } from '../sim/greenery';
+import type { GreeneryDesign, StreetScale } from '../sim/greenery';
+import { crownTop, HEDGE_HEIGHTS_M, HEDGE_LAMBDAS } from '../sim/greenery';
 
 interface Props {
   design: GreeneryDesign;
   onChange: (d: GreeneryDesign) => void;
   /** Allowed sideways shift for the current street, units of H. */
   shiftRange: [number, number];
+  /** The street's height in metres and its typical local tree. */
+  scale: StreetScale;
 }
 
 function Choice<T extends string | number>({
@@ -86,14 +88,16 @@ function Slider({
 }
 
 /** Trees and hedges for the street on the Design screen. */
-export function GreeneryControls({ design, onChange, shiftRange }: Props) {
+export function GreeneryControls({ design, onChange, shiftRange, scale }: Props) {
   const { t, lang } = useI18n();
   const set = (patch: Partial<GreeneryDesign>) => onChange({ ...design, ...patch });
-  const metres = (h: number) =>
-    `${(h * FULL_SCALE_HEIGHT_M).toLocaleString(lang === 'en' ? 'en-GB' : 'zh-HK', {
-      maximumFractionDigits: 1,
-      signDisplay: 'auto',
-    })} m`;
+  const fmt = (v: number) =>
+    v.toLocaleString(lang === 'en' ? 'en-GB' : 'zh-HK', { maximumFractionDigits: 1 });
+  const metres = (h: number) => `${fmt(h * scale.heightM)} m`;
+  const top = crownTop(design, scale);
+  // Switching the tree size moves the crown base to one third of the new tree, as in CODASC.
+  const setSize = (treeSize: GreeneryDesign['treeSize']) =>
+    set({ treeSize, crownBase: crownTop({ ...design, treeSize }, scale) / 3 });
 
   return (
     <fieldset className="mt-6">
@@ -111,6 +115,29 @@ export function GreeneryControls({ design, onChange, shiftRange }: Props) {
 
       {design.kind === 'trees' && (
         <>
+          {scale.localTree && (
+            <>
+              <p className="mt-4 text-sm font-bold">{t('green.treeSize')}</p>
+              <Choice
+                name="tree-size"
+                value={design.treeSize}
+                onChange={setSize}
+                options={[
+                  {
+                    value: 'local',
+                    label: t('green.sizeLocal', {
+                      h: fmt(scale.localTree.heightM),
+                      s: fmt(scale.localTree.spreadM),
+                    }),
+                  },
+                  { value: 'tunnel', label: t('green.sizeTunnel') },
+                ]}
+              />
+              {design.treeSize === 'local' && (
+                <p className="mt-2 text-sm text-ink-muted">{t('green.sizeLocalNote')}</p>
+              )}
+            </>
+          )}
           <p className="mt-4 text-sm font-bold">{t('green.density')}</p>
           <Choice
             name="green-density"
@@ -124,10 +151,10 @@ export function GreeneryControls({ design, onChange, shiftRange }: Props) {
           <Slider
             id="crown-base"
             label={t('green.crownBase')}
-            value={design.crownBase}
-            min={0.1}
-            max={0.7}
-            step={1 / 36}
+            value={Math.min(Math.max(design.crownBase, 0.1 * top), 0.7 * top)}
+            min={0.1 * top}
+            max={0.7 * top}
+            step={top / 36}
             shown={metres(design.crownBase)}
             onChange={(crownBase) => set({ crownBase })}
           />
@@ -181,7 +208,7 @@ export function GreeneryControls({ design, onChange, shiftRange }: Props) {
           <p className="mt-2 text-sm text-ink-muted">{t('green.dragHint')}</p>
         </>
       )}
-      <p className="mt-3 text-sm text-ink-muted">{t('green.source')}</p>
+      <p className="mt-3 text-sm text-ink-muted">{t('green.source', { h: fmt(scale.heightM) })}</p>
     </fieldset>
   );
 }

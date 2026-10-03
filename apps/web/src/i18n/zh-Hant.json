@@ -199,7 +199,7 @@
   "green.hedgeTight": "較密（λ {lambda} m⁻¹）",
   "green.shift": "在街上的橫向位置",
   "green.dragHint": "亦可在街道上左右拖動綠化。",
-  "green.source": "樹冠參照 CODASC 風洞（Gromke 與 Ruck）；綠籬尺寸取自 Gromke 等（2016）。以米表示的尺寸按 CODASC 的實際比例街道計算，建築高 18 米。",
+  "green.source": "樹冠形狀和密度與 CODASC 風洞相同（Gromke 與 Ruck）；綠籬尺寸取自 Gromke 等（2016）。以米為單位的尺寸按這條街的建築物高度 {h} 米計算。",
   "exposure.title": "行人路上的廢氣",
   "exposure.left": "左邊行人路（背風牆）",
   "exposure.right": "右邊行人路（迎風牆）",
@@ -269,6 +269,13 @@
   "compass.NW": "西北",
   "design.presetNote": "街道形狀取自{name}：H/W {ratio}。",
   "design.presetClamped": "{name}（H/W {ratio}）比即時模型已檢查的範圍更深，因此以 H/W {max} 顯示。",
-  "design.presetScale": "樹木、行車線和呼吸高度範圍仍按風洞街道比例（建築物高 {h} 米）設定；按這條街道的尺寸調整將在第三階段稍後加入。",
-  "street.ratioRange": "這段街道的中間一半：{lo}–{hi}"
+  "design.presetScale": "樹木和綠籬已按這條街的尺寸以米計算。行車線和呼吸高度範圍仍按風洞街道的比例設定。",
+  "street.ratioRange": "這段街道的中間一半：{lo}–{hi}",
+  "green.treeSize": "樹木大小",
+  "green.sizeLocal": "香港典型路旁樹：約 {h} 米高，樹冠寬約 {s} 米",
+  "green.sizeTunnel": "與風洞相同：與建築物一樣高",
+  "green.sizeLocalNote": "根據這條街附近的政府樹木記錄估算：路政署路旁樹的樹幹尺寸，以及漁農自然護理署為相同樹幹尺寸的樹木量度的高度和樹冠。",
+  "street.treesNone": "路政署記錄中，這段街道沒有樹木。",
+  "street.treesSome": "路政署記錄中，這段街道有 {n} 棵樹。",
+  "street.treeTypical": "附近典型的路旁樹約 {h} 米高，樹冠寬約 {s} 米（根據政府樹木記錄估算）。"
 }

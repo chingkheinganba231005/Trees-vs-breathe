@@ -199,7 +199,7 @@
   "green.hedgeTight": "Denser (λ {lambda} m⁻¹)",
   "green.shift": "Position across the street",
   "green.dragHint": "You can also drag the greenery sideways in the street.",
-  "green.source": "Crowns as in the CODASC wind tunnel (Gromke and Ruck); hedge sizes from Gromke et al. (2016). Sizes in metres assume CODASC's full-scale street, 18 m buildings.",
+  "green.source": "Crown shape and density as in the CODASC wind tunnel (Gromke and Ruck); hedge sizes from Gromke et al. (2016). Sizes in metres use this street's buildings, {h} m tall.",
   "exposure.title": "Fumes on the pavements",
   "exposure.left": "Left pavement (leeward wall)",
   "exposure.right": "Right pavement (windward wall)",
@@ -269,6 +269,13 @@
   "compass.NW": "NW",
   "design.presetNote": "Street shape from {name}: H/W {ratio}.",
   "design.presetClamped": "{name} is deeper (H/W {ratio}) than the live model has been checked for, so it is shown at H/W {max}.",
-  "design.presetScale": "Trees, traffic lanes and the breathing zone still follow the wind-tunnel street scaled to {h} m buildings; sizing them for this street comes later in phase 3.",
-  "street.ratioRange": "middle half of the stretch: {lo}–{hi}"
+  "design.presetScale": "Trees and hedges are sized in metres for this street. Traffic lanes and the breathing zone still follow the wind-tunnel street's proportions.",
+  "street.ratioRange": "middle half of the stretch: {lo}–{hi}",
+  "green.treeSize": "Tree size",
+  "green.sizeLocal": "Typical Hong Kong roadside tree: about {h} m tall, crown {s} m across",
+  "green.sizeTunnel": "As in the wind tunnel: as tall as the buildings",
+  "green.sizeLocalNote": "Estimated from government tree records near this street: trunk sizes of Highways Department roadside trees, with heights and crowns measured by AFCD on trees of the same trunk size.",
+  "street.treesNone": "No trees on this stretch in the Highways Department records.",
+  "street.treesSome": "{n} trees on this stretch in the Highways Department records.",
+  "street.treeTypical": "A typical roadside tree nearby is about {h} m tall with a crown {s} m across (estimated from government tree records)."
 }
