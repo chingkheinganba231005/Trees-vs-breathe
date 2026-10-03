@@ -16,6 +16,13 @@ from .results import REPO, RESULTS
 
 DOC = REPO / "docs" / "validation.md"
 
+UNSTABLE = "unstable (the run blew up)"
+SETTLING_NOTE = (
+    "Settling: the relative difference between the averages over the first and the second half "
+    "of the averaging window, the largest of the two pavements and the street mean. A difference "
+    "between two cases smaller than their settling is not meaningful."
+)
+
 
 def _load(rel: str) -> dict | None:
     p = RESULTS / rel
@@ -315,25 +322,35 @@ def render() -> str:
                 f"Urban criteria (Hanna and Chang 2012): |FB| < {crit['fb_abs_below']}, "
                 f"NMSE < {crit['nmse_below']}, FAC2 > {crit['fac2_above']}.",
                 "",
-                "| Case | W/H | Stand density | λ (1/m) | FB | NMSE | FAC2 |",
-                "| --- | --- | --- | --- | --- | --- | --- |",
+                "| Case | W/H | Stand density | λ (1/m) | FB | NMSE | FAC2 | Settling |",
+                "| --- | --- | --- | --- | --- | --- | --- | --- |",
                 *[
                     f"| {x['case']} | {x['aspect_w_over_h']} | {x['stand_density']} | "
                     f"{x['lambda_per_m']} | "
                     + (
                         f"{x['metrics']['fb']:+.2f} | {x['metrics']['nmse']:.2f} | "
-                        f"{x['metrics']['fac2']:.2f} |"
+                        f"{x['metrics']['fac2']:.2f} | "
+                        + (_pct(x["settling"], 0) if "settling" in x else "not measured")
+                        + " |"
                         if "metrics" in x
-                        else "unstable | | |"
+                        else f"{UNSTABLE} | | | |"
                     )
                     for x in r["rows"]
                 ],
             ]
+            if any("settling" in x for x in r["rows"]):
+                body += ["", SETTLING_NOTE]
             if r.get("overall"):
                 o = r["overall"]
+                ran = sum("metrics" in x for x in r["rows"])
+                which = (
+                    "All cases together"
+                    if ran == len(r["rows"])
+                    else f"The {ran} of {len(r['rows'])} cases that ran, together"
+                )
                 body += [
                     "",
-                    f"All cases together ({o['n']} points): FB {o['fb']:+.2f}, "
+                    f"{which} ({o['n']} points): FB {o['fb']:+.2f}, "
                     f"NMSE {o['nmse']:.2f}, FAC2 {o['fac2']:.2f}.",
                 ]
             heights = " | ".join(f"z/H {z:.2f}" for z in r["heights"])
@@ -363,8 +380,9 @@ def render() -> str:
                 *[
                     f"| {x['case']} | {x['expected_leeward']} | {x['ratio']['A']:.2f} | "
                     f"{x['ratio']['B']:.2f} |"
-                    for x in r["rows"]
                     if "ratio" in x
+                    else f"| {x['case']} | | {UNSTABLE} | |"
+                    for x in r["rows"]
                 ],
             ]
         out += _section("Direction of the effect: trees and a hedge" + label, r, body)
@@ -378,8 +396,9 @@ def render() -> str:
                 *[
                     f"| {x['case']} | {_pct(x['relative_change']['A'], 1)} | "
                     f"{_pct(x['relative_change']['B'], 1)} |"
-                    for x in r["rows"]
                     if "relative_change" in x
+                    else f"| {x['case']} | {UNSTABLE} | |"
+                    for x in r["rows"]
                 ],
             ]
         out += _section("Reynolds-number sensitivity of pavement exposure" + label, r, body)
@@ -396,9 +415,10 @@ def render() -> str:
                     f"{x[k]['metrics']['nmse']:.2f} | {x[k]['metrics']['fac2']:.2f} | "
                     f"{_ratios(x['measured'], x[k]['model'], 'A')[0]:.2f} | "
                     f"{_ratios(x['measured'], x[k]['model'], 'B')[0]:.2f} |"
+                    if "metrics" in x[k]
+                    else f"| {x['case']} | {k[1:]} | {UNSTABLE} | | | | |"
                     for x in r["rows"]
                     for k in sorted((k for k in x if k.startswith("h")), key=lambda k: int(k[1:]))
-                    if "metrics" in x[k]
                 ],
             ]
         out += _section("Grid resolution of the comparison" + label, r, body, target=False)

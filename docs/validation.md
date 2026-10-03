@@ -271,28 +271,30 @@ Kept: Sc_t = 0.2, the only calibrated parameter.
 
 It is the smallest value tried, so the best value may lie outside the range.
 
-_Source: `results/trees/calibration.json`, generated 2026-10-03T05:05:49Z by `python -m treesvb.trees` at commit `c8d665e`._
+_Source: `results/trees/calibration.json`, generated 2026-10-03T05:57:24Z by `python -m treesvb.trees` at commit `1484bd9`._
 
 ### Concentrations against the CODASC wind tunnel
 
 Verdict: meets the target.
 
-Method: 2D centre-plane model, H = 24 cells, Re 20000, Cs 0.17, Sc_t 0.2 (results/trees/calibration.json), power-law inflow (exponent 0.3), 40000 steps spin-up, 80000 averaged; ten cases, walls A and B at y = 0, z/H = 1/6 to 5/6.
+Method: 2D centre-plane model, H = 24 cells, Re 20000, Cs 0.17, Sc_t 0.2 (calibrated at this resolution), power-law inflow (exponent 0.3), 40000 steps spin-up, 80000 averaged; ten cases, walls A and B at y = 0, z/H = 1/6 to 5/6.
 
 Urban criteria (Hanna and Chang 2012): |FB| < 0.67, NMSE < 6.0, FAC2 > 0.3.
 
-| Case | W/H | Stand density | λ (1/m) | FB | NMSE | FAC2 |
-| --- | --- | --- | --- | --- | --- | --- |
-| 1_90_0,0_000 | 1 | 0.0 | 0 | -0.62 | 2.35 | 0.60 |
-| 1_90_1,0_080 | 1 | 1.0 | 80 | -0.06 | 0.24 | 0.60 |
-| 1_90_1,0_200 | 1 | 1.0 | 200 | -0.08 | 0.18 | 0.60 |
-| 1_90_0,5_080 | 1 | 0.5 | 80 | -0.27 | 0.78 | 0.50 |
-| 1_90_0,5_200 | 1 | 0.5 | 200 | -0.12 | 0.30 | 0.60 |
-| 2_90_0,0_000 | 2 | 0.0 | 0 | +0.33 | 0.14 | 0.50 |
-| 2_90_1,0_080 | 2 | 1.0 | 80 | -0.67 | 1.39 | 0.00 |
-| 2_90_1,0_200 | 2 | 1.0 | 200 | -0.06 | 0.04 | 0.90 |
-| 2_90_0,5_080 | 2 | 0.5 | 80 | -0.18 | 0.28 | 0.50 |
-| 2_90_0,5_200 | 2 | 0.5 | 200 | -0.64 | 1.34 | 0.00 |
+| Case | W/H | Stand density | λ (1/m) | FB | NMSE | FAC2 | Settling |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 1_90_0,0_000 | 1 | 0.0 | 0 | -0.62 | 2.35 | 0.60 | 18% |
+| 1_90_1,0_080 | 1 | 1.0 | 80 | -0.06 | 0.24 | 0.60 | 12% |
+| 1_90_1,0_200 | 1 | 1.0 | 200 | -0.08 | 0.18 | 0.60 | 15% |
+| 1_90_0,5_080 | 1 | 0.5 | 80 | -0.27 | 0.78 | 0.50 | 34% |
+| 1_90_0,5_200 | 1 | 0.5 | 200 | -0.12 | 0.30 | 0.60 | 12% |
+| 2_90_0,0_000 | 2 | 0.0 | 0 | +0.33 | 0.14 | 0.50 | 28% |
+| 2_90_1,0_080 | 2 | 1.0 | 80 | -0.67 | 1.39 | 0.00 | 56% |
+| 2_90_1,0_200 | 2 | 1.0 | 200 | -0.06 | 0.04 | 0.90 | 154% |
+| 2_90_0,5_080 | 2 | 0.5 | 80 | -0.18 | 0.28 | 0.50 | 67% |
+| 2_90_0,5_200 | 2 | 0.5 | 200 | -0.64 | 1.34 | 0.00 | 83% |
+
+Settling: the relative difference between the averages over the first and the second half of the averaging window, the largest of the two pavements and the street mean. A difference between two cases smaller than their settling is not meaningful.
 
 All cases together (100 points): FB -0.29, NMSE 0.82, FAC2 0.48.
 
@@ -321,7 +323,7 @@ Model ÷ wind tunnel at each tap height (wall A leeward, wall B windward):
 | 2_90_0,5_200 | A | 2.10 | 2.50 | 2.53 | 2.51 | 2.51 |
 | 2_90_0,5_200 | B | 0.12 | 0.15 | 0.16 | 0.14 | 0.13 |
 
-_Source: `results/trees/codasc.json`, generated 2026-10-03T05:07:26Z by `python -m treesvb.trees` at commit `c8d665e`._
+_Source: `results/trees/codasc.json`, generated 2026-10-03T05:59:02Z by `python -m treesvb.trees` at commit `1484bd9`._
 
 ### Direction of the effect: trees and a hedge
 
@@ -334,7 +336,7 @@ Method: 2D street, H = 24 cells, Re 20000, Sc_t 0.2; trees: CODASC crown at W/H 
 | trees | up | 1.41 | 0.35 |
 | hedge | down | 0.95 | 0.99 |
 
-_Source: `results/trees/directions.json`, generated 2026-10-03T05:08:03Z by `python -m treesvb.trees` at commit `c8d665e`._
+_Source: `results/trees/directions.json`, generated 2026-10-03T05:59:39Z by `python -m treesvb.trees` at commit `1484bd9`._
 
 ### Reynolds-number sensitivity of pavement exposure
 
@@ -347,22 +349,133 @@ Method: CODASC W/H 1 without trees and with the dense crown (lambda 200 1/m), H 
 | 1_90_0,0_000 | 1.8% | 27.6% |
 | 1_90_1,0_200 | 13.1% | 7.8% |
 
-_Source: `results/trees/reynolds.json`, generated 2026-10-03T05:08:36Z by `python -m treesvb.trees` at commit `c8d665e`._
+_Source: `results/trees/reynolds.json`, generated 2026-10-03T06:00:13Z by `python -m treesvb.trees` at commit `1484bd9`._
 
 ### Grid resolution of the comparison
 
 Verdict: for information, no target.
 
-Method: Two CODASC cases at H = 24 and 48 cells, Sc_t 0.2.
+Method: Two CODASC cases at H = 24 and 48 cells, Sc_t 0.2, run lengths scaled with the grid so both cover the same flow-through times.
 
 | Case | Cells per H | FB | NMSE | FAC2 | Lowest tap A ÷ tunnel | Lowest tap B ÷ tunnel |
 | --- | --- | --- | --- | --- | --- | --- |
 | 1_90_0,0_000 | 24 | -0.62 | 2.35 | 0.60 | 1.24 | 11.73 |
-| 1_90_0,0_000 | 48 | -0.30 | 0.45 | 0.80 | 1.23 | 4.98 |
+| 1_90_0,0_000 | 48 | -0.45 | 1.00 | 0.80 | 1.23 | 7.55 |
 | 1_90_1,0_200 | 24 | -0.08 | 0.18 | 0.60 | 1.10 | 8.14 |
-| 1_90_1,0_200 | 48 | -0.65 | 0.97 | 0.80 | 2.44 | 7.21 |
+| 1_90_1,0_200 | 48 | unstable (the run blew up) | | | | |
 
-_Source: `results/trees/resolution.json`, generated 2026-10-03T05:09:50Z by `python -m treesvb.trees` at commit `c8d665e`._
+_Source: `results/trees/resolution.json`, generated 2026-10-03T06:01:57Z by `python -m treesvb.trees` at commit `1484bd9`._
+
+### Turbulent Schmidt number, calibrated on one case (48 cells per building height)
+
+Verdict: meets the target.
+
+Method: Tree-free street W/H = 1, wind across, H = 48 cells, Re 20000, Cs 0.17, power-law inflow (exponent 0.3), 80000 steps spin-up, 160000 averaged; candidates [0.2, 0.3, 0.5, 0.7, 1.0]; the one with the lowest NMSE is kept.
+
+| Sc_t | FB | NMSE | FAC2 |
+| --- | --- | --- | --- |
+| 0.2 | -0.45 | 1.00 | 0.80 |
+| 0.3 | -0.48 | 1.15 | 0.80 |
+| 0.5 | -0.51 | 1.32 | 0.80 |
+| 0.7 | -0.53 | 1.41 | 0.80 |
+| 1.0 | -0.55 | 1.49 | 0.80 |
+
+Kept: Sc_t = 0.2, the only calibrated parameter.
+
+It is the smallest value tried, so the best value may lie outside the range.
+
+_Source: `results/trees/calibration_h48.json`, generated 2026-10-03T06:06:22Z by `python -m treesvb.trees` at commit `1484bd9`._
+
+### Concentrations against the CODASC wind tunnel (48 cells per building height)
+
+Verdict: meets the target.
+
+Method: 2D centre-plane model, H = 48 cells, Re 20000, Cs 0.17, Sc_t 0.2 (calibrated at this resolution), power-law inflow (exponent 0.3), 80000 steps spin-up, 160000 averaged; ten cases, walls A and B at y = 0, z/H = 1/6 to 5/6.
+
+Urban criteria (Hanna and Chang 2012): |FB| < 0.67, NMSE < 6.0, FAC2 > 0.3.
+
+| Case | W/H | Stand density | λ (1/m) | FB | NMSE | FAC2 | Settling |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 1_90_0,0_000 | 1 | 0.0 | 0 | -0.45 | 1.00 | 0.80 | 54% |
+| 1_90_1,0_080 | 1 | 1.0 | 80 | -0.50 | 0.53 | 0.90 | 49% |
+| 1_90_1,0_200 | 1 | 1.0 | 200 | unstable (the run blew up) | | | |
+| 1_90_0,5_080 | 1 | 0.5 | 80 | -0.59 | 0.77 | 0.90 | 55% |
+| 1_90_0,5_200 | 1 | 0.5 | 200 | -0.40 | 0.38 | 0.80 | 16% |
+| 2_90_0,0_000 | 2 | 0.0 | 0 | +0.47 | 0.28 | 0.50 | 39% |
+| 2_90_1,0_080 | 2 | 1.0 | 80 | -0.24 | 0.28 | 0.50 | 76% |
+| 2_90_1,0_200 | 2 | 1.0 | 200 | -0.57 | 0.81 | 0.60 | 84% |
+| 2_90_0,5_080 | 2 | 0.5 | 80 | +0.27 | 0.11 | 0.50 | 27% |
+| 2_90_0,5_200 | 2 | 0.5 | 200 | -0.06 | 0.14 | 0.50 | 20% |
+
+Settling: the relative difference between the averages over the first and the second half of the averaging window, the largest of the two pavements and the street mean. A difference between two cases smaller than their settling is not meaningful.
+
+The 9 of 10 cases that ran, together (90 points): FB -0.31, NMSE 0.56, FAC2 0.67.
+
+Model ÷ wind tunnel at each tap height (wall A leeward, wall B windward):
+
+| Case | Wall | z/H 0.17 | z/H 0.33 | z/H 0.50 | z/H 0.67 | z/H 0.83 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1_90_0,0_000 | A | 1.23 | 1.09 | 1.15 | 1.31 | 1.35 |
+| 1_90_0,0_000 | B | 7.55 | 2.68 | 0.60 | 0.61 | 0.62 |
+| 1_90_1,0_080 | A | 2.00 | 1.42 | 1.36 | 1.54 | 1.56 |
+| 1_90_1,0_080 | B | 7.23 | 1.41 | 0.85 | 0.86 | 0.79 |
+| 1_90_0,5_080 | A | 1.79 | 1.58 | 1.57 | 1.69 | 1.73 |
+| 1_90_0,5_080 | B | 9.63 | 1.51 | 0.63 | 0.66 | 0.66 |
+| 1_90_0,5_200 | A | 1.81 | 1.37 | 1.34 | 1.40 | 1.40 |
+| 1_90_0,5_200 | B | 4.96 | 1.18 | 0.62 | 0.51 | 0.48 |
+| 2_90_0,0_000 | A | 0.99 | 0.87 | 0.77 | 0.73 | 0.71 |
+| 2_90_0,0_000 | B | 0.21 | 0.25 | 0.23 | 0.23 | 0.23 |
+| 2_90_1,0_080 | A | 1.42 | 1.48 | 1.47 | 1.54 | 1.62 |
+| 2_90_1,0_080 | B | 0.30 | 0.34 | 0.34 | 0.31 | 0.31 |
+| 2_90_1,0_200 | A | 2.35 | 2.17 | 2.08 | 1.83 | 1.48 |
+| 2_90_1,0_200 | B | 1.32 | 1.31 | 0.97 | 0.65 | 0.45 |
+| 2_90_0,5_080 | A | 1.05 | 0.86 | 0.82 | 0.91 | 1.01 |
+| 2_90_0,5_080 | B | 0.15 | 0.18 | 0.18 | 0.17 | 0.17 |
+| 2_90_0,5_200 | A | 1.26 | 1.17 | 1.25 | 1.34 | 1.40 |
+| 2_90_0,5_200 | B | 0.25 | 0.29 | 0.28 | 0.24 | 0.23 |
+
+_Source: `results/trees/codasc_h48.json`, generated 2026-10-03T06:15:20Z by `python -m treesvb.trees` at commit `1484bd9`._
+
+### Direction of the effect: trees and a hedge (48 cells per building height)
+
+Verdict: **misses the target**.
+
+Method: 2D street, H = 48 cells, Re 20000, Sc_t 0.2; trees: CODASC crown at W/H 1 (lambda 200 1/m, dense); hedge: 2.5 m high, 1.5 m wide, lambda 3.34 1/m in the middle of a W/H 2 street (Gromke et al. 2016 via Abhijith et al. 2017, Table 3), full-scale H = 18 m; exposure: mean c+ within 0.15 H of each wall, 0.05-0.15 H above the ground.
+
+| Case | Expected on the leeward pavement | Leeward ratio | Windward ratio |
+| --- | --- | --- | --- |
+| trees | | unstable (the run blew up) | |
+| hedge | down | 1.16 | 0.94 |
+
+_Source: `results/trees/directions_h48.json`, generated 2026-10-03T06:18:38Z by `python -m treesvb.trees` at commit `1484bd9`._
+
+### Reynolds-number sensitivity of pavement exposure (48 cells per building height)
+
+Verdict: **misses the target**.
+
+Method: CODASC W/H 1 without trees and with the dense crown (lambda 200 1/m), H = 48 cells, Sc_t 0.2, Re 20000 and 40000.
+
+| Case | Change, leeward | Change, windward |
+| --- | --- | --- |
+| 1_90_0,0_000 | unstable (the run blew up) | |
+| 1_90_1,0_200 | unstable (the run blew up) | |
+
+_Source: `results/trees/reynolds_h48.json`, generated 2026-10-03T06:21:10Z by `python -m treesvb.trees` at commit `1484bd9`._
+
+### Grid resolution of the comparison (48 cells per building height)
+
+Verdict: for information, no target.
+
+Method: Two CODASC cases at H = 48 and 96 cells, Sc_t 0.2, run lengths scaled with the grid so both cover the same flow-through times.
+
+| Case | Cells per H | FB | NMSE | FAC2 | Lowest tap A ÷ tunnel | Lowest tap B ÷ tunnel |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1_90_0,0_000 | 48 | -0.45 | 1.00 | 0.80 | 1.23 | 7.55 |
+| 1_90_0,0_000 | 96 | unstable (the run blew up) | | | | |
+| 1_90_1,0_200 | 48 | unstable (the run blew up) | | | | |
+| 1_90_1,0_200 | 96 | -0.54 | 0.76 | 0.80 | 2.30 | 3.25 |
+
+_Source: `results/trees/resolution_h48.json`, generated 2026-10-03T06:37:16Z by `python -m treesvb.trees` at commit `1484bd9`._
 
 What these results show, and what they do not: `docs/codasc.md`, section "Results of the first comparison".
 
