@@ -5,9 +5,9 @@ Heavy GPU work runs on the user's Colab Pro A100 (80 GB). The notebooks import t
 | Notebook | Purpose | A100 time | Outputs | Status |
 | --- | --- | --- | --- | --- |
 | `00_setup_check.ipynb` | Checks the runtime, Drive, run folder, manifest and hand-off | 2 min | `results/colab/00_setup_check*.json` | Ready |
-| `01_reference_2d.ipynb` | CODASC calibration and comparison, direction checks for trees and a hedge, Reynolds sensitivity, grid resolution; once per grid in `HEIGHTS` | about 45 min for 24 and 48 cells | `results/trees/*.json` (48 cells: `*_h48.json`), optionally `results/street/regimes_h48.json` (the brief's `results/reference2d/` is named after the studies instead) | First run 2026-10-03 (24 cells); second run ready |
+| `01_reference_2d.ipynb` | CODASC calibration and comparison, direction checks for trees and a hedge, Reynolds sensitivity, grid resolution at 24 and 48 cells; Wing Lok Street at its measured shape; deep streets at 48 cells | about 3.3 h (run 20261003T085700Z) | `results/trees/*.json` (48 cells: `*_h48.json`), `results/streets/run_wing_lok.json`, `results/street/regimes_h48.json` (the brief's `results/reference2d/` is named after the studies instead) | Three runs on 2026-10-03; the last is in the repo |
 | `02_codasc_3d.ipynb` | 3D LES of 2–4 CODASC cases | 1–3 h | `results/codasc3d/*.json`, `apps/web/public/data/3d/*.bin` | Phase 4 |
-| `03_dataset.ipynb` | Batched 2D runs over the design space | 1–2 h | Dataset on Drive, `results/dataset/manifest.json` | Phase 4 |
+| `03_dataset.ipynb` | The live street over Latin-hypercube blocks of designs, batched per street shape (`python -m treesvb.dataset`) | about 2 h (`BUDGET_MIN`) | Dataset on Drive; `results/dataset/summary.json` and the manifest with each block's checksum | Ready |
 | `04_train_surrogate.ipynb` | MLP ensemble and U-Net: train, evaluate, export | 30–60 min | `apps/web/public/models/*.onnx`, `results/surrogate/metrics.json` | Phase 4 |
 | `05_street_atlas.ipynb` | Many real streets through the surrogate (stretch) | 30 min | `apps/web/public/data/atlas.json` | Stretch |
 

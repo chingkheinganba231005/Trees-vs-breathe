@@ -240,3 +240,47 @@ Goal: the time of day moves the sun, shade falls from the roofs and the crowns, 
 ### Exit
 
 Tests green, and the Design screen shows heat and fumes moving in opposite directions as crowns grow.
+
+- [x] Tests green: sun position, UTCI and irradiance against their references; heat model unit tests; the end-to-end heat test with screenshots
+- [ ] Heat and fumes in opposite directions: both readouts sit side by side on Design, but no study yet checks the direction across designs. The P4 sweep does (Trade-off screen), so this check moves there
+- Carried into P4 or later: custom street and phone mode, shade band and UTCI strip on the live canvas, constraint badges, lanes and zone in metres in the live app
+
+## P4 — The AI
+
+Goal: a surrogate of the live solver that answers in milliseconds, so the app can sweep thousands of designs for the trade-off between heat and fumes, find good designs, and preview their fields. Every answer carries its spread, the app refuses inputs outside the training data, and the picks are checked with the real solver.
+
+### Dataset (`python -m treesvb.dataset`, `colab/03_dataset.ipynb`)
+
+- [x] Designs as the Design screen makes them: H/W on the slider's 18 positions from 0.3 to 2; trees (one row in the middle or one near each wall, width, distance from the wall, crown base and top, λH, sideways shift) or a hedge (height, width, λH, shift); ranges in A-025 (D-031, D-032)
+- [x] Latin-hypercube blocks, stratified so every street shape gets one batch of 32: 20 tree designs, 10 hedges and 2 bare streets from independent disturbances (A-026); the test block and the out-of-distribution block (H/W 2.2, 2.5, 3) come from their own seeds; training blocks run until a time budget (D-033)
+- [x] The live app's settings: 24 cells per H, uniform inflow 0.05, Re 20 000, C_s 0.17, Sc_t from `results/trees/calibration.json`, CODASC lanes closing in with the width, absorbing layers; batched with `jax.vmap`; the batched run matches the solver run by run (`tests/python/test_dataset.py`)
+- [x] Stored per run: c⁺ and wind speed in the breathing band per column and per half of the averaging window (any pavement width can be read; the halves measure the noise), and c⁺, speed and velocity over the street on a 64 × 128 grid in float16
+- [x] CPU smoke mode in CI; summary (`results/dataset/summary.json`) and manifest with each block's checksum committed, the blocks stay on Drive
+- [ ] Size the averaging window from the time series of the live street (scratch study running)
+- [ ] Hand `03` to the user; bring back the summary
+- [ ] Reynolds independence, the reason wind speed is not an input: doubling Re moves the tree-free W/H 1 street's pavement exposure by 2% and 6% at 24 cells (threshold 10%), but the street with dense crowns by 13% and 22% (`results/trees/reynolds.json`); the app runs one Reynolds number at every wind speed, so the surrogate does too, and the dependence is listed under what the model leaves out
+
+### Models (`colab/04_train_surrogate.ipynb`)
+
+- [ ] Scalar model: an ensemble of 5 MLPs for the exposure on each pavement as a ratio to the bare street, and the pavement wind; the inputs are the geometry of the blocks a design puts in the street (D-034); the spread of the five is the uncertainty
+- [ ] Field model: a U-Net for c⁺ and wind speed on the 64 × 128 street grid, from the drag of the design drawn on that grid
+- [ ] Metrics on the test block (R², median relative error, FAC2) against the targets, with the noise of the solver's own averages beside them; the out-of-distribution block reported separately; parity plots; `results/surrogate/metrics.json`
+- [ ] ONNX export with fp16 weights, each model at most 10 MB (`apps/web/public/models/`)
+
+### App
+
+- [ ] `onnxruntime-web`, pinned and its licence recorded: WebGPU first, wasm as fallback
+- [ ] Out-of-distribution guard: inside the training box and near enough to training samples, or "Outside what the AI was trained on — run the physics" with the live solver offered
+- [ ] Trade-off screen: Pareto chart of heat against fumes over a sweep, the user's design marked, any point's field from the U-Net, a table view
+- [ ] "Design for me": NSGA-II on the surrogate with the presets "coolest without dirtier air", "cleanest air" and "balanced", and the knee
+- [ ] "Check with physics": the live solver runs the picks, predicted beside simulated
+- [ ] Works offline: the models ship with the app
+
+### Decisions
+
+| ID    | Decision                                                                                                                                                             | Why                                                                                                                                                                                                                                   |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D-031 | The dataset spans H/W 0.3–2, the Design slider's range; H/W 2.2, 2.5 and 3 form the out-of-distribution set                                                          | The brief asks for 0.3–3, but the live street's vortex structure is checked only to H/W 2 at 24 cells (`results/street/regimes.json`, D-027), and the app never runs the solver beyond it. The surrogate is tested there, not trained |
+| D-032 | Designs follow the Design screen (trees or a hedge, H/W on the slider's positions); pavement width is not a run input, it is read after the run from the stored band | Every sample is a design the app can make; 18 shapes (17 grids) keep the batches full and the compilations few; pavement width only changes which cells are averaged                                                                  |
+| D-033 | Each run: 24 000 steps of spin-up and 96 000 averaged, sampled every 48 steps; blocks of 576 runs; training blocks start until `BUDGET_MIN` (100 min) has passed     | About 50 and 200 turnover times H/u_ref. The noise this leaves is measured from the two halves of every run and reported beside the test metrics                                                                                      |
+| D-034 | The scalar model's inputs are the blocks a design puts in the street (edges as shares of W, bottom, top, log λH, H/W), not the Design controls                       | Any layout the app draws maps onto them, including merged rows and shifted ones, and the out-of-distribution guard measures distance in the same space                                                                                |
