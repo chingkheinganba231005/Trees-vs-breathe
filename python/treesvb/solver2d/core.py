@@ -277,10 +277,15 @@ def flow_step(xp, f_post, cfg, regularise: bool = True):
     if regularise:
         # With the force-corrected flux, the forcing enters at half weight whatever the rate a
         # moment relaxes at: m_post = m_eq + (1 - s) m_neq + F_m / 2 (the Guo scheme per moment).
-        post = feq + (1.0 - 1.0 / tau) * regularised_neq(xp, p)
-        post = post + guo_source(xp, 0.5, ux, uy, fx, fy)
+        # Inside the absorbing layers the collision stays plain BGK: there the regularised step,
+        # fed back through the outlet's extrapolation, grew slowly into an instability at the
+        # outlet's foot (docs/solver.md), and the layers only damp the flow towards the far field.
+        in_layer = cfg["sigma"] > 0
+        neq = xp.where(in_layer, f - feq, regularised_neq(xp, p))
+        pre = xp.where(in_layer, 1.0 - 0.5 / tau, 0.5)
     else:
-        post = f - (f - feq) / tau + guo_source(xp, 1.0 - 0.5 / tau, ux, uy, fx, fy)
+        neq, pre = f - feq, 1.0 - 0.5 / tau
+    post = feq + (1.0 - 1.0 / tau) * neq + guo_source(xp, pre, ux, uy, fx, fy)
     # Absorbing layers: f_eq(1, u) - f_eq(rho, u) = (1 - rho) / rho f_eq(rho, u).
     post = post + (cfg["sigma"] * (1.0 - rho) / rho) * feq
     post = xp.where(cfg["fluid"], post, f)

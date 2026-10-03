@@ -12,6 +12,7 @@ One step, identical in every implementation (docs/solver.md):
             + w_i [3 (c_i - u) + 9 (c_i . u) c_i] . F / 2,
    with P_d the trace-free part of the corrected flux of step 3. Shear stress relaxes as in BGK;
    the higher moments and the bulk stress relax fully (core.regularised_neq, docs/solver.md).
+   Inside the absorbing layers of step 5 the collision is plain BGK.
 5. Absorbing layers relax the density towards 1 near open boundaries:
    f_post += sigma (1 - rho) / rho f_eq(rho, u)   (Xu and Sagaut 2013).
 6. Non-fluid nodes keep their value; the inlet column is set to the equilibrium at the inlet

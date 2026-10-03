@@ -259,8 +259,11 @@ export class CpuSolver {
       // w_i 9/2 [(cx^2 - cy^2) (Pxx - Pyy) / 2 + 2 cx cy Pxy]; the rest direction gets none.
       const ra = keep * W1 * 2.25 * (pxx - pyy);
       const rd = keep * W5 * 9 * pxy;
-      // The forcing enters at half weight (core.flow_step).
-      const pre = 0.5;
+      // The forcing enters at half weight (core.flow_step); inside the absorbing layers the
+      // collision stays plain BGK, with the usual (1 - 1/(2 tau)) weight.
+      const sg = sigma[k]!;
+      const inLayer = sg > 0;
+      const pre = inLayer ? 1 - 0.5 * omega : 0.5;
 
       // Guo source terms, one per direction: w_i [3 (c_i - u) + 9 (c_i . u) c_i] . F
       let s0 = 0;
@@ -285,16 +288,28 @@ export class CpuSolver {
       }
 
       // Absorbing layers: f_eq(1, u) - f_eq(rho, u) = (1 - rho) / rho f_eq(rho, u).
-      const sp = 1 + (sigma[k]! * (1 - rho)) / rho;
-      fNext[k] = sp * e0 + s0;
-      fNext[n + k] = sp * e1 + ra + s1;
-      fNext[n2 + k] = sp * e2 - ra + s2;
-      fNext[n3 + k] = sp * e3 + ra + s3;
-      fNext[n4 + k] = sp * e4 - ra + s4;
-      fNext[n5 + k] = sp * e5 + rd + s5;
-      fNext[n6 + k] = sp * e6 - rd + s6;
-      fNext[n7 + k] = sp * e7 + rd + s7;
-      fNext[n8 + k] = sp * e8 - rd + s8;
+      const sp = (sg * (1 - rho)) / rho;
+      if (inLayer) {
+        fNext[k] = f0 - omega * (f0 - e0) + s0 + sp * e0;
+        fNext[n + k] = f1 - omega * (f1 - e1) + s1 + sp * e1;
+        fNext[n2 + k] = f2 - omega * (f2 - e2) + s2 + sp * e2;
+        fNext[n3 + k] = f3 - omega * (f3 - e3) + s3 + sp * e3;
+        fNext[n4 + k] = f4 - omega * (f4 - e4) + s4 + sp * e4;
+        fNext[n5 + k] = f5 - omega * (f5 - e5) + s5 + sp * e5;
+        fNext[n6 + k] = f6 - omega * (f6 - e6) + s6 + sp * e6;
+        fNext[n7 + k] = f7 - omega * (f7 - e7) + s7 + sp * e7;
+        fNext[n8 + k] = f8 - omega * (f8 - e8) + s8 + sp * e8;
+      } else {
+        fNext[k] = e0 + s0;
+        fNext[n + k] = e1 + ra + s1;
+        fNext[n2 + k] = e2 - ra + s2;
+        fNext[n3 + k] = e3 + ra + s3;
+        fNext[n4 + k] = e4 - ra + s4;
+        fNext[n5 + k] = e5 + rd + s5;
+        fNext[n6 + k] = e6 - rd + s6;
+        fNext[n7 + k] = e7 + rd + s7;
+        fNext[n8 + k] = e8 - rd + s8;
+      }
 
       if (gNext && source) {
         const c = g0 + g1 + g2 + g3 + g4;

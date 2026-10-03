@@ -46,7 +46,9 @@ The molecular viscosity is ν₀ = (τ₀ − ½)/3. A case fixes the Reynolds n
    - The third and fourth moments are rebuilt as zero instead of relaxing at 1/τ. Near τ = ½ BGK lets them flip sign almost undamped every step, which is how the 48-cell street blew up. On the thin double shear layer of Minion and Brown (1997), with no sub-grid model, plain BGK fails at every Reynolds number tried and this collision at none (`results/benchmarks/collision_margin.json`).
    - The bulk (trace) part of the stress relaxes fully every step: a large bulk viscosity, which damps sound waves and leaves a slow, nearly incompressible flow alone (Dellar 2001). A first version kept the trace at the shear rate. It held a two-step flicker at the corner of the lid-driven cavity, which then never settled (Re 1000), and it raised the flicker in the street. With the trace relaxed fully the cavity converges as with BGK, and the street flickers less than with BGK, most of all at the building corners (`collision_margin.json`, `street_flicker`).
 
-   Plain BGK stays in `core.flow_step` only for that benchmark.
+   - Inside the absorbing layers (step 5) the collision stays plain BGK. With the regularised collision there too, a street at 24 cells per building height grew a slow instability at the foot of the outlet: the outlet column copies its neighbour's velocity every step, and from about step 22 000 the corner between the ground and the outlet fed on itself until the run failed near step 26 000, with or without the layers. BGK ran that case stably, and in the layers the flow is only damped towards the far field, so nothing measured lives there. With this split the same street and the CODASC tree case run 100 000 steps.
+
+   Plain BGK is also kept in `core.flow_step` for the collision benchmark.
 
 5. **Absorbing layers.** Near open boundaries the density is relaxed towards 1:
 

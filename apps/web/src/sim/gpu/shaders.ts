@@ -183,8 +183,11 @@ ${loads}
   }
   let om = 1.0 / tau;
   let keep = 1.0 - om;
-  // The forcing enters at half weight (core.flow_step).
-  let pre = 0.5;
+  // The forcing enters at half weight (core.flow_step); inside the absorbing layers the
+  // collision stays plain BGK, with the usual (1 - 1/(2 tau)) weight.
+  let sg = sponge(x, y);
+  let inLayer = sg > 0.0;
+  let pre = select(0.5, 1.0 - 0.5 * om, inLayer);
   let w0 = ${W[0].toFixed(9)};
   let w1 = ${W[1].toFixed(9)};
   let w5 = ${W[5].toFixed(9)};
@@ -204,17 +207,15 @@ ${loads}
   let rd = keep * w5 * 9.0 * pxy;
 
   // Absorbing layers: f_eq(1, u) - f_eq(rho, u) = (1 - rho) / rho f_eq(rho, u).
-  let sp = 1.0 + sponge(x, y) * (1.0 - rho) / rho;
+  let sp = sg * (1.0 - rho) / rho;
+  let f = array<f32, 9>(f0, f1, f2, f3, f4, f5, f6, f7, f8);
+  let e = array<f32, 9>(e0, e1, e2, e3, e4, e5, e6, e7, e8);
+  let s = array<f32, 9>(s0, s1, s2, s3, s4, s5, s6, s7, s8);
+  let r = array<f32, 9>(0.0, ra, -ra, ra, -ra, rd, -rd, rd, -rd);
   var out: array<f32, 9>;
-  out[0] = sp * e0 + s0;
-  out[1] = sp * e1 + ra + s1;
-  out[2] = sp * e2 - ra + s2;
-  out[3] = sp * e3 + ra + s3;
-  out[4] = sp * e4 - ra + s4;
-  out[5] = sp * e5 + rd + s5;
-  out[6] = sp * e6 - rd + s6;
-  out[7] = sp * e7 + rd + s7;
-  out[8] = sp * e8 - rd + s8;
+  for (var i = 0; i < 9; i++) {
+    out[i] = select(e[i] + r[i] + s[i], f[i] - om * (f[i] - e[i]) + s[i] + sp * e[i], inLayer);
+  }
   write(k, out);
   fields[k] = vec4<f32>(rho, ux, uy, tau);
 
