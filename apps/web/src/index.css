@@ -80,4 +80,38 @@
       scroll-behavior: auto !important;
     }
   }
+
+  @media print {
+    @page {
+      size: A4 portrait;
+      margin: 12mm;
+    }
+
+    header,
+    footer,
+    .print-hidden {
+      display: none !important;
+    }
+
+    .print-report {
+      color: #171717;
+      background: #ffffff;
+    }
+
+    .print-report section {
+      max-width: none;
+      padding: 0;
+    }
+
+    .print-report section > p {
+      margin-top: 0.5rem;
+      font-size: 11pt;
+    }
+
+    .print-report article {
+      break-inside: avoid;
+      box-shadow: none;
+      padding: 0.75rem;
+    }
+  }
 }
