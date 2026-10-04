@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Screen } from '../components/Screen';
 import { StreetSection } from '../components/StreetSection';
 import { SimulatedTag } from '../components/SimulatedTag';
@@ -204,7 +204,100 @@ function CustomStreetForm() {
   );
 }
 
-/** The measured Hong Kong street presets. Custom streets and phone mode come later in phase 3. */
+function PhoneMeasurement() {
+  const { t, lang } = useI18n();
+  const locale = lang === 'en' ? 'en-GB' : 'zh-HK';
+  const [permission, setPermission] = useState<'idle' | 'active' | 'denied'>('idle');
+  const [bearing, setBearing] = useState<number | null>(null);
+  const [tilt, setTilt] = useState(35);
+  const [distance, setDistance] = useState(20);
+  const [eyeHeight, setEyeHeight] = useState(1.6);
+  const [uncertainty, setUncertainty] = useState(1);
+  const [temperature, setTemperature] = useState('');
+
+  useEffect(() => {
+    if (permission !== 'active') return;
+    const onOrientation = (event: DeviceOrientationEvent) => {
+      if (event.alpha !== null) setBearing((event.alpha + 360) % 360);
+      if (event.beta !== null && Math.abs(event.beta) < 89) setTilt(Math.abs(event.beta));
+    };
+    window.addEventListener('deviceorientation', onOrientation);
+    return () => window.removeEventListener('deviceorientation', onOrientation);
+  }, [permission]);
+
+  const height = eyeHeight + distance * Math.tan((tilt * Math.PI) / 180);
+  const heightLow = eyeHeight + distance * Math.tan(((tilt - uncertainty) * Math.PI) / 180);
+  const heightHigh = eyeHeight + distance * Math.tan(((tilt + uncertainty) * Math.PI) / 180);
+  const start = async () => {
+    const request = (
+      DeviceOrientationEvent as typeof DeviceOrientationEvent & {
+        requestPermission?: () => Promise<'granted' | 'denied'>;
+      }
+    ).requestPermission;
+    if (request) {
+      try {
+        if ((await request()) !== 'granted') {
+          setPermission('denied');
+          return;
+        }
+      } catch {
+        setPermission('denied');
+        return;
+      }
+    }
+    setPermission('active');
+  };
+  const num = (v: number, digits = 1) =>
+    v.toLocaleString(locale, { maximumFractionDigits: digits, minimumFractionDigits: digits });
+
+  return (
+    <section className="mt-8 rounded-lg border border-line bg-surface p-4" aria-labelledby="phone-mode">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 id="phone-mode" className="text-lg font-bold">{t('street.phoneTitle')}</h2>
+          <p className="text-sm text-ink-muted">{t('street.phoneText')}</p>
+        </div>
+        <SimulatedTag kind="assumption" />
+      </div>
+      <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <label className="text-sm">
+          <span className="mb-1 block text-ink-muted">{t('street.phoneDistance')}</span>
+          <input type="number" min={1} step={1} value={distance} onChange={(e) => setDistance(Number(e.target.value) || 1)} className="w-full rounded-md border border-line bg-transparent px-3 py-2" />
+        </label>
+        <label className="text-sm">
+          <span className="mb-1 block text-ink-muted">{t('street.phoneEyeHeight')}</span>
+          <input type="number" min={1} max={2.5} step={0.1} value={eyeHeight} onChange={(e) => setEyeHeight(Number(e.target.value) || 1)} className="w-full rounded-md border border-line bg-transparent px-3 py-2" />
+        </label>
+        <label className="text-sm">
+          <span className="mb-1 block text-ink-muted">{t('street.phoneTilt')}</span>
+          <input type="number" min={1} max={88} step={1} value={tilt} onChange={(e) => setTilt(Number(e.target.value) || 1)} className="w-full rounded-md border border-line bg-transparent px-3 py-2" />
+        </label>
+        <label className="text-sm">
+          <span className="mb-1 block text-ink-muted">{t('street.phoneTemperature')}</span>
+          <input type="number" step={0.1} value={temperature} onChange={(e) => setTemperature(e.target.value)} placeholder={t('street.phoneTemperaturePlaceholder')} className="w-full rounded-md border border-line bg-transparent px-3 py-2" />
+        </label>
+      </div>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button type="button" onClick={() => void start()} className="inline-flex min-h-11 items-center rounded-md bg-accent px-4 font-bold text-accent-ink">
+          {permission === 'active' ? t('street.phoneActive') : t('street.phoneStart')}
+        </button>
+        <label className="inline-flex min-h-11 items-center gap-2 rounded-md border border-line px-3 text-sm">
+          <span>{t('street.phoneUncertainty')}</span>
+          <input type="number" min={0.1} max={5} step={0.1} value={uncertainty} onChange={(e) => setUncertainty(Number(e.target.value) || 1)} className="w-16 rounded border border-line bg-transparent px-2 py-1" />
+          °
+        </label>
+      </div>
+      <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-3">
+        <Row label={t('street.phoneBearing')} value={bearing === null ? '—' : `${num(bearing, 0)}°`} />
+        <Row label={t('street.phoneHeight')} value={`${num(height)} m`} note={`${num(heightLow)}–${num(heightHigh)} m`} />
+        <Row label={t('street.phoneTemperature')} value={temperature ? `${temperature} °C` : '—'} />
+      </dl>
+      <p className="mt-3 text-xs text-ink-muted">{t(permission === 'denied' ? 'street.phoneDenied' : 'street.phoneCaveat')}</p>
+    </section>
+  );
+}
+
+/** The measured Hong Kong street presets and phone-assisted custom measurement. */
 export function Street() {
   const { t, lang } = useI18n();
   const presets = streetPresets();
@@ -227,6 +320,7 @@ export function Street() {
       </div>
       <p className="mt-4 text-sm text-ink-muted">{t('street.source', { date })}</p>
       <CustomStreetForm />
+      <PhoneMeasurement />
       <p className="mt-6 rounded-md border border-dashed border-line px-3 py-2 text-sm text-ink-muted">
         {t('street.later')}
       </p>

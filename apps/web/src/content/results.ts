@@ -14,6 +14,37 @@ export interface Provenance {
   threshold?: Record<string, number>;
 }
 
+export interface StreetAtlasCandidate {
+  design: 'bare' | 'sparse_trees' | 'dense_trees' | 'central_hedge';
+  guard: {
+    in_box: boolean;
+    distance: number;
+    near: boolean;
+    ok: boolean;
+  };
+  shade_proxy: number;
+  predicted_log_ratio_A: number | null;
+  predicted_log_ratio_B: number | null;
+  predicted_log_wind_A: number | null;
+  predicted_log_wind_B: number | null;
+}
+
+export interface StreetAtlasRow {
+  key: string;
+  label_en: string;
+  label_tc: string;
+  measured_aspect_h_over_w: number;
+  model_aspect_h_over_w: number;
+  out_of_distribution: boolean;
+  status: 'physics_required' | 'surrogate_screened';
+  recommendation: StreetAtlasCandidate['design'];
+  candidates: StreetAtlasCandidate[];
+}
+
+export interface StreetAtlasResult extends Provenance {
+  rows: StreetAtlasRow[];
+}
+
 const files = import.meta.glob<Record<string, unknown>>('../../../../results/**/*.json', {
   eager: true,
   import: 'default',

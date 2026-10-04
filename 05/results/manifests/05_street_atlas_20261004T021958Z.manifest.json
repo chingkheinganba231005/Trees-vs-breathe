@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "notebook": "05_street_atlas",
+  "run": "20261004T021958Z",
+  "git": {
+    "commit": "6727a2acfe815071cb276585d7c28f32a544e628",
+    "dirty": false
+  },
+  "parameters": {
+    "repo_ref": "claude/relaxed-lamport-aefen3",
+    "smoke": false,
+    "designs": [
+      "bare",
+      "sparse_trees",
+      "dense_trees",
+      "central_hedge"
+    ]
+  },
+  "seeds": {
+    "atlas": 20261004
+  },
+  "runtime": {
+    "smoke": false,
+    "gpus": [
+      {
+        "name": "NVIDIA A100-SXM4-80GB",
+        "memory.total": "81920 MiB",
+        "driver_version": "580.82.07"
+      }
+    ],
+    "platform": "Linux-6.6.122+-x86_64-with-glibc2.39",
+    "versions": {
+      "python": "3.13.15",
+      "numpy": "2.1.3",
+      "onnxruntime": "1.30.0"
+    }
+  },
+  "wall_time_s": 33.589,
+  "manifest_repo_path": "results/manifests/05_street_atlas_20261004T021958Z.manifest.json",
+  "outputs": [
+    {
+      "path": "atlas.json",
+      "bytes": 6993,
+      "sha256": "aefcdca9b4a58d25015423d07f62a693510afbeeab913554daaaeea5a868ceb3",
+      "repo_path": "apps/web/public/data/atlas.json"
+    }
+  ]
+}

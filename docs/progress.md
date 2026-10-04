@@ -200,8 +200,8 @@ Goal: the time of day moves the sun, shade falls from the roofs and the crowns, 
 ### Street
 
 - [x] Three presets measured from Lands Department data (`python -m treesvb.hkstreets`, `results/streets/presets.json`); Street screen with drawings to scale and "Open in Design"
-- [ ] Custom street: H, W, pavement widths, compass direction
-- [ ] Phone mode: compass for the direction, tilt to the roofline for the height (h = d tan θ + eye height, with its uncertainty), thermometer reading
+- [x] Custom street: H, W, pavement widths, compass direction
+- [x] Phone mode: compass for the direction, tilt to the roofline for the height (h = d tan θ + eye height, with its uncertainty), thermometer reading; browser sensor acceptance remains a real-device check
 - [x] Weather presets measured (`python -m treesvb.hkweather`, `results/weather/presets.json`)
 - [x] Weather preset and hour controls on Design; a street without a preset gets a direction choice, measured streets keep their bearing
 
@@ -224,9 +224,9 @@ Goal: the time of day moves the sun, shade falls from the roofs and the crowns, 
 - [x] Shade band and UTCI strip on the live canvas; a wind-speed control (the wind now comes from the weather preset)
 - [x] Tree rows along the kerbs (A-024), the default on measured streets: CODASC's central row had put Nathan Road's local trees over the carriageway, where their shade missed the pavements
 - [x] Trees sized in metres on the real streets: a typical local roadside tree (A-014, A-015), the default for presets; the wind-tunnel avenue stays as an option
-- [ ] Lanes and the breathing zone sized in metres on the real streets in the live app (the Wing Lok run already uses them: A-012, A-016)
+- [x] Lanes and the breathing zone sized in metres on the real streets in the live app (the Wing Lok run already uses them: A-012, A-016)
 - [x] Wing Lok Street at its measured shape, recorded on Colab at 96 cells and shown beside the live view (D-030); the run had not settled, and the app says so
-- [ ] Constraint badges: pavement width and bus headroom
+- [x] Constraint badges: pavement width and bus headroom
 - [x] Evidence cards: solar position against `pvlib`, UTCI against `pythermalcomfort`, and the collision margin
 
 ### Decisions
@@ -258,17 +258,17 @@ Goal: a surrogate of the live solver that answers in milliseconds, so the app ca
 - [x] Stored per run: c⁺ and wind speed in the breathing band per column and per half of the averaging window (any pavement width can be read; the halves measure the noise), and c⁺, speed and velocity over the street on a 64 × 128 grid in float16
 - [x] CPU smoke mode in CI; summary (`results/dataset/summary.json`) and manifest with each block's checksum committed, the blocks stay on Drive
 - [x] Run length from time series of the live street at H/W 1 (bare, and dense crowns along both kerbs): the bare street's fumes settle within the spin-up; the street with dense crowns keeps nearly all its fumes for 50 000 steps and levels off near 100 000, so the spin-up is 96 000 steps; each run records the share of fumes its street still keeps, and runs still filling are flagged (D-033)
-- [ ] Hand `03` to the user; bring back the summary
+- [x] Hand `03` to the user; bring back the summary (run `20261003T144828Z`, summary and manifest copied to `results/`)
 - [ ] The live readout and the CODASC runs start from an empty street too: the CODASC tree cases (40 000 steps spin-up) and the Design screen's fumes for crowns that close the street may read low until the street has filled. Measure on the next `01` run and show "still filling" on Design
 - [ ] Reynolds independence, the reason wind speed is not an input: doubling Re moves the tree-free W/H 1 street's pavement exposure by 2% and 6% at 24 cells (threshold 10%), but the street with dense crowns by 13% and 22% (`results/trees/reynolds.json`); the app runs one Reynolds number at every wind speed, so the surrogate does too, and the dependence is listed under what the model leaves out
 
 ### Models (`colab/04_train_surrogate.ipynb`)
 
 - [x] Training and export code (`python -m treesvb.surrogate`), notebook `04` with a CPU smoke mode run by CI after `03`'s; training uses the training blocks only, a tenth held back to choose the epoch; scores come from the exported ONNX files
-- [ ] Scalar model: an ensemble of 5 MLPs for the exposure on each pavement as a ratio to the bare street, and the pavement wind; the inputs are the geometry of the blocks a design puts in the street (D-034); the spread of the five is the uncertainty
-- [ ] Field model: a U-Net for c⁺ and wind speed on the 64 × 128 street grid, from the drag of the design drawn on that grid
-- [ ] Metrics on the test block (R², median relative error, FAC2) against the targets, with the noise of the solver's own averages beside them; the out-of-distribution block reported separately; parity plots; `results/surrogate/metrics.json`
-- [ ] ONNX export with fp16 weights, each model at most 10 MB (`apps/web/public/models/`)
+- [x] Scalar model: an ensemble of 5 MLPs for the exposure on each pavement as a ratio to the bare street, and the pavement wind; the inputs are the geometry of the blocks a design puts in the street (D-034); the spread of the five is the uncertainty
+- [x] Field model: a U-Net for c⁺ and wind speed on the 64 × 128 street grid, from the drag of the design drawn on that grid
+- [x] Metrics on the test block (R², median relative error, FAC2) against the targets, with the noise of the solver's own averages beside them; the out-of-distribution block reported separately; parity plots; `results/surrogate/metrics.json` (export completed; the recorded metrics do not meet every target)
+- [x] ONNX export with fp16 weights, each model at most 10 MB (`apps/web/public/models/`)
 
 ### App
 
@@ -277,17 +277,17 @@ Goal: a surrogate of the live solver that answers in milliseconds, so the app ca
 - [x] Trade-off screen: Pareto chart of heat against fumes over a sweep, the bare street and the user's design (sent from Design) marked, any point's field from the U-Net, a table view; checked end to end in Chromium with stand-in models from the CPU smoke run (their numbers mean nothing)
 - [x] "Design for me": NSGA-II on the surrogate (checked on ZDT1) with the presets "coolest without dirtier air", "cleanest air" and "balanced" (the knee)
 - [x] "Check with physics": the CPU solver runs the chosen design in a worker for the dataset's run length, predicted beside simulated (D-036); "Open in Design" runs it live
-- [ ] Works offline: the models and onnxruntime ship with the app and nothing calls a server; caching them for use without a network comes with the PWA in P6
+- [x] Works offline: the models and onnxruntime ship with the app and nothing calls a server; a dependency-free service worker and web manifest cache the built app and runtime assets after the first visit (production preview verified)
 - [ ] With the trained models: look at the Pareto fronts on the three streets, and check the picks with physics
 
 ### Colab handoff to finish the P4 set
 
-- [ ] The model zip from Colab is in place: `public/models/*.onnx`, a `guard.json`, and `results/surrogate/metrics.json`
-- [ ] The Trade-off screen has the real surrogate metrics loaded and the app shows the actual frontier instead of the stand-in smoke state
+- [x] The model zip from Colab is in place: `public/models/*.onnx`, a `guard.json`, and `results/surrogate/metrics.json`
+- [x] The Trade-off screen has the real surrogate metrics loaded and the app shows the actual frontier instead of the stand-in smoke state
 - [ ] The three-street Pareto sweep is reviewed and the picks are checked against the real solver
-- [ ] The surrogate metrics are reported in `docs/validation.md` and the app's How we know section before the P6 polish pass
+- [x] The surrogate metrics are reported in `docs/validation.md` and the app's How we know section before the P6 polish pass
 
-These are the next P4 tasks while the engineer is waiting on the Colab exports; no further local model work is meaningful until the files above are present in the repo.
+The Colab exports are now present. The remaining P4 evidence task is to review the real frontier on Wing Lok Street, Nathan Road and Yen Chow Street and check the selected designs with physics. The recorded scalar and field metrics are loaded honestly, including `meets_targets: false`; this is evidence to improve, not a passing claim.
 
 ### Decisions
 
@@ -301,6 +301,15 @@ These are the next P4 tasks while the engineer is waiting on the Colab exports; 
 | D-036 | "Check with physics" runs the CPU solver in a worker on the chosen design for the dataset's run length (96 000 + 96 000 steps) and divides by the dataset's bare street of the same shape                           | Like for like with the training data, so the comparison tests the surrogate rather than a shorter or differently averaged run. The CPU solver measured 213 steps/s on the 24-cell street in this container with other jobs running (about a quarter of an hour for a check); a laptop is faster, and a WebGPU check can follow                                                                                    |
 
 ## P5 — Decision and evidence
+
+### Local completion pass (2026-10-04)
+
+- [x] Add real-metre lane and breathing-zone readouts to Design
+- [x] Add phone measurement mode with compass, tilt height estimate and thermometer input
+- [x] Keep live "still filling" status visible while the averaging window is incomplete
+- [x] Make atlas rows open directly in Design and Trade-off
+- [x] Replace Report placeholders with the selected street, recommendation, evidence and caveats
+- [x] Complete the local accessibility and Traditional Chinese wording pass
 
 Goal: turn the design, the model checks and the street context into a decision tool, with the numbers and caveats exposed in the app and the printable summary.
 
@@ -317,7 +326,7 @@ Goal: turn the design, the model checks and the street context into a decision t
 - [x] Every model number is tagged simulated in the app and the docs
 - [x] The app keeps the source and caveats visible: assumptions and left-out effects are listed in UI and docs
 - [x] The app routes through the decision screens in the hash router and keeps the phase 5 navigation in place
-- [ ] The full offline PWA, the printable report and the presentation mode are still the phase 6 polish items
+- [x] Offline PWA shell: install manifest and service worker are present; production preview registers the worker and creates the app cache. A real phone offline launch and performance measurement remain team acceptance checks
 
 ### Exit
 
@@ -328,3 +337,5 @@ Goal: turn the design, the model checks and the street context into a decision t
 
 - The Compare, Hong Kong and Report screens are now filled in as direct app views rather than placeholders so the phase 5 flow is complete in the browser.
 - Remaining work after P5 is the broader P6 polish: offline PWA, accessibility refinement, the pitch kit and final presentation-mode pass.
+- [x] Stretch notebook `05_street_atlas.ipynb`: screens the measured street presets through the trained surrogate, refuses out-of-range streets to physics, and hands off `apps/web/public/data/atlas.json`.
+- [x] Atlas output run `20261004T021958Z` integrated into `results/atlas/atlas.json` and the Hong Kong screen; Wing Lok remains explicitly physics-required.

@@ -1,0 +1,78 @@
+{
+  "schema": 1,
+  "notebook": "04_train_surrogate",
+  "run": "20261003T183358Z",
+  "git": {
+    "commit": "6727a2acfe815071cb276585d7c28f32a544e628",
+    "dirty": false
+  },
+  "parameters": {
+    "repo_ref": "claude/relaxed-lamport-aefen3",
+    "dataset_run": "20261003T144828Z",
+    "dataset_blocks": {
+      "test": "4187e3245cb67e8763482cda9322ed4a701c1406c33e4cf23f128692541b8f5e",
+      "ood": "9c83d4b1f6e7839eafa9df4faee1340e1d29dfb7fea380098d711f07c4507fd2",
+      "train_000": "50dae0b3d2a9c0a8c715961839a3e52ee460c8db472622cdb338dfd49f8cec24"
+    },
+    "smoke": false,
+    "pins": [
+      "torch==2.14.1",
+      "onnx==1.23.1",
+      "onnxruntime==1.30.0"
+    ]
+  },
+  "seeds": {
+    "validation_split": 0,
+    "member_0": 0,
+    "member_1": 1,
+    "member_2": 2,
+    "member_3": 3,
+    "member_4": 4
+  },
+  "runtime": {
+    "smoke": false,
+    "gpus": [
+      {
+        "name": "NVIDIA A100-SXM4-80GB",
+        "memory.total": "81920 MiB",
+        "driver_version": "580.82.07"
+      }
+    ],
+    "platform": "Linux-6.6.122+-x86_64-with-glibc2.39",
+    "versions": {
+      "python": "3.13.15",
+      "numpy": "2.1.3",
+      "torch": "2.14.1",
+      "onnx": "1.23.1",
+      "onnxruntime": "1.30.0"
+    }
+  },
+  "wall_time_s": 224.396,
+  "manifest_repo_path": "results/manifests/04_train_surrogate_20261003T183358Z.manifest.json",
+  "outputs": [
+    {
+      "path": "models/scalar.onnx",
+      "bytes": 361759,
+      "sha256": "9cff08f2d00288262ffbd5b7b7cd4ebdb40de95ce7556e700ded6c654743608e",
+      "repo_path": "apps/web/public/models/scalar.onnx"
+    },
+    {
+      "path": "models/field.onnx",
+      "bytes": 3864737,
+      "sha256": "6cf8a5cbd72df7de37ded07be3028eba23e3b8d2b259d87f139df592a07d2537",
+      "repo_path": "apps/web/public/models/field.onnx"
+    },
+    {
+      "path": "models/guard.json",
+      "bytes": 29629,
+      "sha256": "9d9185373bf206ab13748678314a820d1fd5587d2f84e35348ed130e7b661cde",
+      "repo_path": "apps/web/public/models/guard.json"
+    },
+    {
+      "path": "surrogate/metrics.json",
+      "bytes": 79862,
+      "sha256": "76e7718895e4768e04dbe9539b71fe25c4421afd3e588aa3dce59f0248ff0ce5",
+      "repo_path": "results/surrogate/metrics.json"
+    }
+  ]
+}
