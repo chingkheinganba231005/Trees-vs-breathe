@@ -328,4 +328,5 @@ Goal: turn the design, the model checks and the street context into a decision t
 
 - The Compare, Hong Kong and Report screens are now filled in as direct app views rather than placeholders so the phase 5 flow is complete in the browser.
 - Remaining work after P5 is the broader P6 polish: offline PWA, accessibility refinement, the pitch kit and final presentation-mode pass.
-- [x] Stretch notebook `05_street_atlas.ipynb`: screens the measured street presets through the trained surrogate, refuses out-of-range streets to physics, and hands off `apps/web/public/data/atlas.json` for a future atlas screen.
+- [x] Stretch notebook `05_street_atlas.ipynb`: screens the measured street presets through the trained surrogate, refuses out-of-range streets to physics, and hands off `apps/web/public/data/atlas.json`.
+- [x] Atlas output run `20261004T021958Z` integrated into `results/atlas/atlas.json` and the Hong Kong screen; Wing Lok remains explicitly physics-required.
