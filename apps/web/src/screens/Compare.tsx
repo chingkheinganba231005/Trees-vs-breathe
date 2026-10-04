@@ -8,6 +8,9 @@ function Card({
   heat,
   fumes,
   reason,
+  heatLabel,
+  fumesLabel,
+  whyLabel,
 }: {
   name: string;
   badge: string;
@@ -15,6 +18,9 @@ function Card({
   heat: string;
   fumes: string;
   reason: string;
+  heatLabel: string;
+  fumesLabel: string;
+  whyLabel: string;
 }) {
   return (
     <article className="rounded-xl border border-line bg-surface p-4 shadow-sm">
@@ -28,16 +34,16 @@ function Card({
       <p className="mt-4 text-sm text-ink-muted">{summary}</p>
       <dl className="mt-4 space-y-2 text-sm">
         <div className="flex justify-between gap-4">
-          <dt className="text-ink-muted">Heat</dt>
+          <dt className="text-ink-muted">{heatLabel}</dt>
           <dd className="font-medium">{heat}</dd>
         </div>
         <div className="flex justify-between gap-4">
-          <dt className="text-ink-muted">Fumes</dt>
+          <dt className="text-ink-muted">{fumesLabel}</dt>
           <dd className="font-medium">{fumes}</dd>
         </div>
       </dl>
       <p className="mt-4 text-sm">
-        <span className="font-bold">Why:</span> {reason}
+        <span className="font-bold">{whyLabel}</span> {reason}
       </p>
     </article>
   );
@@ -45,48 +51,63 @@ function Card({
 
 export function Compare() {
   const { t } = useI18n();
+  const heatLabel = t('compare.heat');
+  const fumesLabel = t('compare.fumes');
+  const whyLabel = t('compare.why');
   return (
     <Screen title={t('compare.title')} intro={t('compare.intro')}>
       <div className="mt-8 grid gap-4 lg:grid-cols-2">
         <Card
-          name="No trees"
-          badge="baseline"
-          summary="Open street with no planting. This is the reference the model compares against."
-          heat="Higher heat"
-          fumes="Lower fumes"
-          reason="The street is open to the wind, so air clears quickly, but the pavement stays hotter."
+          name={t('compare.none.name')}
+          badge={t('compare.none.badge')}
+          summary={t('compare.none.summary')}
+          heat={t('compare.none.heat')}
+          fumes={t('compare.none.fumes')}
+          reason={t('compare.none.reason')}
+          heatLabel={heatLabel}
+          fumesLabel={fumesLabel}
+          whyLabel={whyLabel}
         />
         <Card
-          name="Local tree row"
-          badge="balanced"
-          summary="A typical roadside tree row along the kerb. It adds shade while preserving some ventilation."
-          heat="Lower heat"
-          fumes="Moderate fumes"
-          reason="The crown cools the pavement, but the drag slows the flushing flow enough to matter."
+          name={t('compare.local.name')}
+          badge={t('compare.local.badge')}
+          summary={t('compare.local.summary')}
+          heat={t('compare.local.heat')}
+          fumes={t('compare.local.fumes')}
+          reason={t('compare.local.reason')}
+          heatLabel={heatLabel}
+          fumesLabel={fumesLabel}
+          whyLabel={whyLabel}
         />
         <Card
-          name="Dense tree row"
-          badge="trade-off"
-          summary="Dense crowns near the walls shorten the opening for the street vortex."
-          heat="Much lower heat"
-          fumes="Higher fumes"
-          reason="The shade spread is strong, but the airflow is choked and the street keeps more pollution near the pavement."
+          name={t('compare.dense.name')}
+          badge={t('compare.dense.badge')}
+          summary={t('compare.dense.summary')}
+          heat={t('compare.dense.heat')}
+          fumes={t('compare.dense.fumes')}
+          reason={t('compare.dense.reason')}
+          heatLabel={heatLabel}
+          fumesLabel={fumesLabel}
+          whyLabel={whyLabel}
         />
         <Card
-          name="Trees + hedge"
-          badge="mixed"
-          summary="A hedge can block the most exposed part of the pavement while trees still cool the sunniest zones."
-          heat="Lower heat"
-          fumes="Mixed"
-          reason="The hedge modifies the near-wall flow and can improve both outcomes on the right street, which is a real finding rather than a contradiction."
+          name={t('compare.mixed.name')}
+          badge={t('compare.mixed.badge')}
+          summary={t('compare.mixed.summary')}
+          heat={t('compare.mixed.heat')}
+          fumes={t('compare.mixed.fumes')}
+          reason={t('compare.mixed.reason')}
+          heatLabel={heatLabel}
+          fumesLabel={fumesLabel}
+          whyLabel={whyLabel}
         />
       </div>
       <div className="mt-8 rounded-xl border border-line bg-surface p-4">
-        <h2 className="text-lg font-bold">How to choose</h2>
+        <h2 className="text-lg font-bold">{t('compare.howTitle')}</h2>
         <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-ink-muted">
-          <li>Prefer the design that sits closest to the frontier for the street you actually have.</li>
-          <li>Only choose a point beyond the baseline if the forecasted heat and fumes both improve.</li>
-          <li>Keep the reason short: which design to plant, where it sits in the street, and why it beats the alternatives.</li>
+          <li>{t('compare.howFrontier')}</li>
+          <li>{t('compare.howBaseline')}</li>
+          <li>{t('compare.howReason')}</li>
         </ul>
       </div>
     </Screen>

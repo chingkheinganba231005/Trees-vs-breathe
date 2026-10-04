@@ -271,7 +271,7 @@ function TradeOffScreen({ preset }: { preset: StreetPreset | null }) {
 
   return (
     <Screen title={t('tradeOff.title')} intro={t('tradeOff.intro')}>
-      <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="mt-6 grid gap-8 md:grid-cols-[minmax(0,1fr)_22rem]">
         <div>
           {model.state === 'missing' && (
             <p className="rounded-md border border-line px-3 py-2" role="note">
