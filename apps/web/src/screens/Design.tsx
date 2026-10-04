@@ -49,10 +49,17 @@ function Readout({ label, value, mono = true }: { label: string; value: string; 
 }
 
 /** Building height in metres and typical local tree for a preset, or for a custom street. */
-function streetScale(preset: StreetPreset | null, customStreet?: ReturnType<typeof parseCustomStreet>): StreetScale {
+function streetScale(
+  preset: StreetPreset | null,
+  customStreet?: ReturnType<typeof parseCustomStreet>,
+): StreetScale {
   const tree = localTree(preset?.key ?? null);
   return {
-    heightM: customStreet ? customStreet.heightM : preset ? preset.height_m.median : FULL_SCALE_HEIGHT_M,
+    heightM: customStreet
+      ? customStreet.heightM
+      : preset
+        ? preset.height_m.median
+        : FULL_SCALE_HEIGHT_M,
     localTree:
       tree?.height_m && tree.crown_spread_m
         ? { heightM: tree.height_m.median, spreadM: tree.crown_spread_m.median }
@@ -66,10 +73,25 @@ export function Design({ engine }: { engine: EngineChoice }) {
   const preset = presetByKey(streetKey);
   const custom = parseCustomStreet(window.location.hash);
   // A different preset or custom street starts the screen afresh from its shape.
-  return <DesignScreen key={`${preset?.key ?? 'custom'}:${custom ? `${custom.heightM}-${custom.widthM}` : ''}`} engine={engine} preset={preset} customStreet={custom} />;
+  return (
+    <DesignScreen
+      key={`${preset?.key ?? 'custom'}:${custom ? `${custom.heightM}-${custom.widthM}` : ''}`}
+      engine={engine}
+      preset={preset}
+      customStreet={custom}
+    />
+  );
 }
 
-function DesignScreen({ engine, preset, customStreet }: { engine: EngineChoice; preset: StreetPreset | null; customStreet?: ReturnType<typeof parseCustomStreet> }) {
+function DesignScreen({
+  engine,
+  preset,
+  customStreet,
+}: {
+  engine: EngineChoice;
+  preset: StreetPreset | null;
+  customStreet?: ReturnType<typeof parseCustomStreet>;
+}) {
   const { t, lang } = useI18n();
   // A design sent from the Trade-off screen (#/design?layout=...) comes with its street shape.
   const layoutParam = useHashParam('layout');
@@ -135,12 +157,21 @@ function DesignScreen({ engine, preset, customStreet }: { engine: EngineChoice; 
     setExposure((e) => addReading(e, s, keys.current.shapeKey, keys.current.designKey));
   }, []);
   const onDrag = useCallback(
-    (dx: number) => {
+    (dx: number, targetId?: string) => {
       setUseSent(false);
-      setDesign((d) => ({
-        ...d,
-        shift: Math.min(Math.max(d.shift + dx, range[0]), range[1]),
-      }));
+      setDesign((d) => {
+        if (!targetId || d.kind !== 'trees') {
+          return {
+            ...d,
+            shift: Math.min(Math.max(d.shift + dx, range[0]), range[1]),
+          };
+        }
+        const index = Number(targetId.replace('trees-', ''));
+        if (!Number.isInteger(index) || index < 0 || index > 1) return d;
+        const rowShifts = [...d.rowShifts];
+        rowShifts[index] = (rowShifts[index] ?? 0) + dx;
+        return { ...d, rowShifts };
+      });
     },
     [range],
   );
@@ -150,7 +181,9 @@ function DesignScreen({ engine, preset, customStreet }: { engine: EngineChoice; 
   const days = weatherPresets();
   const [dayKey, setDayKey] = useState('very_hot');
   const [hour, setHour] = useState(13);
-  const [axis, setAxis] = useState(customStreet ? customStreet.bearingDeg : preset ? preset.bearing_deg : 0);
+  const [axis, setAxis] = useState(
+    customStreet ? customStreet.bearingDeg : preset ? preset.bearing_deg : 0,
+  );
   const day = days.find((d) => d.key === dayKey) ?? days[0] ?? null;
   const weather = useMemo(() => (day ? hourWeather(day, hour) : null), [day, hour]);
   const street2d = useMemo(

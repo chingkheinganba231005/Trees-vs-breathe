@@ -195,6 +195,14 @@ describe('greenery designs', () => {
     expect(buildGreenery({ ...DEFAULT_DESIGN, kind: 'trees' }, 2)).toHaveLength(2);
   });
 
+  it('moves the two tree rows independently when they have separate offsets', () => {
+    const base = buildGreenery({ ...DEFAULT_DESIGN, kind: 'trees' }, 2);
+    const moved = buildGreenery({ ...DEFAULT_DESIGN, kind: 'trees', rowShifts: [0.1, -0.1] }, 2);
+    expect(moved).toHaveLength(2);
+    expect(moved[0]!.x0 - base[0]!.x0).toBeCloseTo(0.1, 12);
+    expect(moved[1]!.x0 - base[1]!.x0).toBeCloseTo(-0.1, 12);
+  });
+
   it('uses the chosen hedge height and density', () => {
     const [h] = buildGreenery(
       { ...DEFAULT_DESIGN, kind: 'hedge', hedgeHeightM: 1.5, hedgeLambda: 1.67 },
