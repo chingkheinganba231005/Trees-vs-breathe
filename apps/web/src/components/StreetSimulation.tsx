@@ -199,10 +199,24 @@ export function StreetSimulation({
                   className="absolute bottom-0 left-1/2 h-[35%] w-[3%] min-w-[2px] -translate-x-1/2 rounded-t bg-[#62b887]/80"
                   aria-hidden="true"
                 />
-                <div
-                  className="absolute inset-0 rounded-[38%] border border-[#9ae0b4]/80 bg-[radial-gradient(circle_at_25%_35%,rgba(190,241,207,0.8)_0_5%,transparent_6%),radial-gradient(circle_at_58%_22%,rgba(190,241,207,0.65)_0_6%,transparent_7%),radial-gradient(circle_at_78%_52%,rgba(190,241,207,0.7)_0_5%,transparent_6%),rgba(93,184,133,0.3)]"
+                <svg
+                  className="absolute inset-0 size-full overflow-visible"
+                  viewBox="0 0 100 100"
+                  role="img"
                   aria-label="Tree crown"
-                />
+                >
+                  <path
+                    d="M8 58C5 42 16 32 29 34C29 19 42 10 55 19C67 7 84 18 81 34C96 34 99 49 91 60C89 78 72 87 56 80C41 91 20 82 19 68C12 67 8 64 8 58Z"
+                    fill="rgba(93,184,133,0.3)"
+                    stroke="rgba(154,224,180,0.8)"
+                    strokeWidth="2"
+                  />
+                  <circle cx="29" cy="42" r="7" fill="rgba(190,241,207,0.7)" />
+                  <circle cx="51" cy="29" r="8" fill="rgba(190,241,207,0.6)" />
+                  <circle cx="73" cy="44" r="7" fill="rgba(190,241,207,0.65)" />
+                  <circle cx="42" cy="61" r="6" fill="rgba(190,241,207,0.55)" />
+                  <circle cx="67" cy="63" r="7" fill="rgba(190,241,207,0.6)" />
+                </svg>
               </>
             ) : (
               <div

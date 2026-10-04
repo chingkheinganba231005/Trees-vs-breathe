@@ -168,12 +168,15 @@ function DesignScreen({
         }
         const index = Number(targetId.replace('trees-', ''));
         if (!Number.isInteger(index) || index < 0 || index > 1) return d;
+        const target = own.find((element) => element.id === targetId);
+        if (!target) return d;
+        const boundedDx = Math.min(Math.max(dx, -target.x0), width - target.x1);
         const rowShifts = [...d.rowShifts];
-        rowShifts[index] = (rowShifts[index] ?? 0) + dx;
+        rowShifts[index] = (rowShifts[index] ?? 0) + boundedDx;
         return { ...d, rowShifts };
       });
     },
-    [range],
+    [own, range, width],
   );
   const comparison = compare(exposure, shapeKey);
 
@@ -505,9 +508,6 @@ function DesignScreen({
             )}
             <p className="mt-3 text-sm text-ink-muted">{t('readout.playbackHelp')}</p>
             <p className="mt-3 text-sm text-ink-muted">{t('readout.reynoldsHelp')}</p>
-            <p className="mt-6 rounded-md border border-dashed border-line px-3 py-2 text-sm text-ink-muted">
-              {t('design.next')}
-            </p>
           </section>
         </div>
       </div>
