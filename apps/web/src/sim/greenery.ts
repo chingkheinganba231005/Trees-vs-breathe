@@ -188,10 +188,11 @@ export function buildGreenery(
       const full = local ? local.spreadM / scale.heightM : e.x1 - e.x0;
       const half = 0.5 * full * d.crownScale;
       const rowShift = d.rowShifts[i] ?? 0;
+      const boundedRowShift = Math.min(Math.max(rowShift, -(mid - half)), width - (mid + half));
       return {
         ...e,
-        x0: mid - half + rowShift,
-        x1: mid + half + rowShift,
+        x0: mid - half + boundedRowShift,
+        x1: mid + half + boundedRowShift,
         z0: Math.min(d.crownBase, 0.9 * top),
         z1: top,
       };
