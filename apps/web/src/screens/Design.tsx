@@ -505,9 +505,6 @@ function DesignScreen({
             )}
             <p className="mt-3 text-sm text-ink-muted">{t('readout.playbackHelp')}</p>
             <p className="mt-3 text-sm text-ink-muted">{t('readout.reynoldsHelp')}</p>
-            <p className="mt-6 rounded-md border border-dashed border-line px-3 py-2 text-sm text-ink-muted">
-              {t('design.next')}
-            </p>
           </section>
         </div>
       </div>
