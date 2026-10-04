@@ -7,7 +7,7 @@ Everyone says plant more trees. In a narrow Hong Kong street, a tree can make th
 An entry for HacKU 2026, Deep Technology track, Problem Statement 3: _Test the Change Before You Make It_. The full brief is in [`BRIEF.md`](BRIEF.md).
 
 - Live app: https://chingkheinganba231005.github.io/Trees-vs-breathe/
-- Status: phases 1 (live solver) and 2 (trees, hedges and fumes) done; phase 3 (sun, shade and heat) started with the measured Hong Kong street presets. See [`docs/progress.md`](docs/progress.md) and [`docs/validation.md`](docs/validation.md).
+- Status: phases 1–5 are implemented, including the live solver, trees and fumes, heat, surrogate trade-off, street atlas, decision screens and evidence pages. Phase 6 remains for real-phone acceptance and presentation polish. See [`docs/progress.md`](docs/progress.md) and [`docs/validation.md`](docs/validation.md).
 
 ## What it does
 

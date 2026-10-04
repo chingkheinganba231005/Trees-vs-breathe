@@ -315,7 +315,8 @@ Goal: turn the design, the model checks and the street context into a decision t
 
 ### Decision screens
 
-- [x] Compare: up to four designs side by side, with a chosen design and the reason stated, plus field thumbnails and the metrics table
+- [x] Compare: up to four qualitative designs side by side, with a stated choice, outcome labels and reasons
+- [ ] Compare fidelity pass: connect the four cards to live field thumbnails, selectable model-backed designs and a metrics table if the full brief-level comparison is required instead of the current pitch-reference layout
 - [x] How we know: benchmark cards, the CODASC comparison, the direction checks, and the left-out list, all generated from `results/*.json`
 - [x] Hong Kong context: roadside air quality, summer heat stress and the AVA context
 - [x] Report: a one-page summary for sharing with a district council or residents' group and a print-ready layout
@@ -339,3 +340,28 @@ Goal: turn the design, the model checks and the street context into a decision t
 - Remaining work after P5 is the broader P6 polish: offline PWA, accessibility refinement, the pitch kit and final presentation-mode pass.
 - [x] Stretch notebook `05_street_atlas.ipynb`: screens the measured street presets through the trained surrogate, refuses out-of-range streets to physics, and hands off `apps/web/public/data/atlas.json`.
 - [x] Atlas output run `20261004T021958Z` integrated into `results/atlas/atlas.json` and the Hong Kong screen; Wing Lok remains explicitly physics-required.
+
+## Next work plan
+
+This is the remaining work after the local implementation and deployment pass. Items marked team/Colab require evidence or testing outside this repository session.
+
+### P4 evidence review
+
+- [ ] Team/Colab: review the real surrogate Pareto fronts for Wing Lok Street, Nathan Road and Yen Chow Street
+- [ ] Team/Colab: run the selected frontier designs through the real physics solver and record predicted-versus-simulated comparisons
+- [ ] Team/Colab: rerun Reynolds sensitivity with the current collision and resolve the dense-crown result that exceeds the 10% threshold
+- [ ] Team/Colab: complete the 48-cell deep-street study and document the H/W 2–3 regime decision
+
+### P5 source and evidence closure
+
+- [ ] Team: verify the official Hong Kong carriageway tree-crown clearance guidance and replace the current headroom assumption
+- [ ] Team: confirm every externally sourced number is marked verified or `UNVERIFIED` in `docs/sources.md`
+- [ ] Local: decide whether Compare should remain the qualitative reference layout or receive the full live field/metrics implementation; implement the selected scope
+
+### P6 acceptance and pitch
+
+- [ ] Team: install the PWA on a real phone, disable the network, reopen it, and confirm the app, models and data still work offline
+- [ ] Team: measure live solver frame rate on a 2023 mid-range Android phone and an iPhone; record the result in `results/`
+- [ ] Local/team: complete the presentation-mode flow, backup video, QR code, README screenshots, one-page report and `docs/qa.md`
+- [ ] Local/team: complete the final accessibility pass, including keyboard navigation, reduced motion, labels and Traditional Chinese review
+- [ ] Local: install the pinned Playwright Chromium binary and run the full 42-test smoke suite; inspect every generated screenshot
