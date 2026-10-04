@@ -163,8 +163,10 @@ function DesignScreen({ engine, preset, customStreet }: { engine: EngineChoice; 
     [scale.heightM, width, axis, greenery],
   );
   const locale = lang === 'en' ? 'en-GB' : 'zh-HK';
-  const num = (v: number, digits = 0) =>
-    v.toLocaleString(locale, { maximumFractionDigits: digits });
+  const num = useCallback(
+    (v: number, digits = 0) => v.toLocaleString(locale, { maximumFractionDigits: digits }),
+    [locale],
+  );
   const busHeadroomM = 4.4;
   const pavementMinM = customStreet
     ? Math.min(customStreet.pavementLeftM, customStreet.pavementRightM)
@@ -210,7 +212,7 @@ function DesignScreen({ engine, preset, customStreet }: { engine: EngineChoice; 
     }
 
     return badges;
-  }, [customStreet, design.crownBase, design.kind, greenery, num, pavementMinM, scale.heightM, t, width]);
+  }, [design.crownBase, design.kind, greenery, num, pavementMinM, scale.heightM, t, width]);
   const zoneM = PAVEMENT_WIDTH * scale.heightM;
   const heat = weather
     ? pavementHeat(street2d, weather, zoneM, stats?.wind ?? null, PERSON_HEIGHT_M)
@@ -242,16 +244,18 @@ function DesignScreen({ engine, preset, customStreet }: { engine: EngineChoice; 
                     height: num(customStreet.heightM, 1),
                     width: num(customStreet.widthM, 1),
                   })
-                : preset.aspect_h_over_w.median > aspectMax
-                  ? t('design.presetClamped', {
-                      name: presetName,
-                      ratio: num(preset.aspect_h_over_w.median, 1),
-                      max: num(aspectMax, 1),
-                    })
-                  : t('design.presetNote', {
-                      name: presetName,
-                      ratio: num(preset.aspect_h_over_w.median, 1),
-                    })}
+                : preset
+                  ? preset.aspect_h_over_w.median > aspectMax
+                    ? t('design.presetClamped', {
+                        name: presetName,
+                        ratio: num(preset.aspect_h_over_w.median, 1),
+                        max: num(aspectMax, 1),
+                      })
+                    : t('design.presetNote', {
+                        name: presetName,
+                        ratio: num(preset.aspect_h_over_w.median, 1),
+                      })
+                  : null}
               {recorded && ` ${t('design.presetRecorded')}`}
             </p>
             <p className="mt-1 text-ink-muted">{t('design.presetScale')}</p>

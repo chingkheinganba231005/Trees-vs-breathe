@@ -492,15 +492,57 @@ _Source: `results/sun/utci.json`, generated 2026-10-03T09:43:55Z by `npx vitest 
 
 ### Training data
 
-Verdict: not yet computed.
+Verdict: for information, no target.
 
-Not yet computed.
+Method: 2D street at 24 cells per building height, the live app's settings (uniform inflow 0.05, Re 20000, Cs 0.17, Sc_t 0.2, CODASC lanes closing in with the width, absorbing layers); 96000 steps spin-up, 96000 averaged; blocks of Latin-hypercube designs, 20 with trees, 10 with a hedge and 2 bare streets per street shape; test, out-of-distribution and training blocks from separate seeds.
+
+576 training runs; 96000 steps of spin-up and 96000 averaged per run; 0.66 billion cell updates per second.
+
+| Block | Runs | Healthy | Trees | Hedge | Bare | Still filling (trees) |
+| --- | --- | --- | --- | --- | --- | --- |
+| ood | 96 | 96 | 60 | 30 | 6 | 46 |
+| test | 288 | 286 | 180 | 90 | 18 | 31 |
+| train_000 | 576 | 572 | 360 | 180 | 36 | 83 |
+
+How much the pavement averages still move between the halves of a run (median and 90th percentile of the half difference over the sum): exposure 8.6% and 27.4%, wind 9.0% and 23.6%.
+
+_Source: `results/dataset/summary.json`, generated 2026-10-03T18:13:55Z by `python -m treesvb.dataset summary` at commit `a204d12`._
 
 ### Surrogate accuracy against the BRIEF.md 7.3 targets
 
-Verdict: not yet computed.
+Verdict: **misses the target**.
 
-Not yet computed.
+Method: Scalar model: 5 MLPs [128, 128, 128] on 9 features, trained on 486 runs with greenery, 50 held back to choose the epoch; field model: U-Net from 32 channels on the 64 x 128 street grid. Scored once on the test block and the out-of-distribution block, from the exported ONNX files.
+
+Targets: R² at least 0.95, median relative error at most 10%, FAC2 at least 0.95, on pavement exposure in the test block. Met: **no**.
+
+| Set and quantity | Runs | R² | Median relative error | FAC2 |
+| --- | --- | --- | --- | --- |
+| Test: pavement exposure | 536 | 0.794 | 26.4% | 0.841 |
+| Test: fumes against the bare street, leeward | 268 | 0.395 | 21.2% | 0.925 |
+| Test: fumes against the bare street, windward | 268 | 0.140 | 30.8% | 0.757 |
+| Test: pavement wind, leeward | 268 | 0.371 | 24.3% | 0.944 |
+| Test: pavement wind, windward | 268 | 0.682 | 22.9% | 0.944 |
+| Out of distribution: pavement exposure | 180 | -1.349 | 30.8% | 0.767 |
+| Out of distribution: fumes against the bare street, leeward | 90 | -9.166 | 37.4% | 0.589 |
+| Out of distribution: fumes against the bare street, windward | 90 | -0.350 | 23.1% | 0.944 |
+| Out of distribution: pavement wind, leeward | 90 | -0.009 | 75.1% | 0.189 |
+| Out of distribution: pavement wind, windward | 90 | 0.053 | 71.5% | 0.289 |
+
+The solver's own averages limit these scores: a perfect model would show a median relative error of about 9.7% on exposure and 7.9% on wind against the test labels (half difference over the sum of the two halves of each run). The test labels fall within the ensemble's two standard deviations in 28% (leeward) and 31% (windward) of runs. The guard accepts 97% of the test designs and 0% of the out-of-distribution ones.
+
+| Field model | Runs | R² of log(1 + c⁺) | R² of wind speed |
+| --- | --- | --- | --- |
+| Test | 286 | 0.919 | 0.954 |
+| Out of distribution | 96 | 0.701 | 0.884 |
+
+| Model file | Size |
+| --- | --- |
+| `field.onnx` | 3.69 MB |
+| `guard.json` | 0.03 MB |
+| `scalar.onnx` | 0.35 MB |
+
+_Source: `results/surrogate/metrics.json`, generated 2026-10-03T18:34:44Z by `python -m treesvb.surrogate train` at commit `6727a2a`._
 
 ## Still to come
 

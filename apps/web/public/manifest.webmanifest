@@ -1,0 +1,18 @@
+{
+  "name": "Trees vs Breath",
+  "short_name": "Trees vs Breath",
+  "description": "Test a Hong Kong street's trees for heat and fumes before anyone plants them.",
+  "start_url": "./#/",
+  "display": "standalone",
+  "background_color": "#fafafa",
+  "theme_color": "#fafafa",
+  "lang": "en",
+  "icons": [
+    {
+      "src": "./favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

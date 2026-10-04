@@ -10,6 +10,12 @@ import { I18nProvider } from './i18n/I18nProvider';
 const root = document.getElementById('root');
 if (!root) throw new Error('Missing #root element');
 
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    void navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`);
+  });
+}
+
 createRoot(root).render(
   <StrictMode>
     <I18nProvider>

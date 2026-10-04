@@ -1,0 +1,122 @@
+{
+  "schema": 1,
+  "notebook": "03_dataset",
+  "run": "20261003T144828Z",
+  "git": {
+    "commit": "a204d128720e0898e544b7e0be5517ccba1d8cf1",
+    "dirty": false
+  },
+  "parameters": {
+    "repo_ref": "claude/relaxed-lamport-aefen3",
+    "budget_min": 150,
+    "resumed": false,
+    "smoke": false,
+    "jax_pin": "jax[cuda12]==0.10.2",
+    "plan": {
+      "height": 24,
+      "aspects": [
+        0.3,
+        0.4,
+        0.5,
+        0.6,
+        0.7,
+        0.8,
+        0.9,
+        1.0,
+        1.1,
+        1.2,
+        1.3,
+        1.4,
+        1.5,
+        1.6,
+        1.7,
+        1.8,
+        1.9,
+        2.0
+      ],
+      "test_aspects": [
+        0.3,
+        0.5,
+        0.7,
+        0.9,
+        1.1,
+        1.3,
+        1.5,
+        1.7,
+        1.9
+      ],
+      "ood_aspects": [
+        2.2,
+        2.5,
+        3.0
+      ],
+      "trees": 20,
+      "hedges": 10,
+      "bare": 2,
+      "run": {
+        "spin_up": 96000,
+        "average": 96000,
+        "every": 48,
+        "height": 24
+      },
+      "seed": 20261003,
+      "batch": 32
+    }
+  },
+  "seeds": {
+    "test": 20261004,
+    "ood": 20261005,
+    "train_000": 20261103
+  },
+  "runtime": {
+    "smoke": false,
+    "gpus": [
+      {
+        "name": "NVIDIA A100-SXM4-80GB",
+        "memory.total": "81920 MiB",
+        "driver_version": "580.82.07"
+      }
+    ],
+    "platform": "Linux-6.6.122+-x86_64-with-glibc2.39",
+    "versions": {
+      "python": "3.13.15",
+      "numpy": "2.1.3",
+      "jax": "0.10.2",
+      "jaxlib": "0.10.2"
+    }
+  },
+  "wall_time_s": 12388.264,
+  "manifest_repo_path": "results/manifests/03_dataset_20261003T144828Z.manifest.json",
+  "outputs": [
+    {
+      "path": "dataset/summary.json",
+      "bytes": 25458,
+      "sha256": "48e5cbfa393ec7a6b6909d7af461c8da5efd320f035a810e047f02eb6fed3bf2",
+      "repo_path": "results/dataset/summary.json"
+    },
+    {
+      "path": "blocks/test.npz",
+      "bytes": 16067316,
+      "sha256": "4187e3245cb67e8763482cda9322ed4a701c1406c33e4cf23f128692541b8f5e",
+      "repo_path": null
+    },
+    {
+      "path": "blocks/ood.npz",
+      "bytes": 5157385,
+      "sha256": "9c83d4b1f6e7839eafa9df4faee1340e1d29dfb7fea380098d711f07c4507fd2",
+      "repo_path": null
+    },
+    {
+      "path": "blocks/train_000.npz",
+      "bytes": 32095690,
+      "sha256": "50dae0b3d2a9c0a8c715961839a3e52ee460c8db472622cdb338dfd49f8cec24",
+      "repo_path": null
+    },
+    {
+      "path": "blocks/progress.json",
+      "bytes": 4369,
+      "sha256": "c2774d6384de144e4c1c85fb69b5a78226d1be961fb28e6fbddb429071980a2e",
+      "repo_path": null
+    }
+  ]
+}

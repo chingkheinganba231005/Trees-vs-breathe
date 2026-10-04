@@ -9,7 +9,7 @@ Heavy GPU work runs on the user's Colab Pro A100 (80 GB). The notebooks import t
 | `02_codasc_3d.ipynb` | 3D LES of 2–4 CODASC cases | 1–3 h | `results/codasc3d/*.json`, `apps/web/public/data/3d/*.bin` | Phase 4 |
 | `03_dataset.ipynb` | The live street over Latin-hypercube blocks of designs, batched per street shape (`python -m treesvb.dataset`) | about 2 h (`BUDGET_MIN`) | Dataset on Drive; `results/dataset/summary.json` and the manifest with each block's checksum | Ready |
 | `04_train_surrogate.ipynb` | MLP ensemble and U-Net: train, evaluate, export | 30–60 min | `apps/web/public/models/*.onnx`, `results/surrogate/metrics.json` | Phase 4 |
-| `05_street_atlas.ipynb` | Many real streets through the surrogate (stretch) | 30 min | `apps/web/public/data/atlas.json` | Stretch |
+| `05_street_atlas.ipynb` | Many real streets through the surrogate (stretch) | 30 min | `apps/web/public/data/atlas.json` | Ready; mounts Drive to read the newest `04_train_surrogate` models |
 
 ## Running one
 

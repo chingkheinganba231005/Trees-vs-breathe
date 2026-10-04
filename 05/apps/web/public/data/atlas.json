@@ -1,0 +1,222 @@
+{
+  "schema": 1,
+  "generated_by": "python -m treesvb.atlas",
+  "generated_at": "2026-10-04T02:19:58Z",
+  "commit": "6727a2acfe815071cb276585d7c28f32a544e628",
+  "dirty": false,
+  "platform": "Linux-6.6.122+-x86_64-with-glibc2.39",
+  "versions": {
+    "python": "3.13.15",
+    "numpy": "2.1.3",
+    "jax": "0.11.1"
+  },
+  "name": "Hong Kong street atlas screened by the surrogate",
+  "method": "Measured street presets screened against four fixed planting configurations; shade_proxy is geometric only, model outputs are simulated, and guarded or out-of-range streets require physics.",
+  "passed": true,
+  "rows": [
+    {
+      "key": "wing_lok",
+      "label_en": "Wing Lok Street, Sheung Wan",
+      "label_tc": "\u4e0a\u74b0\u6c38\u6a02\u8857",
+      "measured_aspect_h_over_w": 4.44,
+      "model_aspect_h_over_w": 2.0,
+      "out_of_distribution": true,
+      "status": "physics_required",
+      "recommendation": "dense_trees",
+      "candidates": [
+        {
+          "design": "bare",
+          "guard": {
+            "in_box": false,
+            "distance": 4.220442330933484,
+            "near": false,
+            "ok": false
+          },
+          "shade_proxy": 0.0,
+          "predicted_log_ratio_A": null,
+          "predicted_log_ratio_B": null,
+          "predicted_log_wind_A": null,
+          "predicted_log_wind_B": null
+        },
+        {
+          "design": "sparse_trees",
+          "guard": {
+            "in_box": false,
+            "distance": 0.9365939224989926,
+            "near": true,
+            "ok": false
+          },
+          "shade_proxy": 0.07919999999999998,
+          "predicted_log_ratio_A": null,
+          "predicted_log_ratio_B": null,
+          "predicted_log_wind_A": null,
+          "predicted_log_wind_B": null
+        },
+        {
+          "design": "dense_trees",
+          "guard": {
+            "in_box": true,
+            "distance": 1.3713563046401995,
+            "near": true,
+            "ok": true
+          },
+          "shade_proxy": 0.19,
+          "predicted_log_ratio_A": 0.39601314067840576,
+          "predicted_log_ratio_B": -0.04691133201122284,
+          "predicted_log_wind_A": -5.077238655090332,
+          "predicted_log_wind_B": -5.1820070266723635
+        },
+        {
+          "design": "central_hedge",
+          "guard": {
+            "in_box": true,
+            "distance": 1.1938406637320995,
+            "near": true,
+            "ok": true
+          },
+          "shade_proxy": 0.03239999999999999,
+          "predicted_log_ratio_A": -0.11006960272789001,
+          "predicted_log_ratio_B": -0.38900726437568667,
+          "predicted_log_wind_A": -5.123885631561279,
+          "predicted_log_wind_B": -5.081402587890625
+        }
+      ]
+    },
+    {
+      "key": "nathan_mong_kok",
+      "label_en": "Nathan Road, Mong Kok",
+      "label_tc": "\u65fa\u89d2\u5f4c\u6566\u9053",
+      "measured_aspect_h_over_w": 1.21,
+      "model_aspect_h_over_w": 1.21,
+      "out_of_distribution": false,
+      "status": "surrogate_screened",
+      "recommendation": "dense_trees",
+      "candidates": [
+        {
+          "design": "bare",
+          "guard": {
+            "in_box": false,
+            "distance": 3.892242486690357,
+            "near": false,
+            "ok": false
+          },
+          "shade_proxy": 0.0,
+          "predicted_log_ratio_A": null,
+          "predicted_log_ratio_B": null,
+          "predicted_log_wind_A": null,
+          "predicted_log_wind_B": null
+        },
+        {
+          "design": "sparse_trees",
+          "guard": {
+            "in_box": false,
+            "distance": 1.0949467182934467,
+            "near": true,
+            "ok": false
+          },
+          "shade_proxy": 0.0792,
+          "predicted_log_ratio_A": null,
+          "predicted_log_ratio_B": null,
+          "predicted_log_wind_A": null,
+          "predicted_log_wind_B": null
+        },
+        {
+          "design": "dense_trees",
+          "guard": {
+            "in_box": true,
+            "distance": 1.1673981292262872,
+            "near": true,
+            "ok": true
+          },
+          "shade_proxy": 0.18999999999999997,
+          "predicted_log_ratio_A": 1.3242064714431763,
+          "predicted_log_ratio_B": -2.2119566440582275,
+          "predicted_log_wind_A": -4.560195350646973,
+          "predicted_log_wind_B": -4.443500900268555
+        },
+        {
+          "design": "central_hedge",
+          "guard": {
+            "in_box": true,
+            "distance": 0.780748391109393,
+            "near": true,
+            "ok": true
+          },
+          "shade_proxy": 0.032400000000000005,
+          "predicted_log_ratio_A": 0.19587296545505523,
+          "predicted_log_ratio_B": 0.017689108848571777,
+          "predicted_log_wind_A": -3.7674078941345215,
+          "predicted_log_wind_B": -4.433355808258057
+        }
+      ]
+    },
+    {
+      "key": "yen_chow",
+      "label_en": "Yen Chow Street, Sham Shui Po",
+      "label_tc": "\u6df1\u6c34\u57d7\u6b3d\u5dde\u8857",
+      "measured_aspect_h_over_w": 0.59,
+      "model_aspect_h_over_w": 0.59,
+      "out_of_distribution": false,
+      "status": "surrogate_screened",
+      "recommendation": "dense_trees",
+      "candidates": [
+        {
+          "design": "bare",
+          "guard": {
+            "in_box": false,
+            "distance": 3.8239883068913447,
+            "near": false,
+            "ok": false
+          },
+          "shade_proxy": 0.0,
+          "predicted_log_ratio_A": null,
+          "predicted_log_ratio_B": null,
+          "predicted_log_wind_A": null,
+          "predicted_log_wind_B": null
+        },
+        {
+          "design": "sparse_trees",
+          "guard": {
+            "in_box": false,
+            "distance": 0.8421339664758223,
+            "near": true,
+            "ok": false
+          },
+          "shade_proxy": 0.07919999999999996,
+          "predicted_log_ratio_A": null,
+          "predicted_log_ratio_B": null,
+          "predicted_log_wind_A": null,
+          "predicted_log_wind_B": null
+        },
+        {
+          "design": "dense_trees",
+          "guard": {
+            "in_box": true,
+            "distance": 0.9315735196854341,
+            "near": true,
+            "ok": true
+          },
+          "shade_proxy": 0.19000000000000009,
+          "predicted_log_ratio_A": 0.6723864912986756,
+          "predicted_log_ratio_B": 0.4032983660697937,
+          "predicted_log_wind_A": -4.020204067230225,
+          "predicted_log_wind_B": -3.446206045150757
+        },
+        {
+          "design": "central_hedge",
+          "guard": {
+            "in_box": true,
+            "distance": 1.1162214076823282,
+            "near": true,
+            "ok": true
+          },
+          "shade_proxy": 0.032399999999999984,
+          "predicted_log_ratio_A": 0.34670435786247256,
+          "predicted_log_ratio_B": 0.10556191802024842,
+          "predicted_log_wind_A": -3.632865142822266,
+          "predicted_log_wind_B": -3.09988112449646
+        }
+      ]
+    }
+  ]
+}
