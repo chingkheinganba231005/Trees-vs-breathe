@@ -133,6 +133,8 @@ export interface GreeneryDesign {
   crownScale: number;
   /** Sideways shift of the whole layout, units of H; clamped to stay in the street. */
   shift: number;
+  /** Additional sideways offsets for individual tree rows, units of H. */
+  rowShifts: number[];
   hedgeHeightM: (typeof HEDGE_HEIGHTS_M)[number];
   hedgeLambda: (typeof HEDGE_LAMBDAS)[number];
 }
@@ -145,6 +147,7 @@ export const DEFAULT_DESIGN: GreeneryDesign = {
   crownBase: 1 / 3,
   crownScale: 1,
   shift: 0,
+  rowShifts: [0, 0],
   hedgeHeightM: 2.5,
   hedgeLambda: 3.34,
 };
@@ -180,20 +183,21 @@ export function buildGreenery(
     const top = crownTop(d, scale);
     const local = d.treeSize === 'local' && scale.localTree ? scale.localTree : null;
     const layout = d.rows === 'kerbs' ? kerbTrees : avenueTrees;
-    els = layout(width, d.density, scale.heightM).map((e) => {
+    els = layout(width, d.density, scale.heightM).map((e, i) => {
       const mid = 0.5 * (e.x0 + e.x1);
       const full = local ? local.spreadM / scale.heightM : e.x1 - e.x0;
       const half = 0.5 * full * d.crownScale;
+      const rowShift = d.rowShifts[i] ?? 0;
       return {
         ...e,
-        x0: mid - half,
-        x1: mid + half,
+        x0: mid - half + rowShift,
+        x1: mid + half + rowShift,
         z0: Math.min(d.crownBase, 0.9 * top),
         z1: top,
       };
     });
     // Rows that grow into each other merge into one closed canopy.
-    if (els.length === 2 && els[0]!.x1 >= els[1]!.x0) {
+    if (els.length === 2 && d.rowShifts.every((shift) => shift === 0) && els[0]!.x1 >= els[1]!.x0) {
       els = [{ ...els[0]!, x1: els[1]!.x1 }];
     }
   } else if (d.kind === 'hedge') {
@@ -208,7 +212,7 @@ export function buildGreenery(
   }
   // Keep the layout between the buildings, then clip anything still wider than the street.
   const [lo, hi] = shiftRange(els, width);
-  const s = Math.min(Math.max(d.shift, Math.min(lo, 0)), Math.max(hi, 0));
+  const s = Math.min(Math.max(d.shift, lo), hi);
   return els.map((e) => ({ ...e, x0: Math.max(0, e.x0 + s), x1: Math.min(width, e.x1 + s) }));
 }
 

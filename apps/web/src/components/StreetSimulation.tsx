@@ -15,7 +15,7 @@ interface Props {
   engine: EngineChoice;
   onStats: (stats: SimStats) => void;
   /** Sideways drag on the street, in building heights; the sliders do the same by keyboard. */
-  onDrag?: (dx: number) => void;
+  onDrag?: (dx: number, targetId?: string) => void;
   label: string;
 }
 
@@ -37,6 +37,7 @@ export function StreetSimulation({
   const aspectRef = useRef(aspect);
   const greeneryRef = useRef(greenery);
   const dragFrom = useRef<number | null>(null);
+  const dragTarget = useRef<string | undefined>(undefined);
   const [failed, setFailed] = useState<string | null>(null);
   // Set when the GPU fails mid-run; the simulation then restarts on the CPU worker.
   const [fallback, setFallback] = useState<EngineNote | null>(null);
@@ -150,6 +151,18 @@ export function StreetSimulation({
         onPointerDown={(e) => {
           if (!onDrag || greenery.length === 0) return;
           dragFrom.current = e.clientX;
+          const rect = e.currentTarget.getBoundingClientRect();
+          const xH = (((e.clientX - rect.left) / rect.width) * view.width) / HEIGHT + viewX0H;
+          const target = greenery.find((element) => xH >= element.x0 && xH <= element.x1);
+          dragTarget.current =
+            target?.id ??
+            greenery.reduce((closest, element) => {
+              const distance =
+                xH < element.x0 ? element.x0 - xH : xH > element.x1 ? xH - element.x1 : 0;
+              const closestDistance =
+                xH < closest.x0 ? closest.x0 - xH : xH > closest.x1 ? xH - closest.x1 : 0;
+              return distance < closestDistance ? element : closest;
+            }).id;
           e.currentTarget.setPointerCapture(e.pointerId);
         }}
         onPointerMove={(e) => {
@@ -157,13 +170,15 @@ export function StreetSimulation({
           const dx = toH(e.clientX - dragFrom.current, e.currentTarget);
           if (Math.abs(dx) < 0.01) return;
           dragFrom.current = e.clientX;
-          onDrag(dx);
+          onDrag(dx, dragTarget.current);
         }}
         onPointerUp={() => {
           dragFrom.current = null;
+          dragTarget.current = undefined;
         }}
         onPointerCancel={() => {
           dragFrom.current = null;
+          dragTarget.current = undefined;
         }}
       />
       <div className="pointer-events-none absolute inset-0">

@@ -105,7 +105,7 @@ export function GreeneryControls({ design, onChange, shiftRange, scale }: Props)
       <Choice
         name="green-kind"
         value={design.kind}
-        onChange={(kind) => set({ kind, shift: 0 })}
+        onChange={(kind) => set({ kind, shift: 0, rowShifts: [0, 0] })}
         options={[
           { value: 'none', label: t('green.none') },
           { value: 'trees', label: t('green.trees') },
@@ -142,7 +142,7 @@ export function GreeneryControls({ design, onChange, shiftRange, scale }: Props)
           <Choice
             name="tree-rows"
             value={design.rows}
-            onChange={(rows) => set({ rows, shift: 0 })}
+            onChange={(rows) => set({ rows, shift: 0, rowShifts: [0, 0] })}
             options={[
               { value: 'kerbs', label: t('green.rowsKerbs') },
               { value: 'tunnel', label: t('green.rowsTunnel') },
