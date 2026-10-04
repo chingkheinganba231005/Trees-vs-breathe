@@ -62,14 +62,62 @@ export function FieldPreview({
           ctx.fillRect(c * cw, height - (r + 1) * ch, cw + 1, ch + 1);
         }
       }
+
+      // The field is a wall-to-wall cross-section. Keep the built edges and street floor visible
+      // so a canopy is not mistaken for another concentration block.
+      const ground = Math.max(2 * dpr, height / FIELD_ROWS);
+      const wall = Math.max(3 * dpr, width / FIELD_COLS);
+      ctx.fillStyle = rgb(colors.building);
+      ctx.globalAlpha = 0.32;
+      ctx.fillRect(0, 0, wall, height);
+      ctx.fillRect(width - wall, 0, wall, height);
+      ctx.fillRect(0, height - ground, width, ground);
+      ctx.globalAlpha = 1;
+
       ctx.strokeStyle = rgb(colors.ink);
       ctx.lineWidth = Math.max(1, dpr);
-      ctx.setLineDash([4 * dpr, 3 * dpr]);
+      ctx.setLineDash([]);
       for (const e of elements) {
         const x0 = (e.x0 / widthH) * width;
         const x1 = (e.x1 / widthH) * width;
-        ctx.strokeRect(x0, height - e.z1 * height, x1 - x0, (e.z1 - e.z0) * height);
+        const top = height - e.z1 * height;
+        const bottom = height - e.z0 * height;
+        const radius = Math.min(8 * dpr, Math.max(2 * dpr, (x1 - x0) / 8));
+
+        // A porous crown is shown as a translucent canopy, not as a solid wall. The trunk is
+        // symbolic because the surrogate and solver operate on the crown's drag envelope.
+        if (e.kind === 'trees') {
+          const trunkWidth = Math.max(2 * dpr, (x1 - x0) * 0.035);
+          const trunkX = (x0 + x1) / 2 - trunkWidth / 2;
+          ctx.fillStyle = 'rgba(93, 184, 133, 0.7)';
+          ctx.fillRect(trunkX, bottom, trunkWidth, height - bottom);
+          ctx.fillStyle = 'rgba(93, 184, 133, 0.22)';
+        } else {
+          ctx.fillStyle = 'rgba(214, 164, 75, 0.26)';
+        }
+        ctx.beginPath();
+        ctx.roundRect(x0, top, x1 - x0, bottom - top, radius);
+        ctx.fill();
+        ctx.strokeStyle = e.kind === 'trees' ? 'rgba(138, 220, 169, 0.95)' : 'rgba(235, 190, 99, 0.95)';
+        ctx.stroke();
+
+        if (e.kind === 'trees') {
+          ctx.fillStyle = 'rgba(190, 241, 207, 0.72)';
+          const crownHeight = Math.max(1, bottom - top);
+          const dotRadius = Math.max(1.5 * dpr, Math.min(3 * dpr, (x1 - x0) / 18));
+          for (let x = x0 + dotRadius * 2; x < x1 - dotRadius; x += dotRadius * 3) {
+            for (let y = top + dotRadius * 2; y < bottom - dotRadius; y += dotRadius * 3) {
+              const offset = Math.floor((y - top) / Math.max(1, crownHeight / 5)) % 2;
+              if ((Math.floor((x - x0) / Math.max(1, dotRadius)) + offset) % 3 === 0) {
+                ctx.beginPath();
+                ctx.arc(x, y, dotRadius, 0, 2 * Math.PI);
+                ctx.fill();
+              }
+            }
+          }
+        }
       }
+      ctx.globalAlpha = 1;
     };
     draw();
     const observer = new ResizeObserver(draw);
