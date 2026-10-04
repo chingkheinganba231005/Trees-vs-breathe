@@ -115,6 +115,16 @@ export function StreetSimulation({
 
   // The canvas keeps the proportions of the framed street.
   const view = streetView(canyonGeometry(HEIGHT, aspect));
+  const viewWidthH = view.width / HEIGHT;
+  const viewHeightH = view.height / HEIGHT;
+  const viewX0H = view.x0 / HEIGHT;
+  const greeneryOverlay = greenery.map((e) => ({
+    ...e,
+    left: ((e.x0 - viewX0H) / viewWidthH) * 100,
+    width: ((e.x1 - e.x0) / viewWidthH) * 100,
+    bottom: (e.z0 / viewHeightH) * 100,
+    height: ((e.z1 - e.z0) / viewHeightH) * 100,
+  }));
   const toH = (dxPx: number, el: HTMLElement) =>
     (dxPx / el.getBoundingClientRect().width) * (view.width / HEIGHT);
 
@@ -157,17 +167,36 @@ export function StreetSimulation({
         }}
       />
       <div className="pointer-events-none absolute inset-0">
-        {greenery.length > 0 && (
+        {greeneryOverlay.map((e) => (
           <div
-            className="absolute rounded-md border border-accent/60 bg-accent/10"
+            key={e.id}
+            className="absolute"
             style={{
-              left: '20%',
-              right: '20%',
-              top: '18%',
-              height: '28%',
+              left: `${e.left}%`,
+              width: `${e.width}%`,
+              bottom: `${e.bottom}%`,
+              height: `${e.height}%`,
             }}
-          />
-        )}
+          >
+            {e.kind === 'trees' ? (
+              <>
+                <div
+                  className="absolute bottom-0 left-1/2 h-[35%] w-[3%] min-w-[2px] -translate-x-1/2 rounded-t bg-[#62b887]/80"
+                  aria-hidden="true"
+                />
+                <div
+                  className="absolute inset-0 rounded-[38%] border border-[#9ae0b4]/80 bg-[radial-gradient(circle_at_25%_35%,rgba(190,241,207,0.8)_0_5%,transparent_6%),radial-gradient(circle_at_58%_22%,rgba(190,241,207,0.65)_0_6%,transparent_7%),radial-gradient(circle_at_78%_52%,rgba(190,241,207,0.7)_0_5%,transparent_6%),rgba(93,184,133,0.3)]"
+                  aria-label="Tree crown"
+                />
+              </>
+            ) : (
+              <div
+                className="absolute inset-0 rounded-sm border border-[#ebbe63]/90 bg-[#d6a44b]/30"
+                aria-label="Hedge"
+              />
+            )}
+          </div>
+        ))}
         <div
           className="absolute rounded-sm border border-[var(--ink)]/50"
           style={{
