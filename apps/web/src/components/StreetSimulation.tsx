@@ -204,8 +204,10 @@ export function StreetSimulation({
             top: '62%',
             width: '18%',
             height: '14%',
-            background: 'linear-gradient(90deg,rgba(255,179,0,0.65),rgba(255,100,80,0.7),rgba(255,64,64,0.85))',
+            background:
+              'linear-gradient(90deg,rgba(255,179,0,0.65),rgba(255,100,80,0.7),rgba(255,64,64,0.85))',
           }}
+          aria-label={t('design.canvasUtciZone')}
         />
         <div
           className="absolute rounded-sm border border-[var(--ink)]/50"
@@ -214,8 +216,10 @@ export function StreetSimulation({
             top: '62%',
             width: '18%',
             height: '14%',
-            background: 'linear-gradient(90deg,rgba(255,179,0,0.65),rgba(255,100,80,0.7),rgba(255,64,64,0.85))',
+            background:
+              'linear-gradient(90deg,rgba(255,179,0,0.65),rgba(255,100,80,0.7),rgba(255,64,64,0.85))',
           }}
+          aria-label={t('design.canvasUtciZone')}
         />
         {greenery.length > 0 && (
           <div className="absolute left-2 top-2 rounded-full border border-accent bg-surface/90 px-2 py-0.5 text-[0.6rem] uppercase tracking-wide text-ink-muted">
