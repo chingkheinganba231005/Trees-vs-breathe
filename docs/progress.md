@@ -200,8 +200,8 @@ Goal: the time of day moves the sun, shade falls from the roofs and the crowns, 
 ### Street
 
 - [x] Three presets measured from Lands Department data (`python -m treesvb.hkstreets`, `results/streets/presets.json`); Street screen with drawings to scale and "Open in Design"
-- [ ] Custom street: H, W, pavement widths, compass direction
-- [ ] Phone mode: compass for the direction, tilt to the roofline for the height (h = d tan θ + eye height, with its uncertainty), thermometer reading
+- [x] Custom street: H, W, pavement widths, compass direction
+- [x] Phone mode: compass for the direction, tilt to the roofline for the height (h = d tan θ + eye height, with its uncertainty), thermometer reading; browser sensor acceptance remains a real-device check
 - [x] Weather presets measured (`python -m treesvb.hkweather`, `results/weather/presets.json`)
 - [x] Weather preset and hour controls on Design; a street without a preset gets a direction choice, measured streets keep their bearing
 
@@ -224,7 +224,7 @@ Goal: the time of day moves the sun, shade falls from the roofs and the crowns, 
 - [x] Shade band and UTCI strip on the live canvas; a wind-speed control (the wind now comes from the weather preset)
 - [x] Tree rows along the kerbs (A-024), the default on measured streets: CODASC's central row had put Nathan Road's local trees over the carriageway, where their shade missed the pavements
 - [x] Trees sized in metres on the real streets: a typical local roadside tree (A-014, A-015), the default for presets; the wind-tunnel avenue stays as an option
-- [ ] Lanes and the breathing zone sized in metres on the real streets in the live app (the Wing Lok run already uses them: A-012, A-016)
+- [x] Lanes and the breathing zone sized in metres on the real streets in the live app (the Wing Lok run already uses them: A-012, A-016)
 - [x] Wing Lok Street at its measured shape, recorded on Colab at 96 cells and shown beside the live view (D-030); the run had not settled, and the app says so
 - [x] Constraint badges: pavement width and bus headroom
 - [x] Evidence cards: solar position against `pvlib`, UTCI against `pythermalcomfort`, and the collision margin
@@ -301,6 +301,15 @@ The Colab exports are now present. The remaining P4 evidence task is to review t
 | D-036 | "Check with physics" runs the CPU solver in a worker on the chosen design for the dataset's run length (96 000 + 96 000 steps) and divides by the dataset's bare street of the same shape                           | Like for like with the training data, so the comparison tests the surrogate rather than a shorter or differently averaged run. The CPU solver measured 213 steps/s on the 24-cell street in this container with other jobs running (about a quarter of an hour for a check); a laptop is faster, and a WebGPU check can follow                                                                                    |
 
 ## P5 — Decision and evidence
+
+### Local completion pass (2026-10-04)
+
+- [x] Add real-metre lane and breathing-zone readouts to Design
+- [x] Add phone measurement mode with compass, tilt height estimate and thermometer input
+- [x] Keep live "still filling" status visible while the averaging window is incomplete
+- [x] Make atlas rows open directly in Design and Trade-off
+- [x] Replace Report placeholders with the selected street, recommendation, evidence and caveats
+- [x] Complete the local accessibility and Traditional Chinese wording pass
 
 Goal: turn the design, the model checks and the street context into a decision tool, with the numbers and caveats exposed in the app and the printable summary.
 

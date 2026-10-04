@@ -319,6 +319,17 @@ function DesignScreen({ engine, preset, customStreet }: { engine: EngineChoice; 
             </output>
           </div>
           <p className="mt-1 text-sm text-ink-muted">{t('design.aspectHint')}</p>
+          <div className="mt-3 rounded-md border border-line px-3 py-2 text-sm" role="note">
+            <p className="font-bold">{t('design.realUnits')}</p>
+            <p className="mt-1 text-ink-muted">
+              {t('design.realUnitsDetail', {
+                lane: num(Math.max(0, (scale.heightM * width - 2 * pavementMinM) / 4), 1),
+                zone: num(zoneM, 1),
+                z0: num(PERSON_HEIGHT_M, 1),
+                z1: num(PERSON_HEIGHT_M + 1.8, 1),
+              })}
+            </p>
+          </div>
 
           <fieldset className="mt-6">
             <legend className="font-bold">{t('design.layers')}</legend>
